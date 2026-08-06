@@ -1,0 +1,52 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 224 31% 12%;
+    --surface: 220 25% 97%;
+    --muted: 220 18% 94%;
+    --muted-foreground: 220 9% 42%;
+    --border: 220 16% 88%;
+    --brand: 157 52% 31%;
+    --brand-foreground: 0 0% 100%;
+    --stripe: 157 52% 31% / 0.018;
+  }
+  .dark {
+    --background: 224 28% 8%;
+    --foreground: 210 40% 96%;
+    --surface: 224 23% 12%;
+    --muted: 222 19% 17%;
+    --muted-foreground: 215 16% 68%;
+    --border: 220 16% 22%;
+    --brand: 157 48% 48%;
+    --brand-foreground: 224 28% 8%;
+    --stripe: 157 48% 48% / 0.028;
+  }
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+  }
+}
+
+@layer utilities {
+  .app-background,
+  .app-surface {
+    background-color: hsl(var(--background));
+    background-image: repeating-linear-gradient(
+      -45deg,
+      hsl(var(--stripe)) 0,
+      hsl(var(--stripe)) 1px,
+      transparent 1px,
+      transparent 18px
+    );
+  }
+
+  .app-surface {
+    background-color: hsl(var(--surface) / 0.96);
+  }
+}

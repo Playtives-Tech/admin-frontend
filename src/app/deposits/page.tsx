@@ -1,0 +1,254 @@
+'use client';
+
+import { useState } from 'react';
+import { 
+  MdSouth,
+  MdCheckCircle,
+  MdCancel,
+  MdAccessTime,
+  MdVisibility,
+  MdClose,
+  MdWarning,
+  MdTune
+} from 'react-icons/md';
+import { DashboardShell } from '@/components/dashboard/shell';
+import { notify } from '@/lib/notify';
+import { cn } from '@/lib/utils';
+import Image from 'next/image';
+
+// Mock Data
+const stats = [
+  { label: 'Pending Requests', value: '12', icon: MdAccessTime },
+  { label: 'Pending Volume', value: '₦4.5M', icon: MdSouth },
+  { label: 'Total Approved (30d)', value: '₦82.4M', icon: MdCheckCircle },
+];
+
+interface DepositRequest {
+  id: string;
+  user: string;
+  email: string;
+  amount: number;
+  date: string;
+  status: 'Pending' | 'Approved' | 'Rejected';
+  receiptUrl: string;
+}
+
+const initialDeposits: DepositRequest[] = [
+  { id: 'DEP-001', user: 'David Olatunji', email: 'david.o@example.com', amount: 1500000, date: 'Oct 15, 2026 14:30', status: 'Pending', receiptUrl: 'https://images.unsplash.com/photo-1620714223084-8fcacc6dfd8d?w=400&q=80' },
+  { id: 'DEP-002', user: 'Sarah Jenkins', email: 'sarah.j@example.com', amount: 500000, date: 'Oct 15, 2026 12:15', status: 'Pending', receiptUrl: 'https://images.unsplash.com/photo-1554224155-6726b3ff858f?w=400&q=80' },
+  { id: 'DEP-003', user: 'Michael Tosin', email: 'michael.t@example.com', amount: 2000000, date: 'Oct 14, 2026 09:45', status: 'Approved', receiptUrl: 'https://images.unsplash.com/photo-1620714223084-8fcacc6dfd8d?w=400&q=80' },
+  { id: 'DEP-004', user: 'Chika Nnamdi', email: 'chika.n@example.com', amount: 100000, date: 'Oct 14, 2026 16:20', status: 'Rejected', receiptUrl: 'https://images.unsplash.com/photo-1554224155-6726b3ff858f?w=400&q=80' },
+];
+
+export default function DepositsPage(): React.JSX.Element {
+  const [deposits, setDeposits] = useState<DepositRequest[]>(initialDeposits);
+  const [selectedDeposit, setSelectedDeposit] = useState<DepositRequest | null>(null);
+  const [statusFilter, setStatusFilter] = useState('All');
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
+
+  const filteredDeposits = deposits.filter((d) => 
+    statusFilter === 'All' || d.status === statusFilter
+  );
+
+  const handleAction = (id: string, action: 'Approved' | 'Rejected') => {
+    setDeposits(prev => prev.map(d => d.id === id ? { ...d, status: action } : d));
+    setSelectedDeposit(null);
+    notify.success(`Deposit request ${action.toLowerCase()}`);
+  };
+
+  return (
+    <DashboardShell title="Deposits" description="Review and validate wallet funding requests">
+      <div className="mx-auto max-w-6xl space-y-8">
+        
+        {/* Statistics Cards */}
+        <div className="grid gap-4 sm:grid-cols-3">
+          {stats.map((stat, i) => (
+            <div key={i} className="app-surface rounded-2xl border p-5 shadow-sm transition hover:border-brand/35">
+              <div className="flex items-center justify-between text-muted-foreground">
+                <p className="text-xs font-bold uppercase tracking-wider">{stat.label}</p>
+                <stat.icon className="size-4" />
+              </div>
+              <h3 className="mt-4 font-heading text-2xl font-semibold">{stat.value}</h3>
+            </div>
+          ))}
+        </div>
+
+        {/* Deposits Table */}
+        <div className="app-surface rounded-2xl border shadow-sm">
+          <div className="flex flex-col gap-4 border-b p-6 sm:flex-row sm:items-center sm:justify-between">
+            <h3 className="font-semibold flex items-center gap-2">
+              <MdSouth className="size-4" />
+              Recent Deposit Requests
+            </h3>
+            
+            <div className="relative">
+              <button 
+                onClick={() => setIsFilterOpen(!isFilterOpen)}
+                className="flex w-max items-center gap-2 rounded-xl border bg-background px-4 py-2 text-sm font-medium transition hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+              >
+                <MdTune className="size-4" />
+                Filter: {statusFilter}
+              </button>
+              {isFilterOpen && (
+                <div className="absolute right-0 top-full z-10 mt-2 w-48 rounded-xl border bg-surface p-2 shadow-xl">
+                  <div className="text-xs font-bold uppercase tracking-wider text-muted-foreground px-3 py-2">Status</div>
+                  {['All', 'Pending', 'Approved', 'Rejected'].map((status) => (
+                    <button
+                      key={status}
+                      onClick={() => {
+                        setStatusFilter(status);
+                        setIsFilterOpen(false);
+                      }}
+                      className={cn(
+                        "w-full rounded-lg px-3 py-2 text-left text-sm transition hover:bg-muted",
+                        statusFilter === status && "bg-brand/10 text-brand font-medium"
+                      )}
+                    >
+                      {status}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-sm">
+              <thead className="bg-muted/30">
+                <tr>
+                  <th className="px-6 py-4 font-semibold text-muted-foreground">User</th>
+                  <th className="px-6 py-4 font-semibold text-muted-foreground text-right">Amount</th>
+                  <th className="px-6 py-4 font-semibold text-muted-foreground">Date Submitted</th>
+                  <th className="px-6 py-4 font-semibold text-muted-foreground">Status</th>
+                  <th className="px-6 py-4 font-semibold text-muted-foreground text-right">Action</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y">
+                {filteredDeposits.map((deposit) => (
+                  <tr key={deposit.id} className="transition hover:bg-muted/30">
+                    <td className="px-6 py-4">
+                      <p className="font-medium text-foreground">{deposit.user}</p>
+                      <p className="text-xs text-muted-foreground">{deposit.email}</p>
+                    </td>
+                    <td className="px-6 py-4 text-right font-medium">₦{deposit.amount.toLocaleString()}</td>
+                    <td className="px-6 py-4 text-muted-foreground">{deposit.date}</td>
+                    <td className="px-6 py-4">
+                      <span className={cn(
+                        "inline-flex items-center rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider",
+                        deposit.status === 'Approved' ? 'bg-emerald-500/10 text-emerald-500' :
+                        deposit.status === 'Pending' ? 'bg-amber-500/10 text-amber-500' :
+                        'bg-red-500/10 text-red-500'
+                      )}>
+                        {deposit.status}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <button 
+                        onClick={() => setSelectedDeposit(deposit)}
+                        className="inline-flex items-center gap-1.5 rounded-lg border bg-background px-3 py-1.5 text-xs font-medium transition hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                      >
+                        <MdVisibility className="size-3.5" />
+                        Review
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      {/* Review Modal */}
+      {selectedDeposit && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-3xl max-h-[90vh] flex flex-col overflow-hidden rounded-2xl border bg-surface shadow-xl">
+            {/* Header */}
+            <div className="flex shrink-0 items-center justify-between border-b p-4">
+              <div>
+                <h2 className="font-heading text-lg font-semibold text-foreground">Review Deposit</h2>
+                <p className="text-xs text-muted-foreground">Request ID: {selectedDeposit.id}</p>
+              </div>
+              <button 
+                onClick={() => setSelectedDeposit(null)}
+                className="rounded-lg p-2 text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+              >
+                <MdClose className="size-4" />
+              </button>
+            </div>
+            
+            {/* Scrollable Body */}
+            <div className="flex-1 overflow-y-auto p-6">
+              <div className="grid gap-6 max-w-md mx-auto">
+                {/* Receipt Image at Top */}
+                <div>
+                  <p className="mb-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">Transfer Receipt</p>
+                  <div className="relative aspect-[4/3] w-full overflow-hidden rounded-xl border bg-muted">
+                    <img 
+                      src={selectedDeposit.receiptUrl} 
+                      alt="Transfer Receipt" 
+                      className="absolute inset-0 h-full w-full object-cover"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid gap-4 sm:grid-cols-2 rounded-xl border p-4 bg-background">
+                  <div>
+                    <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">User Details</p>
+                    <p className="mt-1 font-medium">{selectedDeposit.user}</p>
+                    <p className="text-xs text-muted-foreground">{selectedDeposit.email}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Date Submitted</p>
+                    <p className="mt-1 text-sm font-medium flex items-center gap-1.5"><MdAccessTime className="size-3.5 text-muted-foreground" /> {selectedDeposit.date}</p>
+                  </div>
+                  <div className="sm:col-span-2 pt-2 border-t">
+                    <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Requested Amount</p>
+                    <p className="mt-1 font-heading text-3xl font-semibold text-brand">₦{selectedDeposit.amount.toLocaleString()}</p>
+                  </div>
+                </div>
+
+                {selectedDeposit.status === 'Pending' && (
+                  <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-4">
+                    <div className="flex items-start gap-3">
+                      <MdWarning className="size-5 text-amber-500 shrink-0 mt-0.5" />
+                      <p className="text-xs leading-5 text-amber-600 dark:text-amber-400">
+                        Please carefully verify the receipt image against your bank statement before approving. This will immediately credit the user's wallet.
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Actions Footer */}
+            <div className="flex shrink-0 items-center justify-end gap-3 border-t bg-muted/20 p-4">
+              <button 
+                onClick={() => setSelectedDeposit(null)}
+                className="rounded-xl border bg-background px-4 py-2.5 text-sm font-semibold transition hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+              >
+                Close
+              </button>
+              {selectedDeposit.status === 'Pending' && (
+                <>
+                  <button 
+                    onClick={() => handleAction(selectedDeposit.id, 'Rejected')}
+                    className="flex items-center gap-1.5 rounded-xl border bg-background px-4 py-2.5 text-sm font-semibold text-red-500 transition hover:bg-red-500/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500"
+                  >
+                    <MdCancel className="size-4" /> Reject
+                  </button>
+                  <button 
+                    onClick={() => handleAction(selectedDeposit.id, 'Approved')}
+                    className="flex items-center gap-1.5 rounded-xl bg-brand px-4 py-2.5 text-sm font-semibold text-brand-foreground shadow-sm transition hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                  >
+                    <MdCheckCircle className="size-4" /> Approve & Credit Wallet
+                  </button>
+                </>
+              )}
+            </div>
+
+          </div>
+        </div>
+      )}
+    </DashboardShell>
+  );
+}
