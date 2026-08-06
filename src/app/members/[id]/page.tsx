@@ -22,51 +22,30 @@ import {
   getMemberWallet,
   type ActivityLog,
   type AdminWalletSummary,
+  updateMemberStatus,
+  creditMemberEarnings,
 } from '@/lib/services/member-operations-service';
 
-// Mock Data
 const memberInfo = {
-  name: 'Sarah Jenkins',
-  email: 'sarah.j@example.com',
-  phone: '+234 801 234 5678',
-  joined: 'Oct 12, 2025',
-  status: 'Active',
-  kycLevel: 'Level 2 (Verified)',
-  totalInvested: '₦4,500,000',
-  totalReturns: '₦320,000',
-  walletBalance: '₦150,000',
-  activeInvestments: 3,
+  name: 'Loading member…',
+  email: '',
+  phone: 'Not available',
+  joined: '',
+  status: 'Loading',
+  kycLevel: 'Not available',
+  totalInvested: 'Not available',
+  activeInvestments: 0,
 };
 
-const investments = [
-  {
-    id: '1',
-    opportunity: 'Palm oil trade cycle 08',
-    type: 'Commodity',
-    units: 15,
-    amount: 1500000,
-    date: 'Nov 01, 2025',
-    status: 'Active',
-  },
-  {
-    id: '2',
-    opportunity: 'Real Estate Fund A',
-    type: 'Real Estate',
-    units: 5,
-    amount: 2500000,
-    date: 'Dec 15, 2025',
-    status: 'Active',
-  },
-  {
-    id: '3',
-    opportunity: 'Agro Export Batch 10',
-    type: 'Agriculture',
-    units: 10,
-    amount: 500000,
-    date: 'Jan 10, 2026',
-    status: 'Completed',
-  },
-];
+const investments: Array<{
+  id: string;
+  opportunity: string;
+  type: string;
+  units: number;
+  amount: number;
+  date: string;
+  status: string;
+}> = [];
 
 export default function MemberDetailPage(): React.JSX.Element {
   const params = useParams<{ id: string }>();
@@ -75,6 +54,8 @@ export default function MemberDetailPage(): React.JSX.Element {
   const [wallet, setWallet] = useState<AdminWalletSummary | null>(null);
   const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
   const [displayedMember, setDisplayedMember] = useState(memberInfo);
+  const [earningsAmount, setEarningsAmount] = useState('');
+  const [earningsReference, setEarningsReference] = useState('');
 
   useEffect(() => {
     void Promise.all([
@@ -90,6 +71,7 @@ export default function MemberDetailPage(): React.JSX.Element {
           joined: new Date(member.createdAt).toLocaleDateString('en-NG'),
           status: member.status === 'suspended' ? 'Suspended' : 'Active',
         });
+        setIsSuspended(member.status === 'suspended');
         setWallet(walletResult);
         setActivityLogs(logs);
       },
@@ -97,10 +79,37 @@ export default function MemberDetailPage(): React.JSX.Element {
     );
   }, [params.id]);
 
-  const handleSuspend = () => {
-    setIsSuspended(true);
-    setIsSuspendModalOpen(false);
-    notify.success('Account suspended successfully');
+  const handleSuspend = async () => {
+    try {
+      await updateMemberStatus(params.id, 'suspended');
+      setIsSuspended(true);
+      setDisplayedMember((member) => ({ ...member, status: 'Suspended' }));
+      setIsSuspendModalOpen(false);
+      notify.success('Account suspended successfully');
+    } catch (error: unknown) {
+      notify.error(error instanceof Error ? error.message : 'Account suspension failed');
+    }
+  };
+
+  const handleCreditEarnings = async () => {
+    const amount = Number(earningsAmount.replace(/,/g, ''));
+    if (!Number.isInteger(amount) || amount < 1 || !earningsReference.trim()) {
+      notify.error('Enter a whole-naira amount and a unique reference');
+      return;
+    }
+    try {
+      const updatedWallet = await creditMemberEarnings(params.id, {
+        amountMinorUnits: amount * 100,
+        reference: earningsReference.trim(),
+      });
+      setWallet(updatedWallet);
+      setEarningsAmount('');
+      setEarningsReference('');
+      setActivityLogs(await getMemberActivity(params.id));
+      notify.success('Member earnings credited');
+    } catch (error: unknown) {
+      notify.error(error instanceof Error ? error.message : 'Earnings credit failed');
+    }
   };
 
   return (
@@ -235,6 +244,31 @@ export default function MemberDetailPage(): React.JSX.Element {
                 <div className="mt-4 border-t border-brand-foreground/20 pt-4">
                   <p className="text-[10px] uppercase tracking-wider opacity-80">Active Inv.</p>
                   <p className="mt-1 font-semibold">{memberInfo.activeInvestments}</p>
+                </div>
+
+                <div className="mt-4 grid gap-2 border-t border-brand-foreground/20 pt-4">
+                  <p className="text-[10px] uppercase tracking-wider opacity-80">Credit earnings</p>
+                  <input
+                    value={earningsAmount}
+                    onChange={(event) =>
+                      setEarningsAmount(event.target.value.replace(/[^0-9,]/g, ''))
+                    }
+                    placeholder="Amount in NGN"
+                    className="h-10 rounded-lg border border-brand-foreground/20 bg-brand-foreground/10 px-3 text-sm placeholder:text-brand-foreground/60"
+                  />
+                  <input
+                    value={earningsReference}
+                    onChange={(event) => setEarningsReference(event.target.value)}
+                    placeholder="Unique payout reference"
+                    className="h-10 rounded-lg border border-brand-foreground/20 bg-brand-foreground/10 px-3 text-sm placeholder:text-brand-foreground/60"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => void handleCreditEarnings()}
+                    className="h-10 rounded-lg bg-brand-foreground px-3 text-sm font-semibold text-brand"
+                  >
+                    Credit earnings
+                  </button>
                 </div>
               </div>
             </div>

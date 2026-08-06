@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   MdNorth,
   MdCheckCircle,
@@ -12,21 +12,18 @@ import {
 import { DashboardShell } from '@/components/dashboard/shell';
 import { notify } from '@/lib/notify';
 import { cn } from '@/lib/utils';
-
-// Mock Data
-const stats = [
-  { label: 'Pending Withdrawals', value: '8', icon: MdAccessTime },
-  { label: 'Pending Volume', value: '₦1.2M', icon: MdNorth },
-  { label: 'Processed (30d)', value: '₦15.4M', icon: MdCheckCircle },
-];
+import {
+  getWithdrawalRequests,
+  reviewWithdrawalRequest,
+} from '@/lib/services/member-operations-service';
 
 interface WithdrawalRequest {
   id: string;
   user: string;
   email: string;
   amount: number;
-  walletBalance: number;
-  earningsBalance: number;
+  depositDebit: number;
+  earningsDebit: number;
   bankName: string;
   accountNumber: string;
   accountName: string;
@@ -34,63 +31,8 @@ interface WithdrawalRequest {
   status: 'Pending' | 'Completed' | 'Failed';
 }
 
-const initialWithdrawals: WithdrawalRequest[] = [
-  {
-    id: 'WDR-001',
-    user: 'Zainab Bello',
-    email: 'zainab.b@example.com',
-    amount: 250000,
-    walletBalance: 150000,
-    earningsBalance: 300000,
-    bankName: 'GTBank',
-    accountNumber: '0123456789',
-    accountName: 'Zainab Bello',
-    date: 'Oct 15, 2026 14:30',
-    status: 'Pending',
-  },
-  {
-    id: 'WDR-002',
-    user: 'Sarah Jenkins',
-    email: 'sarah.j@example.com',
-    amount: 500000,
-    walletBalance: 150000,
-    earningsBalance: 600000,
-    bankName: 'Access Bank',
-    accountNumber: '0698765432',
-    accountName: 'Sarah Jenkins',
-    date: 'Oct 15, 2026 12:15',
-    status: 'Pending',
-  },
-  {
-    id: 'WDR-003',
-    user: 'Michael Tosin',
-    email: 'michael.t@example.com',
-    amount: 1500000,
-    walletBalance: 0,
-    earningsBalance: 1500000,
-    bankName: 'Zenith Bank',
-    accountNumber: '2023456789',
-    accountName: 'Michael Tosin',
-    date: 'Oct 14, 2026 09:45',
-    status: 'Completed',
-  },
-  {
-    id: 'WDR-004',
-    user: 'David Olatunji',
-    email: 'david.o@example.com',
-    amount: 50000,
-    walletBalance: 50000,
-    earningsBalance: 20000,
-    bankName: 'First Bank',
-    accountNumber: '3029876541',
-    accountName: 'David Olatunji',
-    date: 'Oct 14, 2026 16:20',
-    status: 'Failed',
-  },
-];
-
 export default function WithdrawalsPage(): React.JSX.Element {
-  const [withdrawals, setWithdrawals] = useState<WithdrawalRequest[]>(initialWithdrawals);
+  const [withdrawals, setWithdrawals] = useState<WithdrawalRequest[]>([]);
   const [selectedWithdrawal, setSelectedWithdrawal] = useState<WithdrawalRequest | null>(null);
   const [statusFilter, setStatusFilter] = useState('All');
   const [isFilterOpen, setIsFilterOpen] = useState(false);
@@ -99,10 +41,62 @@ export default function WithdrawalsPage(): React.JSX.Element {
     (w) => statusFilter === 'All' || w.status === statusFilter,
   );
 
-  const handleAction = (id: string, action: 'Completed' | 'Failed') => {
-    setWithdrawals((prev) => prev.map((w) => (w.id === id ? { ...w, status: action } : w)));
-    setSelectedWithdrawal(null);
-    notify.success(`Withdrawal marked as ${action.toLowerCase()}`);
+  useEffect(() => {
+    void getWithdrawalRequests().then(
+      (records) =>
+        setWithdrawals(
+          records.map((record) => ({
+            id: record._id,
+            user: record.userId.name,
+            email: record.userId.email,
+            amount: record.amountMinorUnits / 100,
+            depositDebit: record.depositDebitMinorUnits / 100,
+            earningsDebit: record.earningsDebitMinorUnits / 100,
+            bankName: record.bankName,
+            accountNumber: record.accountNumber,
+            accountName: record.accountName,
+            date: new Date(record.createdAt).toLocaleString('en-NG'),
+            status:
+              record.status === 'completed'
+                ? 'Completed'
+                : record.status === 'rejected'
+                  ? 'Failed'
+                  : 'Pending',
+          })),
+        ),
+      () => notify.error('Could not load withdrawal requests'),
+    );
+  }, []);
+
+  const pending = withdrawals.filter((request) => request.status === 'Pending');
+  const stats = [
+    { label: 'Pending Withdrawals', value: String(pending.length), icon: MdAccessTime },
+    {
+      label: 'Pending Volume',
+      value: `₦${pending.reduce((sum, item) => sum + item.amount, 0).toLocaleString()}`,
+      icon: MdNorth,
+    },
+    {
+      label: 'Processed',
+      value: `₦${withdrawals
+        .filter((item) => item.status === 'Completed')
+        .reduce((sum, item) => sum + item.amount, 0)
+        .toLocaleString()}`,
+      icon: MdCheckCircle,
+    },
+  ];
+
+  const handleAction = async (id: string, action: 'Completed' | 'Failed') => {
+    try {
+      await reviewWithdrawalRequest(id, action === 'Completed' ? 'completed' : 'rejected');
+      setWithdrawals((current) =>
+        current.map((request) => (request.id === id ? { ...request, status: action } : request)),
+      );
+      setSelectedWithdrawal(null);
+      notify.success(`Withdrawal marked as ${action.toLowerCase()}`);
+    } catch (error: unknown) {
+      notify.error(error instanceof Error ? error.message : 'Withdrawal review failed');
+    }
   };
 
   return (
@@ -279,31 +273,31 @@ export default function WithdrawalsPage(): React.JSX.Element {
                   </div>
                 </div>
 
-                {/* User Balances Breakdown */}
+                {/* Reserved balance breakdown */}
                 <div className="rounded-xl border bg-muted/30 p-4">
                   <p className="mb-3 text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                    User Balances
+                    Withdrawal Funding Breakdown
                   </p>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <p className="text-xs text-muted-foreground">Deposited Funds</p>
+                      <p className="text-xs text-muted-foreground">Reserved from Deposits</p>
                       <p className="font-medium">
-                        ₦{selectedWithdrawal.walletBalance.toLocaleString()}
+                        ₦{selectedWithdrawal.depositDebit.toLocaleString()}
                       </p>
                     </div>
                     <div>
-                      <p className="text-xs text-muted-foreground">Earnings (Returns)</p>
+                      <p className="text-xs text-muted-foreground">Reserved from Earnings</p>
                       <p className="font-medium">
-                        ₦{selectedWithdrawal.earningsBalance.toLocaleString()}
+                        ₦{selectedWithdrawal.earningsDebit.toLocaleString()}
                       </p>
                     </div>
                   </div>
                   <div className="mt-3 border-t pt-3">
-                    <p className="text-xs text-muted-foreground">Total Available</p>
+                    <p className="text-xs text-muted-foreground">Total Reserved</p>
                     <p className="font-medium text-brand">
                       ₦
                       {(
-                        selectedWithdrawal.walletBalance + selectedWithdrawal.earningsBalance
+                        selectedWithdrawal.depositDebit + selectedWithdrawal.earningsDebit
                       ).toLocaleString()}
                     </p>
                   </div>
