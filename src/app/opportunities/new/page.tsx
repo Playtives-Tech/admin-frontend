@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { MdChevronRight, MdAccessTime, MdAdd, MdClose, MdSync, MdFileUpload } from 'react-icons/md';
 import { DashboardShell } from '@/components/dashboard/shell';
 import { EditorTabs } from '@/components/opportunities/editor-tabs';
-import { api } from '@/lib/api';
+
 import { notify } from '@/lib/notify';
 
 export default function NewOpportunityPage(): React.JSX.Element {
@@ -89,8 +89,9 @@ export default function NewOpportunityPage(): React.JSX.Element {
 
       notify.success('Opportunity created successfully!');
       router.push('/opportunities');
-    } catch (err: any) {
-      notify.error(err.message || 'Failed to create opportunity');
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Failed to create opportunity';
+      notify.error(message);
     } finally {
       setIsSubmitting(false);
     }

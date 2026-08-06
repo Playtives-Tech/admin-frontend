@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/components/providers/auth-provider';
-import { api, ApiError } from '@/lib/api';
+
 import { cn } from '@/lib/utils';
 
 export default function LoginPage(): React.JSX.Element {
@@ -28,8 +28,9 @@ export default function LoginPage(): React.JSX.Element {
       
       login('mock-access-token');
       router.replace('/overview');
-    } catch (err: any) {
-      setError(err.message || 'Something went wrong. Please try again.');
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Something went wrong. Please try again.';
+      setError(message);
     } finally {
       setIsPending(false);
     }

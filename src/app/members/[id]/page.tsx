@@ -1,7 +1,6 @@
 'use client';
 
 import Link from 'next/link';
-import { useParams } from 'next/navigation';
 import { 
   MdArrowBack, 
   MdEmail, 
@@ -38,7 +37,6 @@ const investments = [
 ];
 
 export default function MemberDetailPage(): React.JSX.Element {
-  const params = useParams();
   const [isSuspendModalOpen, setIsSuspendModalOpen] = useState(false);
   const [isSuspended, setIsSuspended] = useState(false);
 
@@ -210,7 +208,7 @@ export default function MemberDetailPage(): React.JSX.Element {
               </button>
             </div>
             <p className="mt-4 text-sm text-muted-foreground">
-              Are you sure you want to suspend <strong>{memberInfo.name}</strong>'s account? They will lose access to their wallet and active investments until the account is reinstated.
+              Are you sure you want to suspend <strong>{memberInfo.name}</strong>&apos;s account? They will lose access to their wallet and active investments until the account is reinstated.
             </p>
             <div className="mt-6 flex justify-end gap-3">
               <button 

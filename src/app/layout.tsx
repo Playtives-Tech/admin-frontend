@@ -1,12 +1,11 @@
 import type { Metadata } from 'next';
-import { DM_Sans, Space_Grotesk } from 'next/font/google';
+import { DM_Sans } from 'next/font/google';
 import { ThemeProvider } from '@/components/ui/theme-provider';
 import { AuthProvider } from '@/components/providers/auth-provider';
 import { Toaster } from '@/components/ui/toaster';
 import '@/styles/globals.css';
 
 const sans = DM_Sans({ variable: '--font-sans', subsets: ['latin'] });
-// const heading = Space_Grotesk({ variable: '--font-heading', subsets: ['latin'] });/
 
 export const metadata: Metadata = {
   title: { default: 'Playtives Admin', template: '%s | Playtives Admin' },

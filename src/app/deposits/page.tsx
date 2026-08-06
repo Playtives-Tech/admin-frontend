@@ -14,7 +14,7 @@ import {
 import { DashboardShell } from '@/components/dashboard/shell';
 import { notify } from '@/lib/notify';
 import { cn } from '@/lib/utils';
-import Image from 'next/image';
+
 
 // Mock Data
 const stats = [
@@ -183,10 +183,11 @@ export default function DepositsPage(): React.JSX.Element {
                 <div>
                   <p className="mb-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">Transfer Receipt</p>
                   <div className="relative aspect-[4/3] w-full overflow-hidden rounded-xl border bg-muted">
-                    <img 
-                      src={selectedDeposit.receiptUrl} 
-                      alt="Transfer Receipt" 
+                    <img
+                      src={selectedDeposit.receiptUrl}
+                      alt="Transfer Receipt"
                       className="absolute inset-0 h-full w-full object-cover"
+                      // eslint-disable-next-line @next/next/no-img-element
                     />
                   </div>
                 </div>
@@ -212,7 +213,7 @@ export default function DepositsPage(): React.JSX.Element {
                     <div className="flex items-start gap-3">
                       <MdWarning className="size-5 text-amber-500 shrink-0 mt-0.5" />
                       <p className="text-xs leading-5 text-amber-600 dark:text-amber-400">
-                        Please carefully verify the receipt image against your bank statement before approving. This will immediately credit the user's wallet.
+                        Please carefully verify the receipt image against your bank statement before approving. This will immediately credit the user&apos;s wallet.
                       </p>
                     </div>
                   </div>
