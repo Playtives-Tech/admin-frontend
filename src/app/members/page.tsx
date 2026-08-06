@@ -6,15 +6,21 @@ import { MdSearch, MdTune, MdChevronLeft, MdChevronRight, MdVisibility } from 'r
 import { DashboardShell } from '@/components/dashboard/shell';
 import { cn } from '@/lib/utils';
 import { getMembers, type AdminMember } from '@/lib/services/member-operations-service';
+import { notify } from '@/lib/notify';
 
 export default function MembersPage(): React.JSX.Element {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [members, setMembers] = useState<AdminMember[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    void getMembers().then(setMembers);
+    void getMembers()
+      .then(setMembers, (error: unknown) =>
+        notify.error(error instanceof Error ? error.message : 'Could not load members'),
+      )
+      .finally(() => setIsLoading(false));
   }, []);
 
   const filteredMembers = members.filter((m) => {
@@ -143,6 +149,13 @@ export default function MembersPage(): React.JSX.Element {
                     </td>
                   </tr>
                 ))}
+                {!isLoading && filteredMembers.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="px-6 py-10 text-center text-muted-foreground">
+                      No members match this view.
+                    </td>
+                  </tr>
+                ) : null}
               </tbody>
             </table>
           </div>
