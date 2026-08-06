@@ -213,7 +213,10 @@ export default function MemberDetailPage(): React.JSX.Element {
                       Deposited Funds
                     </p>
                     <p className="mt-1 font-semibold">
-                      ₦{((wallet?.deposit.availableKobo ?? 0) / 100).toLocaleString('en-NG')}
+                      ₦
+                      {((wallet?.deposit.availableBalanceMinorUnits ?? 0) / 100).toLocaleString(
+                        'en-NG',
+                      )}
                     </p>
                   </div>
                   <div>
@@ -221,7 +224,10 @@ export default function MemberDetailPage(): React.JSX.Element {
                       Earnings (Returns)
                     </p>
                     <p className="mt-1 font-semibold">
-                      ₦{((wallet?.earnings.availableKobo ?? 0) / 100).toLocaleString('en-NG')}
+                      ₦
+                      {((wallet?.earnings.availableBalanceMinorUnits ?? 0) / 100).toLocaleString(
+                        'en-NG',
+                      )}
                     </p>
                   </div>
                 </div>
