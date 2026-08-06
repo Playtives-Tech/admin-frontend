@@ -10,6 +10,8 @@ Copy `.env.example` to `.env.local`, set the API URL and server secret, then run
 
 `NEXT_PUBLIC_API_URL` is the public API origin. `API_SECRET` is validated server-side and must never be exposed to client code.
 
+The login screen authenticates through `POST /v1/admin/auth/login`. Both the backend and the client-side session parser require the issued JWT to contain the `ADMIN` role; the former mock-token bypass has been removed.
+
 ## Scripts
 
 `pnpm dev`, `pnpm build`, `pnpm start`, `pnpm lint`, and `pnpm format`.

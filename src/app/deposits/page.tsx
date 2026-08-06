@@ -183,11 +183,11 @@ export default function DepositsPage(): React.JSX.Element {
                 <div>
                   <p className="mb-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">Transfer Receipt</p>
                   <div className="relative aspect-[4/3] w-full overflow-hidden rounded-xl border bg-muted">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={selectedDeposit.receiptUrl}
                       alt="Transfer Receipt"
                       className="absolute inset-0 h-full w-full object-cover"
-                      // eslint-disable-next-line @next/next/no-img-element
                     />
                   </div>
                 </div>

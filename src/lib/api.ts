@@ -22,6 +22,15 @@ export async function api<T>(path: string, init?: RequestInit): Promise<T> {
       ...init?.headers,
     },
   });
-  if (!response.ok) throw new ApiError(response.status, await response.text());
+  if (!response.ok) {
+    const body: unknown = await response.json().catch(() => null);
+    const message =
+      typeof body === 'object' && body !== null && 'message' in body
+        ? Array.isArray(body.message)
+          ? body.message.join('. ')
+          : String(body.message)
+        : 'Request failed. Please try again.';
+    throw new ApiError(response.status, message);
+  }
   return response.json() as Promise<T>;
 }

@@ -3,7 +3,8 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/components/providers/auth-provider';
-
+import { ApiError } from '@/lib/api';
+import { loginAdmin } from '@/lib/services/auth-service';
 import { cn } from '@/lib/utils';
 
 export default function LoginPage(): React.JSX.Element {
@@ -23,13 +24,15 @@ export default function LoginPage(): React.JSX.Element {
       if (!email || !password) {
         throw new Error('Email and password are required');
       }
-      // Temporary bypass for backend login
-      await new Promise((resolve) => setTimeout(resolve, 500));
-      
-      login('mock-access-token');
+      const response = await loginAdmin(email.trim().toLowerCase(), password);
+      if (!response.user.roles.includes('ADMIN')) throw new Error('Admin access is required');
+      login(response.accessToken);
       router.replace('/overview');
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Something went wrong. Please try again.';
+      const message =
+        err instanceof ApiError || err instanceof Error
+          ? err.message
+          : 'Something went wrong. Please try again.';
       setError(message);
     } finally {
       setIsPending(false);
