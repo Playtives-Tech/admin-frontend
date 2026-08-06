@@ -218,7 +218,7 @@ export default function MemberDetailPage(): React.JSX.Element {
                   </div>
                   <div>
                     <p className="text-[10px] uppercase tracking-wider opacity-80">
-                      Accruals (Returns)
+                      Earnings (Returns)
                     </p>
                     <p className="mt-1 font-semibold">
                       ₦{((wallet?.earnings.availableKobo ?? 0) / 100).toLocaleString('en-NG')}
