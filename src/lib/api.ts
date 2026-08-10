@@ -13,11 +13,12 @@ export class ApiError extends Error {
 
 export async function api<T>(path: string, init?: RequestInit): Promise<T> {
   const token = getToken();
+  const isFormData = init?.body instanceof FormData;
   const response = await fetch(new URL(path, env.NEXT_PUBLIC_API_URL), {
     ...init,
     headers: {
       Accept: 'application/json',
-      'Content-Type': 'application/json',
+      ...(!isFormData && init?.body ? { 'Content-Type': 'application/json' } : {}),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...init?.headers,
     },
