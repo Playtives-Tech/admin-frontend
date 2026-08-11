@@ -23,7 +23,7 @@ interface DepositRequest {
   amount: number;
   date: string;
   status: 'Pending' | 'Approved' | 'Rejected';
-  transferReference: string;
+  receiptImageUrl: string;
 }
 
 export default function DepositsPage(): React.JSX.Element {
@@ -48,7 +48,7 @@ export default function DepositsPage(): React.JSX.Element {
             date: new Date(record.createdAt).toLocaleString('en-NG'),
             status:
               `${record.status.charAt(0).toUpperCase()}${record.status.slice(1)}` as DepositRequest['status'],
-            transferReference: record.transferReference,
+            receiptImageUrl: record.receiptImageUrl,
           })),
         ),
       () => notify.error('Could not load deposit requests'),
@@ -225,14 +225,15 @@ export default function DepositsPage(): React.JSX.Element {
             {/* Scrollable Body */}
             <div className="flex-1 overflow-y-auto p-6">
               <div className="mx-auto grid max-w-md gap-6">
-                {/* Bank transfer reference */}
+                {/* Payment receipt */}
                 <div>
                   <p className="mb-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                    Bank Transfer Reference
+                    Payment Receipt
                   </p>
-                  <div className="rounded-xl border bg-muted p-4 text-sm">
-                    {selectedDeposit.transferReference}
-                  </div>
+                  <a href={selectedDeposit.receiptImageUrl} target="_blank" rel="noreferrer" className="block overflow-hidden rounded-xl border bg-muted">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={selectedDeposit.receiptImageUrl} alt="Uploaded payment receipt" className="max-h-96 w-full object-contain" />
+                  </a>
                 </div>
 
                 <div className="grid gap-4 rounded-xl border bg-background p-4 sm:grid-cols-2">
@@ -267,7 +268,7 @@ export default function DepositsPage(): React.JSX.Element {
                     <div className="flex items-start gap-3">
                       <MdWarning className="mt-0.5 size-5 shrink-0 text-amber-500" />
                       <p className="text-xs leading-5 text-amber-600 dark:text-amber-400">
-                        Verify this transfer reference and amount against the receiving bank
+                        Verify this payment receipt and amount against the receiving bank
                         statement before approving. Approval immediately credits the user&apos;s
                         deposited balance.
                       </p>

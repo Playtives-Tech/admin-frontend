@@ -79,7 +79,7 @@ export type AdminDepositRequest = Readonly<{
   _id: string;
   userId: RequestUser;
   amountMinorUnits: number;
-  transferReference: string;
+  receiptImageUrl: string;
   status: 'pending' | 'approved' | 'rejected';
   createdAt: string;
 }>;

@@ -1,5 +1,5 @@
 import { env } from './env';
-import { getToken } from './auth';
+import { clearToken, getToken } from './auth';
 
 export class ApiError extends Error {
   constructor(
@@ -24,6 +24,10 @@ export async function api<T>(path: string, init?: RequestInit): Promise<T> {
     },
   });
   if (!response.ok) {
+    if (response.status === 401 && typeof window !== 'undefined') {
+      clearToken();
+      window.location.replace('/login');
+    }
     const body: unknown = await response.json().catch(() => null);
     const message =
       typeof body === 'object' && body !== null && 'message' in body
