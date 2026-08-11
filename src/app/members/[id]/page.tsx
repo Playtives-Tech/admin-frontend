@@ -24,6 +24,7 @@ import {
   type AdminWalletSummary,
   updateMemberStatus,
   creditMemberEarnings,
+  updateMemberKyc,
 } from '@/lib/services/member-operations-service';
 
 const memberInfo = {
@@ -56,6 +57,7 @@ export default function MemberDetailPage(): React.JSX.Element {
   const [displayedMember, setDisplayedMember] = useState(memberInfo);
   const [earningsAmount, setEarningsAmount] = useState('');
   const [earningsReference, setEarningsReference] = useState('');
+  const [kycStatus, setKycStatus] = useState<'pending' | 'verified' | 'rejected'>('pending');
 
   useEffect(() => {
     void Promise.all([
@@ -70,8 +72,10 @@ export default function MemberDetailPage(): React.JSX.Element {
           email: member.email,
           joined: new Date(member.createdAt).toLocaleDateString('en-NG'),
           status: member.status === 'suspended' ? 'Suspended' : 'Active',
+          kycLevel: member.kycStatus,
         });
         setIsSuspended(member.status === 'suspended');
+        setKycStatus(member.kycStatus ?? 'pending');
         setWallet(walletResult);
         setActivityLogs(logs);
       },
@@ -109,6 +113,18 @@ export default function MemberDetailPage(): React.JSX.Element {
       notify.success('Member earnings credited');
     } catch (error: unknown) {
       notify.error(error instanceof Error ? error.message : 'Earnings credit failed');
+    }
+  };
+
+  const handleKyc = async (status: 'verified' | 'rejected') => {
+    try {
+      await updateMemberKyc(params.id, status);
+      setKycStatus(status);
+      setDisplayedMember((member) => ({ ...member, kycLevel: status }));
+      setActivityLogs(await getMemberActivity(params.id));
+      notify.success(`KYC marked ${status}`);
+    } catch (error: unknown) {
+      notify.error(error instanceof Error ? error.message : 'KYC review failed');
     }
   };
 
@@ -194,8 +210,24 @@ export default function MemberDetailPage(): React.JSX.Element {
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-muted-foreground">KYC Level</span>
                   <span className="flex items-center gap-1.5 font-medium">
-                    <MdVerifiedUser className="size-3.5 text-brand" /> {memberInfo.kycLevel}
+                    <MdVerifiedUser className="size-3.5 text-brand" /> {kycStatus}
                   </span>
+                </div>
+                <div className="grid grid-cols-2 gap-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => void handleKyc('verified')}
+                    className="rounded-lg bg-brand px-3 py-2 text-xs font-semibold text-brand-foreground"
+                  >
+                    Approve KYC
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void handleKyc('rejected')}
+                    className="rounded-lg border px-3 py-2 text-xs font-semibold text-red-500"
+                  >
+                    Reject KYC
+                  </button>
                 </div>
               </div>
             </div>

@@ -29,6 +29,8 @@ interface WithdrawalRequest {
   accountName: string;
   date: string;
   status: 'Pending' | 'Completed' | 'Failed';
+  paymentReference: string | null;
+  reviewNote: string | null;
 }
 
 export default function WithdrawalsPage(): React.JSX.Element {
@@ -36,6 +38,9 @@ export default function WithdrawalsPage(): React.JSX.Element {
   const [selectedWithdrawal, setSelectedWithdrawal] = useState<WithdrawalRequest | null>(null);
   const [statusFilter, setStatusFilter] = useState('All');
   const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [paymentReference, setPaymentReference] = useState('');
+  const [reviewNote, setReviewNote] = useState('');
+  const [isReviewing, setIsReviewing] = useState(false);
 
   const filteredWithdrawals = withdrawals.filter(
     (w) => statusFilter === 'All' || w.status === statusFilter,
@@ -62,6 +67,8 @@ export default function WithdrawalsPage(): React.JSX.Element {
                 : record.status === 'rejected'
                   ? 'Failed'
                   : 'Pending',
+            paymentReference: record.paymentReference,
+            reviewNote: record.reviewNote,
           })),
         ),
       () => notify.error('Could not load withdrawal requests'),
@@ -87,15 +94,27 @@ export default function WithdrawalsPage(): React.JSX.Element {
   ];
 
   const handleAction = async (id: string, action: 'Completed' | 'Failed') => {
+    if (action === 'Completed' && !paymentReference.trim()) {
+      notify.error('Enter the bank payment reference before completing this withdrawal');
+      return;
+    }
+    setIsReviewing(true);
     try {
-      await reviewWithdrawalRequest(id, action === 'Completed' ? 'completed' : 'rejected');
+      await reviewWithdrawalRequest(id, action === 'Completed' ? 'completed' : 'rejected', {
+        paymentReference: paymentReference.trim() || undefined,
+        note: reviewNote.trim() || undefined,
+      });
       setWithdrawals((current) =>
         current.map((request) => (request.id === id ? { ...request, status: action } : request)),
       );
       setSelectedWithdrawal(null);
+      setPaymentReference('');
+      setReviewNote('');
       notify.success(`Withdrawal marked as ${action.toLowerCase()}`);
     } catch (error: unknown) {
       notify.error(error instanceof Error ? error.message : 'Withdrawal review failed');
+    } finally {
+      setIsReviewing(false);
     }
   };
 
@@ -327,6 +346,31 @@ export default function WithdrawalsPage(): React.JSX.Element {
                   <MdAccessTime className="size-4" />
                   Requested on {selectedWithdrawal.date}
                 </div>
+                {selectedWithdrawal.status === 'Pending' ? (
+                  <div className="grid gap-4 border-t pt-5">
+                    <label className="grid gap-2 text-sm font-semibold">
+                      Payment reference (required for completion)
+                      <input
+                        value={paymentReference}
+                        onChange={(event) => setPaymentReference(event.target.value)}
+                        maxLength={120}
+                        className="h-11 rounded-xl border bg-background px-3"
+                        placeholder="Bank transfer reference"
+                      />
+                    </label>
+                    <label className="grid gap-2 text-sm font-semibold">
+                      Decision note
+                      <textarea
+                        value={reviewNote}
+                        onChange={(event) => setReviewNote(event.target.value)}
+                        maxLength={500}
+                        rows={3}
+                        className="rounded-xl border bg-background p-3"
+                        placeholder="Reason, reconciliation note, or rejection details"
+                      />
+                    </label>
+                  </div>
+                ) : null}
               </div>
             </div>
 
@@ -341,16 +385,18 @@ export default function WithdrawalsPage(): React.JSX.Element {
               {selectedWithdrawal.status === 'Pending' && (
                 <>
                   <button
+                    disabled={isReviewing}
                     onClick={() => handleAction(selectedWithdrawal.id, 'Failed')}
                     className="flex items-center gap-1.5 rounded-xl border bg-background px-4 py-2.5 text-sm font-semibold text-red-500 transition hover:bg-red-500/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500"
                   >
-                    Fail Request
+                    Reject Request
                   </button>
                   <button
+                    disabled={isReviewing}
                     onClick={() => handleAction(selectedWithdrawal.id, 'Completed')}
                     className="flex items-center gap-1.5 rounded-xl bg-brand px-4 py-2.5 text-sm font-semibold text-brand-foreground shadow-sm transition hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
                   >
-                    <MdCheckCircle className="size-4" /> Process & Complete
+                    <MdCheckCircle className="size-4" /> Confirm Payment & Complete
                   </button>
                 </>
               )}

@@ -36,6 +36,9 @@ export type AdminMember = Readonly<{
   roles: ('MEMBER' | 'ADMIN')[];
   activeOwnershipCount: number;
   totalInvestedMinorUnits: number;
+  kycStatus: 'pending' | 'verified' | 'rejected';
+  kycVerifiedAt: string | null;
+  kycReviewNote: string | null;
 }>;
 
 export type MembersPage = Readonly<{
@@ -69,6 +72,17 @@ export function updateMemberStatus(
   });
 }
 
+export function updateMemberKyc(
+  userId: string,
+  status: 'pending' | 'verified' | 'rejected',
+  note?: string,
+): Promise<AdminMember> {
+  return api<AdminMember>(`/v1/admin/users/${encodeURIComponent(userId)}/kyc`, {
+    method: 'PATCH',
+    body: JSON.stringify({ status, note }),
+  });
+}
+
 export function getMemberWallet(userId: string): Promise<AdminWalletSummary> {
   return api<AdminWalletSummary>(`/v1/admin/users/${encodeURIComponent(userId)}/wallet`);
 }
@@ -96,6 +110,7 @@ export type AdminDepositRequest = Readonly<{
   receiptImageUrl: string;
   status: 'pending' | 'approved' | 'rejected';
   createdAt: string;
+  reviewedAt: string | null;
 }>;
 
 export function getDepositRequests(): Promise<AdminDepositRequest[]> {
@@ -121,8 +136,11 @@ export type AdminWithdrawalRequest = Readonly<{
   bankName: string;
   accountNumber: string;
   accountName: string;
-  status: 'pending' | 'completed' | 'rejected';
+  status: 'pending' | 'processing' | 'completed' | 'rejected';
   createdAt: string;
+  reviewedAt: string | null;
+  paymentReference: string | null;
+  reviewNote: string | null;
 }>;
 
 export function getWithdrawalRequests(): Promise<AdminWithdrawalRequest[]> {
@@ -132,10 +150,11 @@ export function getWithdrawalRequests(): Promise<AdminWithdrawalRequest[]> {
 export function reviewWithdrawalRequest(
   requestId: string,
   status: 'completed' | 'rejected',
+  input: { paymentReference?: string; note?: string },
 ): Promise<AdminWithdrawalRequest> {
   return api<AdminWithdrawalRequest>(
     `/v1/admin/wallet/withdrawals/${encodeURIComponent(requestId)}`,
-    { method: 'PATCH', body: JSON.stringify({ status }) },
+    { method: 'PATCH', body: JSON.stringify({ status, ...input }) },
   );
 }
 

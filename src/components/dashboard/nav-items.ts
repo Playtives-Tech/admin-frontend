@@ -6,6 +6,7 @@ import {
   ArrowDownCircle,
   ArrowUpCircle,
   ChartNoAxesCombined,
+  ScrollText,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
@@ -22,5 +23,6 @@ export const navItems: NavItem[] = [
   { href: '/acquisitions', label: 'Acquisitions', icon: ChartNoAxesCombined },
   { href: '/deposits', label: 'Deposits', icon: ArrowDownCircle },
   { href: '/withdrawals', label: 'Withdrawals', icon: ArrowUpCircle },
+  { href: '/activity', label: 'Wallet Activity', icon: ScrollText },
   { href: '/payouts', label: 'Payouts', icon: Banknote },
 ];
