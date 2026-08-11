@@ -118,8 +118,8 @@ export default function MembersPage(): React.JSX.Element {
                     <td className="px-6 py-4 text-muted-foreground">
                       {new Date(member.createdAt).toLocaleDateString('en-NG')}
                     </td>
-                    <td className="px-6 py-4 text-right font-medium">0</td>
-                    <td className="px-6 py-4 text-right font-medium">₦0</td>
+                    <td className="px-6 py-4 text-right font-medium">{member.activeOwnershipCount ?? 0}</td>
+                    <td className="px-6 py-4 text-right font-medium">{new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN', maximumFractionDigits: 0 }).format((member.totalInvestedMinorUnits ?? 0) / 100)}</td>
                     <td className="px-6 py-4">
                       <span
                         className={cn(

@@ -33,6 +33,8 @@ export type AdminMember = Readonly<{
   emailVerifiedAt: string | null;
   createdAt: string;
   walletId: string | null;
+  activeOwnershipCount: number;
+  totalInvestedMinorUnits: number;
 }>;
 
 export function getMembers(): Promise<AdminMember[]> {
