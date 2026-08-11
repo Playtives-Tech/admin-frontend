@@ -4,7 +4,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { MdChevronRight, MdFileUpload } from 'react-icons/md';
+import { MdChevronRight, MdDeleteOutline, MdFileUpload } from 'react-icons/md';
 import { DashboardShell } from '@/components/dashboard/shell';
 import { notify } from '@/lib/notify';
 import {
@@ -105,12 +105,16 @@ export function OpportunityEditor({
   const [loading, setLoading] = useState(Boolean(opportunityId));
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [revision, setRevision] = useState(1);
 
   useEffect(() => {
     if (!opportunityId) return;
     opportunityService
       .get(opportunityId)
-      .then((value) => setForm(toForm(value)))
+      .then((value) => {
+        setForm(toForm(value));
+        setRevision(value.revision);
+      })
       .catch((error: unknown) =>
         notify.error(error instanceof Error ? error.message : 'Unable to load opportunity'),
       )
@@ -175,7 +179,7 @@ export function OpportunityEditor({
       return notify.error('Title, category and summary are required.');
     setSaving(true);
     try {
-      if (opportunityId) await opportunityService.update(opportunityId, payload(status));
+      if (opportunityId) await opportunityService.update(opportunityId, revision, payload(status));
       else await opportunityService.create(payload(status));
       notify.success(status === 'PUBLISHED' ? 'Opportunity published.' : 'Draft saved.');
       router.push('/opportunities');
@@ -231,6 +235,14 @@ export function OpportunityEditor({
             </p>
           </div>
           <div className="flex gap-2">
+            {opportunityId && (
+              <Link
+                href={`/opportunities/${opportunityId}/delete`}
+                className="flex items-center gap-2 rounded-xl border border-red-500/30 px-4 py-2 text-sm font-semibold text-red-600"
+              >
+                <MdDeleteOutline /> Delete
+              </Link>
+            )}
             <button
               disabled={saving}
               onClick={() => save('DRAFT')}

@@ -1,7 +1,7 @@
 'use client';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { MdAdd, MdCalendarMonth, MdGridView } from 'react-icons/md';
+import { MdAdd, MdCalendarMonth, MdDeleteOutline, MdGridView } from 'react-icons/md';
 import { DashboardShell } from '@/components/dashboard/shell';
 import { Opportunity, opportunityService } from '@/lib/services/opportunity-service';
 
@@ -10,13 +10,16 @@ export default function OpportunitiesPage(): React.JSX.Element {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   useEffect(() => {
-    opportunityService
-      .list()
-      .then(setItems)
-      .catch((value: unknown) =>
-        setError(value instanceof Error ? value.message : 'Unable to load opportunities'),
-      )
-      .finally(() => setLoading(false));
+    const load = () =>
+      opportunityService
+        .list()
+        .then(setItems)
+        .catch((value: unknown) =>
+          setError(value instanceof Error ? value.message : 'Unable to load opportunities'),
+        )
+        .finally(() => setLoading(false));
+    void load();
+    return opportunityService.subscribe(() => void load());
   }, []);
   return (
     <DashboardShell title="Opportunities" description="Manage platform opportunities">
@@ -94,9 +97,18 @@ export default function OpportunitiesPage(): React.JSX.Element {
                       ? new Date(item.principalReleaseDate).toLocaleDateString()
                       : 'No release date'}
                   </span>
-                  <Link href={`/opportunities/${item._id}`} className="font-semibold text-brand">
-                    Edit
-                  </Link>
+                  <span className="flex items-center gap-3">
+                    <Link href={`/opportunities/${item._id}`} className="font-semibold text-brand">
+                      Edit
+                    </Link>
+                    <Link
+                      href={`/opportunities/${item._id}/delete`}
+                      aria-label={`Delete ${item.title}`}
+                      className="text-red-600"
+                    >
+                      <MdDeleteOutline />
+                    </Link>
+                  </span>
                 </div>
               </article>
             ))}
