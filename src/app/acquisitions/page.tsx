@@ -31,20 +31,11 @@ export default function AcquisitionsPage(): React.JSX.Element {
       notify.error(error instanceof Error ? error.message : 'Could not load acquisitions'),
     );
   }, []);
-  const update = async (
-    item: AdminAcquisition,
-    input: Parameters<typeof acquisitionService.manage>[2],
-  ) => {
-    try {
-      await acquisitionService.manage(item._id, item.revision, input);
-      await load();
-      notify.success('Ownership updated');
-    } catch (error) {
-      notify.error(error instanceof Error ? error.message : 'Could not update ownership');
-    }
-  };
   return (
-    <DashboardShell title="Acquisitions" description="Track and manage acquired opportunity units">
+    <DashboardShell
+      title="Acquisitions"
+      description="Read-only ledger of acquired opportunity units"
+    >
       <div className="grid gap-4 sm:grid-cols-4">
         {[
           ['All acquisitions', stats?.totalAcquisitions ?? 0],
@@ -62,19 +53,13 @@ export default function AcquisitionsPage(): React.JSX.Element {
         <table className="w-full text-left text-sm">
           <thead className="border-b bg-muted/30">
             <tr>
-              {[
-                'Member',
-                'Opportunity',
-                'Units',
-                'Contribution',
-                'Progress',
-                'Status',
-                'Actions',
-              ].map((label) => (
-                <th key={label} className="px-5 py-4 font-semibold text-muted-foreground">
-                  {label}
-                </th>
-              ))}
+              {['Member', 'Opportunity', 'Units', 'Contribution', 'Progress', 'Status'].map(
+                (label) => (
+                  <th key={label} className="px-5 py-4 font-semibold text-muted-foreground">
+                    {label}
+                  </th>
+                ),
+              )}
             </tr>
           </thead>
           <tbody className="divide-y">
@@ -93,51 +78,22 @@ export default function AcquisitionsPage(): React.JSX.Element {
                 <td className="px-5 py-4">{item.units}</td>
                 <td className="px-5 py-4 font-medium">{money(item.amountMinorUnits)}</td>
                 <td className="px-5 py-4">
-                  <input
-                    aria-label="Ownership progress"
-                    type="number"
-                    min={0}
-                    max={100}
-                    defaultValue={item.progressPercent}
-                    onBlur={(event) => {
-                      const value = Number(event.target.value);
-                      if (value !== item.progressPercent)
-                        void update(item, { progressPercent: value });
-                    }}
-                    className="w-20 rounded-lg border bg-background px-2 py-1.5"
-                  />
-                  %
+                  <div className="min-w-28">
+                    <span className="text-xs text-muted-foreground">{item.progressPercent}%</span>
+                    <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-muted">
+                      <div
+                        className="h-full rounded-full bg-brand"
+                        style={{ width: `${item.progressPercent}%` }}
+                      />
+                    </div>
+                  </div>
                 </td>
                 <td className="px-5 py-4">{item.status}</td>
-                <td className="px-5 py-4">
-                  <select
-                    aria-label="Ownership status"
-                    value={item.status}
-                    onChange={(event) => {
-                      const status = event.target.value as AdminAcquisition['status'];
-                      if (
-                        status === 'CANCELLED' &&
-                        !window.confirm(
-                          'Cancel this ownership, refund its wallet debit, and release its units?',
-                        )
-                      )
-                        return;
-                      void update(item, { status });
-                    }}
-                    className="rounded-lg border bg-background px-2 py-1.5"
-                  >
-                    <option value="ACTIVE">Active</option>
-                    <option value="COMPLETED" disabled>
-                      Completed by maturity
-                    </option>
-                    <option value="CANCELLED">Cancelled</option>
-                  </select>
-                </td>
               </tr>
             ))}
             {items.length === 0 && (
               <tr>
-                <td colSpan={7} className="px-5 py-10 text-center text-muted-foreground">
+                <td colSpan={6} className="px-5 py-10 text-center text-muted-foreground">
                   No acquired opportunities yet.
                 </td>
               </tr>

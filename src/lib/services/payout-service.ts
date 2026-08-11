@@ -22,12 +22,62 @@ export type MaturityPayout = Readonly<{
   reviewedAt: string | null;
 }>;
 
+export type PayoutDetail = Readonly<{
+  payout: MaturityPayout &
+    Readonly<{
+      userId: MaturityPayout['userId'] &
+        Readonly<{ status: string; roles: string[]; createdAt: string }>;
+      opportunityId: MaturityPayout['opportunityId'] &
+        Readonly<{
+          category: string;
+          summary: string;
+          durationMonths: number;
+          projectedReturnRatePercent: number;
+          projectedProfitMinorUnits: number;
+          projectedMonthlyProfitMinorUnits: number | null;
+          returnSchedule: string;
+          rolloverAllowed: boolean;
+          rolloverCompoundsReturns: boolean;
+          operator: string;
+          location: string;
+          principalReleaseDate: string | null;
+          imageUrl: string;
+        }>;
+      ownershipId: MaturityPayout['ownershipId'] &
+        Readonly<{
+          investmentCapitalMinorUnits: number;
+          cyclesAccrued: number;
+          createdAt: string;
+          completedAt: string | null;
+          maturityAt: string | null;
+        }>;
+    }>;
+  wallet: Readonly<{
+    totalAvailableBalanceMinorUnits: number;
+    deposit: Readonly<{ availableBalanceMinorUnits: number; pendingBalanceMinorUnits: number }>;
+    earnings: Readonly<{ availableBalanceMinorUnits: number; lifetimeEarningsMinorUnits: number }>;
+  }>;
+  accruals: ReadonlyArray<
+    Readonly<{
+      _id: string;
+      cycleNumber: number;
+      principalBeforeMinorUnits: number;
+      returnMinorUnits: number;
+      principalAfterMinorUnits: number;
+      rolledOver: boolean;
+      status: string;
+      scheduledFor: string;
+    }>
+  >;
+}>;
+
 const keys = new Map<string, string>();
 export const payoutService = {
   list: (status?: MaturityPayoutStatus) =>
     api<MaturityPayout[]>(`/v1/admin/payouts${status ? `?status=${status}` : ''}`, {
       cache: 'no-store',
     }),
+  get: (id: string) => api<PayoutDetail>(`/v1/admin/payouts/${id}`, { cache: 'no-store' }),
   review: (payout: MaturityPayout, status: 'APPROVED' | 'REJECTED', note = '') => {
     const fingerprint = `${payout._id}:${payout.revision}:${status}:${note}`;
     const key = keys.get(fingerprint) ?? crypto.randomUUID();
