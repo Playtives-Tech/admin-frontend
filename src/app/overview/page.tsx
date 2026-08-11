@@ -16,10 +16,12 @@ export default function OverviewPage(): React.JSX.Element {
   const [userCount, setUserCount] = useState(0);
   const [recentActivity, setRecentActivity] = useState<ActivityLog[]>([]);
   useEffect(() => {
-    void Promise.all([getMembers(), getAdminActivity()]).then(([members, activity]) => {
-      setUserCount(members.length);
-      setRecentActivity(activity.slice(0, 5));
-    });
+    void Promise.all([getMembers({ page: 1, limit: 1, status: 'all' }), getAdminActivity()]).then(
+      ([members, activity]) => {
+        setUserCount(members.pagination.totalItems);
+        setRecentActivity(activity.slice(0, 5));
+      },
+    );
   }, []);
   const kpis = [
     { label: 'Total Users', value: userCount.toLocaleString(), icon: UsersRound },

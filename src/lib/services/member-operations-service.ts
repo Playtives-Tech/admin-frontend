@@ -37,8 +37,21 @@ export type AdminMember = Readonly<{
   totalInvestedMinorUnits: number;
 }>;
 
-export function getMembers(): Promise<AdminMember[]> {
-  return api<AdminMember[]>('/v1/admin/users');
+export type MembersPage = Readonly<{
+  items: AdminMember[];
+  pagination: Readonly<{ page: number; limit: number; totalItems: number; totalPages: number }>;
+}>;
+
+export function getMembers(input: {
+  page: number;
+  limit: number;
+  search?: string;
+  status?: 'all' | 'active' | 'pending' | 'suspended';
+}): Promise<MembersPage> {
+  const query = new URLSearchParams({ page: String(input.page), limit: String(input.limit) });
+  if (input.search) query.set('search', input.search);
+  if (input.status && input.status !== 'all') query.set('status', input.status);
+  return api<MembersPage>(`/v1/admin/users?${query.toString()}`);
 }
 
 export function getMember(userId: string): Promise<AdminMember> {

@@ -14,24 +14,36 @@ export default function MembersPage(): React.JSX.Element {
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [members, setMembers] = useState<AdminMember[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+  const pageSize = 20;
 
   useEffect(() => {
-    void getMembers()
-      .then(setMembers, (error: unknown) =>
-        notify.error(error instanceof Error ? error.message : 'Could not load members'),
-      )
-      .finally(() => setIsLoading(false));
-  }, []);
-
-  const filteredMembers = members.filter((m) => {
-    const matchesSearch =
-      m.name.toLowerCase().includes(search.toLowerCase()) ||
-      m.email.toLowerCase().includes(search.toLowerCase());
-    const displayedStatus =
-      m.status === 'suspended' ? 'Suspended' : m.emailVerifiedAt ? 'Active' : 'Pending KYC';
-    const matchesStatus = statusFilter === 'All' || displayedStatus === statusFilter;
-    return matchesSearch && matchesStatus;
-  });
+    setIsLoading(true);
+    const timer = window.setTimeout(() => {
+      const status =
+        statusFilter === 'Active'
+          ? 'active'
+          : statusFilter === 'Pending KYC'
+            ? 'pending'
+            : statusFilter === 'Suspended'
+              ? 'suspended'
+              : 'all';
+      void getMembers({ page, limit: pageSize, search: search.trim(), status })
+        .then(
+          (response) => {
+            setMembers(response.items);
+            setTotalItems(response.pagination.totalItems);
+            setTotalPages(response.pagination.totalPages);
+          },
+          (error: unknown) =>
+            notify.error(error instanceof Error ? error.message : 'Could not load members'),
+        )
+        .finally(() => setIsLoading(false));
+    }, 300);
+    return () => window.clearTimeout(timer);
+  }, [page, search, statusFilter]);
 
   return (
     <DashboardShell title="Members" description="Manage user accounts and portfolios">
@@ -44,7 +56,10 @@ export default function MembersPage(): React.JSX.Element {
               type="text"
               placeholder="Search by name or email..."
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setPage(1);
+              }}
               className="w-full rounded-xl border bg-background py-2 pl-9 pr-4 text-sm outline-none transition focus:border-brand focus:ring-1 focus:ring-brand"
             />
           </div>
@@ -66,6 +81,7 @@ export default function MembersPage(): React.JSX.Element {
                     key={status}
                     onClick={() => {
                       setStatusFilter(status);
+                      setPage(1);
                       setIsFilterOpen(false);
                     }}
                     className={cn(
@@ -102,7 +118,7 @@ export default function MembersPage(): React.JSX.Element {
                 </tr>
               </thead>
               <tbody className="divide-y">
-                {filteredMembers.map((member) => (
+                {members.map((member) => (
                   <tr key={member._id} className="transition hover:bg-muted/30">
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
@@ -118,8 +134,16 @@ export default function MembersPage(): React.JSX.Element {
                     <td className="px-6 py-4 text-muted-foreground">
                       {new Date(member.createdAt).toLocaleDateString('en-NG')}
                     </td>
-                    <td className="px-6 py-4 text-right font-medium">{member.activeOwnershipCount ?? 0}</td>
-                    <td className="px-6 py-4 text-right font-medium">{new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN', maximumFractionDigits: 0 }).format((member.totalInvestedMinorUnits ?? 0) / 100)}</td>
+                    <td className="px-6 py-4 text-right font-medium">
+                      {member.activeOwnershipCount ?? 0}
+                    </td>
+                    <td className="px-6 py-4 text-right font-medium">
+                      {new Intl.NumberFormat('en-NG', {
+                        style: 'currency',
+                        currency: 'NGN',
+                        maximumFractionDigits: 0,
+                      }).format((member.totalInvestedMinorUnits ?? 0) / 100)}
+                    </td>
                     <td className="px-6 py-4">
                       <span
                         className={cn(
@@ -149,7 +173,7 @@ export default function MembersPage(): React.JSX.Element {
                     </td>
                   </tr>
                 ))}
-                {!isLoading && filteredMembers.length === 0 ? (
+                {!isLoading && members.length === 0 ? (
                   <tr>
                     <td colSpan={6} className="px-6 py-10 text-center text-muted-foreground">
                       No members match this view.
@@ -163,13 +187,28 @@ export default function MembersPage(): React.JSX.Element {
           {/* Pagination */}
           <div className="flex items-center justify-between border-t p-4">
             <p className="text-xs text-muted-foreground">
-              Showing {filteredMembers.length} members
+              {totalItems === 0
+                ? 'No members'
+                : `Showing ${(page - 1) * pageSize + 1}–${Math.min(page * pageSize, totalItems)} of ${totalItems}`}
             </p>
             <div className="flex items-center gap-2">
-              <button className="grid size-8 place-items-center rounded-lg border bg-background text-muted-foreground transition hover:bg-muted hover:text-foreground">
+              <span className="px-2 text-xs text-muted-foreground">
+                Page {page} of {totalPages}
+              </span>
+              <button
+                type="button"
+                disabled={page <= 1 || isLoading}
+                onClick={() => setPage((current) => Math.max(1, current - 1))}
+                className="grid size-8 place-items-center rounded-lg border bg-background text-muted-foreground transition hover:bg-muted hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
+              >
                 <MdChevronLeft className="size-4" />
               </button>
-              <button className="grid size-8 place-items-center rounded-lg border bg-background text-muted-foreground transition hover:bg-muted hover:text-foreground">
+              <button
+                type="button"
+                disabled={page >= totalPages || isLoading}
+                onClick={() => setPage((current) => Math.min(totalPages, current + 1))}
+                className="grid size-8 place-items-center rounded-lg border bg-background text-muted-foreground transition hover:bg-muted hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
+              >
                 <MdChevronRight className="size-4" />
               </button>
             </div>
