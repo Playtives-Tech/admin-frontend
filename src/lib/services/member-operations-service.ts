@@ -33,6 +33,7 @@ export type AdminMember = Readonly<{
   emailVerifiedAt: string | null;
   createdAt: string;
   walletId: string | null;
+  roles: ('MEMBER' | 'ADMIN')[];
   activeOwnershipCount: number;
   totalInvestedMinorUnits: number;
 }>;

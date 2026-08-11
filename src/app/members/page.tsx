@@ -105,6 +105,7 @@ export default function MembersPage(): React.JSX.Element {
                 <tr>
                   <th className="px-6 py-4 font-semibold text-muted-foreground">User</th>
                   <th className="px-6 py-4 font-semibold text-muted-foreground">Join Date</th>
+                  <th className="px-6 py-4 font-semibold text-muted-foreground">Role</th>
                   <th className="px-6 py-4 text-right font-semibold text-muted-foreground">
                     Active Inv.
                   </th>
@@ -133,6 +134,11 @@ export default function MembersPage(): React.JSX.Element {
                     </td>
                     <td className="px-6 py-4 text-muted-foreground">
                       {new Date(member.createdAt).toLocaleDateString('en-NG')}
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className="rounded-full bg-brand/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-brand">
+                        {member.roles?.join(', ') || 'Member'}
+                      </span>
                     </td>
                     <td className="px-6 py-4 text-right font-medium">
                       {member.activeOwnershipCount ?? 0}
@@ -175,7 +181,7 @@ export default function MembersPage(): React.JSX.Element {
                 ))}
                 {!isLoading && members.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="px-6 py-10 text-center text-muted-foreground">
+                    <td colSpan={7} className="px-6 py-10 text-center text-muted-foreground">
                       No members match this view.
                     </td>
                   </tr>
