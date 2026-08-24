@@ -62,7 +62,7 @@ export function DashboardShell({
         {/* Top header */}
         <header className="app-surface sticky top-0 z-10 flex h-16 items-center border-b px-5 backdrop-blur lg:px-10">
           <div>
-            <h1 className="font-heading text-base font-semibold">{title}</h1>
+            <h1 className="font-sans text-base font-semibold">{title}</h1>
             {description && (
               <p className="text-xs text-muted-foreground">{description}</p>
             )}

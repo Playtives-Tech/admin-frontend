@@ -26,7 +26,7 @@ export default function OpportunitiesPage(): React.JSX.Element {
       <div className="mx-auto max-w-6xl">
         <div className="mb-8 flex items-center justify-between">
           <div>
-            <h1 className="font-heading text-3xl font-semibold">Opportunities</h1>
+            <h1 className="font-sans text-3xl font-semibold">Opportunities</h1>
             <p className="mt-2 text-sm text-muted-foreground">
               Create, publish and edit member-facing opportunities.
             </p>

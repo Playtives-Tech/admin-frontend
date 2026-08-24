@@ -28,7 +28,6 @@ export interface Opportunity {
   rolloverNextProjectedProfitMinorUnits: number | null;
   principalReleaseDate?: string | null;
   location?: string;
-  operator?: string;
   imageUrl?: string;
   imageKey?: string;
   imageWidth?: number;

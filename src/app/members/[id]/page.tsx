@@ -1,435 +1,114 @@
 'use client';
 
 import Link from 'next/link';
-import {
-  MdArrowBack,
-  MdEmail,
-  MdPhone,
-  MdCalendarMonth,
-  MdVerifiedUser,
-  MdBusinessCenter,
-  MdWarning,
-  MdClose,
-} from 'react-icons/md';
-import { DashboardShell } from '@/components/dashboard/shell';
-import { cn } from '@/lib/utils';
-import { notify } from '@/lib/notify';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'next/navigation';
+import { MdArrowBack, MdEmail, MdPhone, MdPublic, MdLock, MdLockOpen } from 'react-icons/md';
+import { DashboardShell } from '@/components/dashboard/shell';
+import { notify } from '@/lib/notify';
 import {
-  getMemberActivity,
   getMember,
   getMemberWallet,
-  type ActivityLog,
+  type AdminMember,
   type AdminWalletSummary,
   updateMemberStatus,
-  creditMemberEarnings,
-  updateMemberKyc,
 } from '@/lib/services/member-operations-service';
+import { acquisitionService, type AdminAcquisition } from '@/lib/services/acquisition-service';
 
-const memberInfo = {
-  name: 'Loading member…',
-  email: '',
-  phone: 'Not available',
-  joined: '',
-  status: 'Loading',
-  kycLevel: 'Not available',
-  totalInvested: 'Not available',
-  activeInvestments: 0,
-};
-
-const investments: Array<{
-  id: string;
-  opportunity: string;
-  type: string;
-  units: number;
-  amount: number;
-  date: string;
-  status: string;
-}> = [];
+const money = (value: number) =>
+  new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN', maximumFractionDigits: 0 }).format(value / 100);
 
 export default function MemberDetailPage(): React.JSX.Element {
-  const params = useParams<{ id: string }>();
-  const [isSuspendModalOpen, setIsSuspendModalOpen] = useState(false);
-  const [isSuspended, setIsSuspended] = useState(false);
+  const { id } = useParams<{ id: string }>();
+  const [member, setMember] = useState<AdminMember | null>(null);
   const [wallet, setWallet] = useState<AdminWalletSummary | null>(null);
-  const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
-  const [displayedMember, setDisplayedMember] = useState(memberInfo);
-  const [earningsAmount, setEarningsAmount] = useState('');
-  const [earningsReference, setEarningsReference] = useState('');
-  const [kycStatus, setKycStatus] = useState<'pending' | 'verified' | 'rejected'>('pending');
+  const [ownerships, setOwnerships] = useState<AdminAcquisition[]>([]);
+  const [savingStatus, setSavingStatus] = useState(false);
 
   useEffect(() => {
-    void Promise.all([
-      getMember(params.id),
-      getMemberWallet(params.id),
-      getMemberActivity(params.id),
-    ]).then(
-      ([member, walletResult, logs]) => {
-        setDisplayedMember({
-          ...memberInfo,
-          name: member.name,
-          email: member.email,
-          joined: new Date(member.createdAt).toLocaleDateString('en-NG'),
-          status: member.status === 'suspended' ? 'Suspended' : 'Active',
-          kycLevel: member.kycStatus,
-        });
-        setIsSuspended(member.status === 'suspended');
-        setKycStatus(member.kycStatus ?? 'pending');
+    void Promise.all([getMember(id), getMemberWallet(id), acquisitionService.list()])
+      .then(([memberResult, walletResult, allOwnerships]) => {
+        setMember(memberResult);
         setWallet(walletResult);
-        setActivityLogs(logs);
-      },
-      () => notify.error('Could not load member wallet and activity'),
-    );
-  }, [params.id]);
+        setOwnerships(allOwnerships.filter((item) => item.userId._id === id));
+      })
+      .catch(() => notify.error('Could not load this member'));
+  }, [id]);
 
-  const handleSuspend = async () => {
+  const totals = useMemo(
+    () => ({
+      invested: ownerships.reduce((total, item) => total + item.amountMinorUnits, 0),
+      expected: ownerships.reduce(
+        (total, item) => total + Math.round((item.amountMinorUnits * item.projectedReturnRatePercent) / 100),
+        0,
+      ),
+    }),
+    [ownerships],
+  );
+  const changeStatus = async () => {
+    if (!member) return;
+    const status = member.status === 'active' ? 'suspended' : 'active';
+    setSavingStatus(true);
     try {
-      await updateMemberStatus(params.id, 'suspended');
-      setIsSuspended(true);
-      setDisplayedMember((member) => ({ ...member, status: 'Suspended' }));
-      setIsSuspendModalOpen(false);
-      notify.success('Account suspended successfully');
-    } catch (error: unknown) {
-      notify.error(error instanceof Error ? error.message : 'Account suspension failed');
-    }
-  };
-
-  const handleCreditEarnings = async () => {
-    const amount = Number(earningsAmount.replace(/,/g, ''));
-    if (!Number.isInteger(amount) || amount < 1 || !earningsReference.trim()) {
-      notify.error('Enter a whole-naira amount and a unique reference');
-      return;
-    }
-    try {
-      const updatedWallet = await creditMemberEarnings(params.id, {
-        amountMinorUnits: amount * 100,
-        reference: earningsReference.trim(),
-      });
-      setWallet(updatedWallet);
-      setEarningsAmount('');
-      setEarningsReference('');
-      setActivityLogs(await getMemberActivity(params.id));
-      notify.success('Member earnings credited');
-    } catch (error: unknown) {
-      notify.error(error instanceof Error ? error.message : 'Earnings credit failed');
-    }
-  };
-
-  const handleKyc = async (status: 'verified' | 'rejected') => {
-    try {
-      await updateMemberKyc(params.id, status);
-      setKycStatus(status);
-      setDisplayedMember((member) => ({ ...member, kycLevel: status }));
-      setActivityLogs(await getMemberActivity(params.id));
-      notify.success(`KYC marked ${status}`);
-    } catch (error: unknown) {
-      notify.error(error instanceof Error ? error.message : 'KYC review failed');
+      setMember(await updateMemberStatus(member._id, status));
+      notify.success(status === 'active' ? 'Member reactivated' : 'Member suspended');
+    } catch (error) {
+      notify.error(error instanceof Error ? error.message : 'Could not update member status');
+    } finally {
+      setSavingStatus(false);
     }
   };
 
   return (
-    <DashboardShell title="Member Profile" description="View user details and portfolio">
-      <div className="mx-auto max-w-6xl space-y-8">
-        {/* Breadcrumb & Header */}
-        <div>
-          <Link
-            href="/members"
-            className="mb-4 inline-flex items-center gap-1 text-xs font-medium text-muted-foreground transition hover:text-foreground"
-          >
-            <MdArrowBack className="size-4" />
-            Back to Members
-          </Link>
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-            <div className="flex items-center gap-4">
-              <div className="flex size-16 items-center justify-center rounded-full bg-brand/10 font-heading text-2xl font-bold text-brand">
-                {displayedMember.name.charAt(0)}
-              </div>
-              <div>
-                <h1 className="font-heading text-3xl font-semibold tracking-tight">
-                  {displayedMember.name}
-                </h1>
-                <div className="mt-1 flex items-center gap-3 text-sm text-muted-foreground">
-                  <span className="flex items-center gap-1">
-                    <MdEmail className="size-3.5" /> {displayedMember.email}
-                  </span>
-                  <span>•</span>
-                  <span className="flex items-center gap-1">
-                    <MdPhone className="size-3.5" /> {memberInfo.phone}
-                  </span>
-                </div>
-              </div>
-            </div>
-            <div className="flex items-center gap-3">
-              {!isSuspended ? (
-                <button
-                  onClick={() => setIsSuspendModalOpen(true)}
-                  className="rounded-xl border bg-background px-4 py-2 text-sm font-semibold text-red-500 transition hover:bg-red-500/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500"
-                >
-                  Suspend Account
-                </button>
-              ) : (
-                <button
-                  disabled
-                  className="cursor-not-allowed rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-2 text-sm font-semibold text-red-600 opacity-50"
-                >
-                  Account Suspended
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-
-        <div className="grid gap-8 lg:grid-cols-3">
-          {/* Left Column: Info Cards */}
-          <div className="grid gap-6">
-            <div className="app-surface rounded-2xl border p-6 shadow-sm">
-              <h3 className="mb-4 text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                Account Status
-              </h3>
-              <div className="grid gap-4">
-                <div className="flex items-center justify-between border-b pb-3 text-sm">
-                  <span className="text-muted-foreground">Status</span>
-                  <span
-                    className={cn(
-                      'rounded-full px-2.5 py-0.5 font-bold',
-                      isSuspended
-                        ? 'bg-red-500/10 text-red-500'
-                        : 'bg-emerald-500/10 text-emerald-500',
-                    )}
-                  >
-                    {isSuspended ? 'Suspended' : displayedMember.status}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between border-b pb-3 text-sm">
-                  <span className="text-muted-foreground">Joined</span>
-                  <span className="flex items-center gap-1.5 font-medium">
-                    <MdCalendarMonth className="size-3.5" /> {displayedMember.joined}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">KYC Level</span>
-                  <span className="flex items-center gap-1.5 font-medium">
-                    <MdVerifiedUser className="size-3.5 text-brand" /> {kycStatus}
-                  </span>
-                </div>
-                <div className="grid grid-cols-2 gap-2 pt-2">
-                  <button
-                    type="button"
-                    onClick={() => void handleKyc('verified')}
-                    className="rounded-lg bg-brand px-3 py-2 text-xs font-semibold text-brand-foreground"
-                  >
-                    Approve KYC
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => void handleKyc('rejected')}
-                    className="rounded-lg border px-3 py-2 text-xs font-semibold text-red-500"
-                  >
-                    Reject KYC
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            <div className="relative overflow-hidden rounded-2xl border bg-brand p-6 text-brand-foreground shadow-sm">
-              {/* Subtle background pattern for premium feel */}
-              <div
-                className="absolute inset-0 opacity-10"
-                style={{
-                  backgroundImage:
-                    'repeating-linear-gradient(-45deg, currentColor 0, currentColor 1px, transparent 1px, transparent 18px)',
-                }}
-              />
-
-              <div className="relative">
-                <h3 className="mb-1 text-xs font-bold uppercase tracking-wider opacity-80">
-                  Portfolio Value
-                </h3>
-                <p className="font-heading text-3xl font-bold">{memberInfo.totalInvested}</p>
-
-                <div className="mt-4 grid grid-cols-2 gap-4 border-t border-brand-foreground/20 pt-4">
-                  <div>
-                    <p className="text-[10px] uppercase tracking-wider opacity-80">
-                      Deposited Funds
-                    </p>
-                    <p className="mt-1 font-semibold">
-                      ₦
-                      {((wallet?.deposit.availableBalanceMinorUnits ?? 0) / 100).toLocaleString(
-                        'en-NG',
-                      )}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-[10px] uppercase tracking-wider opacity-80">
-                      Earnings (Returns)
-                    </p>
-                    <p className="mt-1 font-semibold">
-                      ₦
-                      {((wallet?.earnings.availableBalanceMinorUnits ?? 0) / 100).toLocaleString(
-                        'en-NG',
-                      )}
-                    </p>
+    <DashboardShell title="Member" description="Account details and ownership summary.">
+      <div className="mx-auto max-w-6xl space-y-5">
+        <Link href="/members" className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground">
+          <MdArrowBack className="size-4" /> Back to members
+        </Link>
+        {!member ? <p className="text-sm text-muted-foreground">Loading member…</p> : (
+          <>
+            <section className="app-surface flex flex-col gap-4 rounded-xl border p-5 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-center gap-3">
+                <span className="grid size-11 place-items-center rounded-full bg-brand/10 text-base font-semibold text-brand">{member.name.charAt(0)}</span>
+                <div>
+                  <h1 className="text-lg font-semibold">{member.name}</h1>
+                  <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                    <span className="inline-flex items-center gap-1"><MdEmail />{member.email}</span>
+                    {member.phone ? <span className="inline-flex items-center gap-1"><MdPhone />{member.phone}</span> : null}
+                    {member.country ? <span className="inline-flex items-center gap-1"><MdPublic />{member.country}</span> : null}
                   </div>
                 </div>
-
-                <div className="mt-4 border-t border-brand-foreground/20 pt-4">
-                  <p className="text-[10px] uppercase tracking-wider opacity-80">Active Inv.</p>
-                  <p className="mt-1 font-semibold">{memberInfo.activeInvestments}</p>
-                </div>
-
-                <div className="mt-4 grid gap-2 border-t border-brand-foreground/20 pt-4">
-                  <p className="text-[10px] uppercase tracking-wider opacity-80">Credit earnings</p>
-                  <input
-                    value={earningsAmount}
-                    onChange={(event) =>
-                      setEarningsAmount(event.target.value.replace(/[^0-9,]/g, ''))
-                    }
-                    placeholder="Amount in NGN"
-                    className="h-10 rounded-lg border border-brand-foreground/20 bg-brand-foreground/10 px-3 text-sm placeholder:text-brand-foreground/60"
-                  />
-                  <input
-                    value={earningsReference}
-                    onChange={(event) => setEarningsReference(event.target.value)}
-                    placeholder="Unique payout reference"
-                    className="h-10 rounded-lg border border-brand-foreground/20 bg-brand-foreground/10 px-3 text-sm placeholder:text-brand-foreground/60"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => void handleCreditEarnings()}
-                    className="h-10 rounded-lg bg-brand-foreground px-3 text-sm font-semibold text-brand"
-                  >
-                    Credit earnings
-                  </button>
-                </div>
               </div>
-            </div>
-          </div>
+              <button disabled={savingStatus} onClick={() => void changeStatus()} className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border px-3 text-xs font-semibold text-foreground hover:bg-muted disabled:opacity-50">
+                {member.status === 'active' ? <MdLock className="size-4" /> : <MdLockOpen className="size-4" />}
+                {member.status === 'active' ? 'Suspend member' : 'Reactivate member'}
+              </button>
+            </section>
 
-          {/* Right Column: Investments Table */}
-          <div className="lg:col-span-2">
-            <div className="app-surface rounded-2xl border shadow-sm">
-              <div className="border-b p-6">
-                <h3 className="flex items-center gap-2 font-semibold">
-                  <MdBusinessCenter className="size-4" />
-                  Investment History
-                </h3>
-              </div>
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-sm">
-                  <thead className="border-b bg-muted/30">
-                    <tr>
-                      <th className="px-6 py-4 font-semibold text-muted-foreground">Opportunity</th>
-                      <th className="px-6 py-4 text-right font-semibold text-muted-foreground">
-                        Units
-                      </th>
-                      <th className="px-6 py-4 text-right font-semibold text-muted-foreground">
-                        Amount
-                      </th>
-                      <th className="px-6 py-4 font-semibold text-muted-foreground">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y">
-                    {investments.map((inv) => (
-                      <tr key={inv.id} className="transition hover:bg-muted/30">
-                        <td className="px-6 py-4">
-                          <p className="font-medium text-foreground">{inv.opportunity}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {inv.type} · {inv.date}
-                          </p>
-                        </td>
-                        <td className="px-6 py-4 text-right">{inv.units}</td>
-                        <td className="px-6 py-4 text-right font-medium">
-                          ₦{inv.amount.toLocaleString()}
-                        </td>
-                        <td className="px-6 py-4">
-                          <span
-                            className={cn(
-                              'inline-flex rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider',
-                              inv.status === 'Active'
-                                ? 'bg-emerald-500/10 text-emerald-500'
-                                : 'bg-muted text-muted-foreground',
-                            )}
-                          >
-                            {inv.status}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
+            <section className="grid gap-3 sm:grid-cols-4">
+              <Metric label="Wallet balance" value={money(wallet?.totalAvailableBalanceMinorUnits ?? 0)} />
+              <Metric label="Ownerships" value={String(ownerships.length)} />
+              <Metric label="Amount invested" value={money(totals.invested)} />
+              <Metric label="Expected return" value={money(totals.expected)} />
+            </section>
 
-          <div className="app-surface rounded-2xl border p-6 shadow-sm lg:col-span-3">
-            <h3 className="font-semibold">Recent member activity</h3>
-            <div className="mt-4 divide-y">
-              {activityLogs.length ? (
-                activityLogs.slice(0, 20).map((log) => (
-                  <div
-                    key={log._id}
-                    className="flex items-center justify-between gap-4 py-3 text-sm"
-                  >
-                    <div>
-                      <p className="font-medium">{log.action.replaceAll('_', ' ')}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {log.actorType} · {log.subjectType}
-                      </p>
-                    </div>
-                    <time className="text-xs text-muted-foreground">
-                      {new Date(log.createdAt).toLocaleString('en-NG')}
-                    </time>
-                  </div>
-                ))
-              ) : (
-                <p className="py-4 text-sm text-muted-foreground">No activity has been recorded.</p>
-              )}
-            </div>
-          </div>
-        </div>
+            <section className="app-surface overflow-x-auto rounded-xl border">
+              <div className="border-b px-4 py-3"><h2 className="text-sm font-semibold">Ownerships</h2><p className="mt-1 text-xs text-muted-foreground">Earnings are approved from the Payouts section after completion.</p></div>
+              <table className="w-full min-w-[760px] text-left text-xs">
+                <thead className="border-b bg-muted/30 text-muted-foreground"><tr>{['Opportunity', 'Units', 'Invested', 'Expected return', 'Status', 'Created', 'Maturity'].map((label) => <th key={label} className="px-4 py-3 font-medium">{label}</th>)}</tr></thead>
+                <tbody className="divide-y">
+                  {ownerships.map((item) => <tr key={item._id}><td className="px-4 py-3 font-medium">{item.opportunityId.title}</td><td className="px-4 py-3">{item.units}</td><td className="px-4 py-3">{money(item.amountMinorUnits)}</td><td className="px-4 py-3 text-brand">{money(Math.round((item.amountMinorUnits * item.projectedReturnRatePercent) / 100))}<span className="ml-1 text-[11px] text-muted-foreground">({item.projectedReturnRatePercent}%)</span></td><td className="px-4 py-3">{item.status.toLowerCase()}</td><td className="px-4 py-3 text-muted-foreground">{new Date(item.createdAt).toLocaleDateString('en-NG')}</td><td className="px-4 py-3 text-muted-foreground">{item.maturityAt ? new Date(item.maturityAt).toLocaleDateString('en-NG') : '—'}</td></tr>)}
+                  {ownerships.length === 0 ? <tr><td colSpan={7} className="px-4 py-10 text-center text-muted-foreground">This member has no ownerships yet.</td></tr> : null}
+                </tbody>
+              </table>
+            </section>
+          </>
+        )}
       </div>
-
-      {/* Suspend Modal */}
-      {isSuspendModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
-          <div className="w-full max-w-md rounded-2xl border bg-surface p-6 shadow-xl">
-            <div className="flex items-start justify-between">
-              <div className="flex items-center gap-3 text-red-500">
-                <MdWarning className="size-6" />
-                <h2 className="font-heading text-xl font-semibold text-foreground">
-                  Suspend Account?
-                </h2>
-              </div>
-              <button
-                onClick={() => setIsSuspendModalOpen(false)}
-                className="rounded-lg p-2 text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
-              >
-                <MdClose className="size-4" />
-              </button>
-            </div>
-            <p className="mt-4 text-sm text-muted-foreground">
-              Are you sure you want to suspend <strong>{displayedMember.name}</strong>&apos;s
-              account? They will lose access to their wallet and active investments until the
-              account is reinstated.
-            </p>
-            <div className="mt-6 flex justify-end gap-3">
-              <button
-                onClick={() => setIsSuspendModalOpen(false)}
-                className="rounded-xl border bg-background px-4 py-2 text-sm font-semibold transition hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleSuspend}
-                className="rounded-xl bg-red-500 px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500"
-              >
-                Suspend Account
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </DashboardShell>
   );
+}
+
+function Metric({ label, value }: { label: string; value: string }) {
+  return <article className="app-surface rounded-xl border p-4"><p className="text-xs text-muted-foreground">{label}</p><p className="mt-2 text-base font-semibold">{value}</p></article>;
 }

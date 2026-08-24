@@ -132,7 +132,7 @@ export default function WithdrawalsPage(): React.JSX.Element {
                 <p className="text-xs font-bold uppercase tracking-wider">{stat.label}</p>
                 <stat.icon className="size-4" />
               </div>
-              <h3 className="mt-4 font-heading text-2xl font-semibold">{stat.value}</h3>
+              <h3 className="mt-4 font-sans text-2xl font-semibold">{stat.value}</h3>
             </div>
           ))}
         </div>
@@ -253,11 +253,11 @@ export default function WithdrawalsPage(): React.JSX.Element {
       {/* Review Modal */}
       {selectedWithdrawal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-lg overflow-hidden rounded-2xl border bg-surface shadow-xl">
+          <div className="flex h-[min(60vh,680px)] w-full max-w-xl flex-col overflow-hidden rounded-2xl border bg-surface">
             {/* Header */}
-            <div className="flex items-center justify-between border-b p-4">
+            <div className="flex shrink-0 items-center justify-between border-b px-5 py-4">
               <div>
-                <h2 className="font-heading text-lg font-semibold text-foreground">
+                <h2 className="font-sans text-lg font-semibold text-foreground">
                   Review Withdrawal
                 </h2>
                 <p className="text-xs text-muted-foreground">Request ID: {selectedWithdrawal.id}</p>
@@ -271,10 +271,10 @@ export default function WithdrawalsPage(): React.JSX.Element {
             </div>
 
             {/* Body */}
-            <div className="p-6">
-              <div className="grid gap-6">
+            <div className="flex-1 overflow-y-auto p-5">
+              <div className="grid gap-4">
                 {/* User & Amount */}
-                <div className="grid grid-cols-2 gap-4 rounded-xl border bg-background p-4">
+                <div className="grid gap-3 rounded-xl border bg-background p-4 sm:grid-cols-2">
                   <div>
                     <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
                       User Details
@@ -286,7 +286,7 @@ export default function WithdrawalsPage(): React.JSX.Element {
                     <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
                       Requested Amount
                     </p>
-                    <p className="mt-1 font-heading text-2xl font-semibold text-brand">
+                    <p className="mt-1 text-xl font-semibold text-brand">
                       ₦{selectedWithdrawal.amount.toLocaleString()}
                     </p>
                   </div>
@@ -297,7 +297,7 @@ export default function WithdrawalsPage(): React.JSX.Element {
                   <p className="mb-3 text-xs font-bold uppercase tracking-wider text-muted-foreground">
                     Withdrawal Funding Breakdown
                   </p>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-2 gap-3">
                     <div>
                       <p className="text-xs text-muted-foreground">Reserved from Deposits</p>
                       <p className="font-medium">
@@ -327,12 +327,12 @@ export default function WithdrawalsPage(): React.JSX.Element {
                   <p className="mb-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
                     Destination Bank
                   </p>
-                  <div className="flex items-center gap-4 rounded-xl border bg-brand/5 p-4 text-brand">
-                    <div className="grid size-12 place-items-center rounded-xl bg-brand/10">
-                      <MdAccountBalance className="size-6" />
+                  <div className="flex items-center gap-3 rounded-xl border bg-brand/5 p-3.5 text-brand">
+                    <div className="grid size-10 place-items-center rounded-lg bg-brand/10">
+                      <MdAccountBalance className="size-5" />
                     </div>
                     <div>
-                      <p className="font-heading text-lg font-semibold">
+                      <p className="text-base font-semibold">
                         {selectedWithdrawal.bankName}
                       </p>
                       <p className="text-sm font-medium">
@@ -347,7 +347,7 @@ export default function WithdrawalsPage(): React.JSX.Element {
                   Requested on {selectedWithdrawal.date}
                 </div>
                 {selectedWithdrawal.status === 'Pending' ? (
-                  <div className="grid gap-4 border-t pt-5">
+                  <div className="grid gap-3 border-t pt-4">
                     <label className="grid gap-2 text-sm font-semibold">
                       Payment reference (required for completion)
                       <input
@@ -375,7 +375,7 @@ export default function WithdrawalsPage(): React.JSX.Element {
             </div>
 
             {/* Actions Footer */}
-            <div className="flex items-center justify-end gap-3 border-t bg-muted/20 p-4">
+            <div className="flex shrink-0 flex-wrap items-center justify-end gap-2 border-t bg-muted/20 px-5 py-3">
               <button
                 onClick={() => setSelectedWithdrawal(null)}
                 className="rounded-xl border bg-background px-4 py-2.5 text-sm font-semibold transition hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
@@ -394,7 +394,7 @@ export default function WithdrawalsPage(): React.JSX.Element {
                   <button
                     disabled={isReviewing}
                     onClick={() => handleAction(selectedWithdrawal.id, 'Completed')}
-                    className="flex items-center gap-1.5 rounded-xl bg-brand px-4 py-2.5 text-sm font-semibold text-brand-foreground shadow-sm transition hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                    className="flex items-center gap-1.5 rounded-xl bg-brand px-4 py-2.5 text-sm font-semibold text-brand-foreground transition hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
                   >
                     <MdCheckCircle className="size-4" /> Confirm Payment & Complete
                   </button>

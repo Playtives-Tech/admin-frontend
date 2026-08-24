@@ -31,7 +31,6 @@ type FormState = {
   rolloverCompoundsReturns: boolean;
   principalReleaseDate: string;
   location: string;
-  operator: string;
   imageUrl: string;
   imageKey: string;
   imageWidth?: number;
@@ -56,14 +55,13 @@ const emptyForm: FormState = {
   rolloverCompoundsReturns: false,
   principalReleaseDate: '',
   location: '',
-  operator: '',
   imageUrl: '',
   imageKey: '',
   imageAlt: '',
 };
 
 const inputClass =
-  'rounded-xl border bg-background px-3 py-2.5 text-sm outline-none transition focus:border-brand focus:ring-1 focus:ring-brand';
+  'min-h-10 rounded-lg border bg-background px-3 py-2 text-sm outline-none transition focus:border-brand focus:ring-1 focus:ring-brand';
 const money = (minor: number) =>
   new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN' }).format(minor / 100);
 const numberOrUndefined = (value: string) => (value === '' ? undefined : Number(value));
@@ -86,7 +84,6 @@ function toForm(opportunity: Opportunity): FormState {
     rolloverCompoundsReturns: opportunity.rolloverCompoundsReturns,
     principalReleaseDate: opportunity.principalReleaseDate?.slice(0, 10) ?? '',
     location: opportunity.location ?? '',
-    operator: opportunity.operator ?? '',
     imageUrl: opportunity.imageUrl ?? '',
     imageKey: opportunity.imageKey ?? '',
     imageWidth: opportunity.imageWidth,
@@ -165,7 +162,6 @@ export function OpportunityEditor({
     rolloverCompoundsReturns: form.rolloverAllowed && form.rolloverCompoundsReturns,
     principalReleaseDate: form.principalReleaseDate || undefined,
     location: form.location.trim(),
-    operator: form.operator.trim(),
     imageUrl: form.imageUrl || undefined,
     imageKey: form.imageKey || undefined,
     imageWidth: form.imageWidth,
@@ -216,17 +212,17 @@ export function OpportunityEditor({
   return (
     <DashboardShell
       title={opportunityId ? 'Edit Opportunity' : 'New Opportunity'}
-      description="Manage a member-facing opportunity"
+      description="Set the member-facing details, commercial terms, and payout settings."
     >
-      <div className="mx-auto max-w-7xl">
-        <nav className="mb-6 flex items-center gap-2 text-xs text-muted-foreground">
+      <div className="mx-auto max-w-6xl">
+        <nav className="mb-5 flex items-center gap-2 text-xs text-muted-foreground">
           <Link href="/opportunities">Opportunities</Link>
           <MdChevronRight />
           <span>{opportunityId ? 'Edit' : 'New'}</span>
         </nav>
-        <div className="mb-7 flex flex-wrap items-center justify-between gap-4">
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
           <div>
-            <h1 className="font-heading text-3xl font-semibold">
+            <h1 className="text-2xl font-semibold">
               {form.title || 'Untitled opportunity'}
             </h1>
             <p className="mt-1 text-sm text-muted-foreground">
@@ -259,10 +255,10 @@ export function OpportunityEditor({
             </button>
           </div>
         </div>
-        <div className="grid items-start gap-8 xl:grid-cols-[minmax(0,1fr)_minmax(360px,0.8fr)]">
-          <div className="app-surface grid gap-8 rounded-2xl border p-6 shadow-sm">
-            <Section title="Overview">
-              <Field label="Opportunity title *">
+        <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(320px,0.62fr)]">
+          <div className="grid gap-4">
+            <Section title="Opportunity details" description="What members see before they decide to participate.">
+              <Field label="Opportunity title *" wide>
                 <input
                   className={inputClass}
                   value={form.title}
@@ -277,7 +273,7 @@ export function OpportunityEditor({
                   placeholder="Enter any category"
                 />
               </Field>
-              <Field label="Summary *">
+              <Field label="Summary *" wide>
                 <textarea
                   className={inputClass}
                   rows={3}
@@ -285,7 +281,7 @@ export function OpportunityEditor({
                   onChange={(e) => set('summary', e.target.value)}
                 />
               </Field>
-              <Field label="About">
+              <Field label="About" wide>
                 <textarea
                   className={inputClass}
                   rows={6}
@@ -293,17 +289,17 @@ export function OpportunityEditor({
                   onChange={(e) => set('about', e.target.value)}
                 />
               </Field>
-              <Field label="Member agreement">
+              <Field label="Member agreement (Markdown supported)" wide>
                 <textarea
                   className={inputClass}
-                  rows={8}
+                  rows={12}
                   value={form.agreement}
                   onChange={(e) => set('agreement', e.target.value)}
-                  placeholder="Terms members should review for this opportunity"
+                  placeholder={'# Member agreement\n\nUse headings, bullet lists, **bold text**, and normal paragraphs. Members see a short preview and can open the complete agreement.'}
                 />
               </Field>
             </Section>
-            <Section title="Key facts">
+            <Section title="Commercial terms" description="Use the agreed unit price and return terms.">
               <Field label="Price per unit (NGN)">
                 <input
                   type="number"
@@ -380,13 +376,6 @@ export function OpportunityEditor({
                   onChange={(e) => set('location', e.target.value)}
                 />
               </Field>
-              <Field label="Operator">
-                <input
-                  className={inputClass}
-                  value={form.operator}
-                  onChange={(e) => set('operator', e.target.value)}
-                />
-              </Field>
               <Field label="Principal release date">
                 <input
                   type="date"
@@ -396,7 +385,7 @@ export function OpportunityEditor({
                 />
               </Field>
             </Section>
-            <Section title="Rollover at maturity">
+            <Section title="Rollover at maturity" description="Only enable this if the offer can continue after maturity.">
               <label className="flex gap-3 text-sm">
                 <input
                   type="checkbox"
@@ -416,7 +405,7 @@ export function OpportunityEditor({
                 </label>
               )}
             </Section>
-            <Section title="Cover image (maximum one)">
+            <Section title="Cover image" description="One optimised image used across the member app.">
               <label className="flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed p-6 text-sm">
                 <MdFileUpload />
                 {uploading ? 'Optimizing and uploading…' : 'Choose JPEG, PNG, WebP or AVIF'}
@@ -428,7 +417,7 @@ export function OpportunityEditor({
                   onChange={(e) => upload(e.target.files?.[0])}
                 />
               </label>
-              <Field label="Image alt text">
+              <Field label="Image alt text" wide>
                 <input
                   className={inputClass}
                   value={form.imageAlt}
@@ -437,7 +426,7 @@ export function OpportunityEditor({
               </Field>
             </Section>
           </div>
-          <aside className="sticky top-6 overflow-hidden rounded-2xl border bg-background shadow-sm">
+          <aside className="sticky top-6 overflow-hidden rounded-xl border bg-background">
             <div className="border-b px-5 py-4">
               <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
                 Live HTML preview
@@ -505,19 +494,36 @@ export function OpportunityEditor({
   );
 }
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
+function Section({
+  title,
+  description,
+  children,
+}: {
+  title: string;
+  description?: string;
+  children: React.ReactNode;
+}) {
   return (
-    <section className="grid gap-5">
-      <h2 className="border-b pb-3 text-xs font-bold uppercase tracking-wider text-muted-foreground">
-        {title}
-      </h2>
-      <div className="grid gap-5 sm:grid-cols-2">{children}</div>
+    <section className="grid gap-4 rounded-xl border bg-background p-5">
+      <div className="border-b pb-3">
+        <h2 className="text-sm font-semibold text-foreground">{title}</h2>
+        {description ? <p className="mt-1 text-xs text-muted-foreground">{description}</p> : null}
+      </div>
+      <div className="grid gap-4 sm:grid-cols-2">{children}</div>
     </section>
   );
 }
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({
+  label,
+  wide = false,
+  children,
+}: {
+  label: string;
+  wide?: boolean;
+  children: React.ReactNode;
+}) {
   return (
-    <label className="grid gap-1.5 text-sm font-medium">
+    <label className={`grid gap-1.5 text-sm font-medium ${wide ? 'sm:col-span-2' : ''}`}>
       {label}
       {children}
     </label>

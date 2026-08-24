@@ -28,7 +28,7 @@ const date = (value?: string | null) =>
 
 export default function PayoutsPage(): React.JSX.Element {
   const [items, setItems] = useState<MaturityPayout[]>([]);
-  const [status, setStatus] = useState<'ALL' | MaturityPayoutStatus>('PENDING');
+  const [status, setStatus] = useState<'ALL' | MaturityPayoutStatus>('ALL');
   const [detail, setDetail] = useState<PayoutDetail>();
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -79,12 +79,12 @@ export default function PayoutsPage(): React.JSX.Element {
   const pending = items.filter((item) => item.status === 'PENDING' || item.status === 'PROCESSING');
   return (
     <DashboardShell
-      title="Payouts"
-      description="Validate matured ownerships before crediting member earnings"
+      title="User payouts"
+      description="Review completed ownerships and credit verified earnings directly to a member wallet."
     >
       <div className="mx-auto max-w-6xl space-y-6">
         <div className="grid gap-4 sm:grid-cols-3">
-          <Stat label="Visible payouts" value={String(items.length)} icon={MdPendingActions} />
+          <Stat label="Completed ownerships" value={String(items.length)} icon={MdPendingActions} />
           <Stat
             label="Pending value"
             value={money(pending.reduce((sum, item) => sum + item.totalPayoutMinorUnits, 0))}
@@ -201,7 +201,7 @@ function ReviewPanel({
             <p className="text-xs font-bold uppercase tracking-wider text-brand">
               Maturity validation
             </p>
-            <h2 className="mt-1 font-heading text-2xl font-semibold">
+            <h2 className="mt-1 font-sans text-2xl font-semibold">
               {payout.opportunityId.title}
             </h2>
             <p className="mt-1 text-sm text-muted-foreground">
@@ -244,11 +244,7 @@ function ReviewPanel({
                 value={payout.opportunityId.title}
                 helper={payout.opportunityId.category}
               />
-              <Metric
-                label="Operator"
-                value={payout.opportunityId.operator || 'Not specified'}
-                helper={payout.opportunityId.location}
-              />
+              <Metric label="Location" value={payout.opportunityId.location || 'Not specified'} />
               <Metric
                 label="Duration"
                 value={`${payout.opportunityId.durationMonths} months`}
@@ -358,7 +354,7 @@ function ReviewPanel({
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section className="rounded-2xl border bg-background p-5">
-      <h3 className="mb-4 font-heading text-lg font-semibold">{title}</h3>
+      <h3 className="mb-4 font-sans text-lg font-semibold">{title}</h3>
       {children}
     </section>
   );

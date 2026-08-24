@@ -27,6 +27,8 @@ export type AdminAcquisition = Readonly<{
   adminNote?: string;
   revision: number;
   createdAt: string;
+  maturityAt: string | null;
+  completedAt: string | null;
 }>;
 export type AcquisitionStats = Readonly<{
   totalAcquisitions: number;

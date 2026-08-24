@@ -29,6 +29,8 @@ export type AdminMember = Readonly<{
   _id: string;
   name: string;
   email: string;
+  phone?: string | null;
+  country?: string | null;
   status: 'active' | 'suspended';
   emailVerifiedAt: string | null;
   createdAt: string;
@@ -107,6 +109,7 @@ export type AdminDepositRequest = Readonly<{
   _id: string;
   userId: RequestUser;
   amountMinorUnits: number;
+  narration?: string;
   receiptImageUrl: string;
   status: 'pending' | 'approved' | 'rejected';
   createdAt: string;
@@ -160,4 +163,24 @@ export function reviewWithdrawalRequest(
 
 export function getAdminActivity(): Promise<ActivityLog[]> {
   return api<ActivityLog[]>('/v1/admin/activity-logs');
+}
+
+export type AdminOverview = Readonly<{
+  depositsMinorUnits: number;
+  withdrawalsMinorUnits: number;
+  users: number;
+  investedMinorUnits: number;
+  expectedReturnMinorUnits: number;
+  growth: ReadonlyArray<
+    Readonly<{
+      month: string;
+      label: string;
+      investedMinorUnits: number;
+      ownerships: number;
+    }>
+  >;
+}>;
+
+export function getAdminOverview(): Promise<AdminOverview> {
+  return api<AdminOverview>('/v1/admin/overview', { cache: 'no-store' });
 }

@@ -1,106 +1,117 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { DashboardShell } from '@/components/dashboard/shell';
-import {
-  acquisitionService,
-  type AcquisitionStats,
-  type AdminAcquisition,
-} from '@/lib/services/acquisition-service';
+import { acquisitionService, type AdminAcquisition } from '@/lib/services/acquisition-service';
 import { notify } from '@/lib/notify';
 
 const money = (value: number) =>
-  new Intl.NumberFormat('en-NG', {
-    style: 'currency',
-    currency: 'NGN',
-    maximumFractionDigits: 0,
-  }).format(value / 100);
+  new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN', maximumFractionDigits: 0 }).format(value / 100);
+
+const statusClass: Record<AdminAcquisition['status'], string> = {
+  ACTIVE: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300',
+  COMPLETED: 'bg-sky-500/10 text-sky-700 dark:text-sky-300',
+  CANCELLED: 'bg-red-500/10 text-red-700 dark:text-red-300',
+};
 
 export default function AcquisitionsPage(): React.JSX.Element {
   const [items, setItems] = useState<AdminAcquisition[]>([]);
-  const [stats, setStats] = useState<AcquisitionStats>();
-  const load = () =>
-    Promise.all([acquisitionService.list(), acquisitionService.stats()]).then(
-      ([records, totals]) => {
-        setItems(records);
-        setStats(totals);
-      },
-    );
+  const [memberId, setMemberId] = useState('all');
+
   useEffect(() => {
-    void load().catch((error: unknown) =>
-      notify.error(error instanceof Error ? error.message : 'Could not load acquisitions'),
-    );
+    void acquisitionService
+      .list()
+      .then(setItems)
+      .catch((error: unknown) =>
+        notify.error(error instanceof Error ? error.message : 'Could not load ownerships'),
+      );
   }, []);
+
+  const members = useMemo(
+    () => Array.from(new Map(items.map((item) => [item.userId._id, item.userId])).values()),
+    [items],
+  );
+  const visible = memberId === 'all' ? items : items.filter((item) => item.userId._id === memberId);
+  const totalInvested = visible.reduce((total, item) => total + item.amountMinorUnits, 0);
+  const totalExpected = visible.reduce(
+    (total, item) => total + Math.round((item.amountMinorUnits * item.projectedReturnRatePercent) / 100),
+    0,
+  );
+
   return (
-    <DashboardShell
-      title="Acquisitions"
-      description="Read-only ledger of acquired opportunity units"
-    >
-      <div className="grid gap-4 sm:grid-cols-4">
-        {[
-          ['All acquisitions', stats?.totalAcquisitions ?? 0],
-          ['Active', stats?.activeAcquisitions ?? 0],
-          ['Units', stats?.totalUnits ?? 0],
-          ['Capital allocated', money(stats?.totalAmountMinorUnits ?? 0)],
-        ].map(([label, value]) => (
-          <div key={label} className="app-surface rounded-2xl border p-5">
-            <p className="text-sm text-muted-foreground">{label}</p>
-            <p className="mt-2 text-2xl font-semibold">{value}</p>
+    <DashboardShell title="User ownerships" description="A concise ledger of member opportunity ownerships.">
+      <div className="mx-auto max-w-6xl space-y-5">
+        <section className="app-surface flex flex-col gap-3 rounded-xl border p-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="text-sm font-semibold">Ownership ledger</h2>
+            <p className="mt-1 text-xs text-muted-foreground">Filter to review one member’s ownerships.</p>
           </div>
-        ))}
-      </div>
-      <div className="app-surface mt-6 overflow-x-auto rounded-2xl border">
-        <table className="w-full text-left text-sm">
-          <thead className="border-b bg-muted/30">
-            <tr>
-              {['Member', 'Opportunity', 'Units', 'Contribution', 'Progress', 'Status'].map(
-                (label) => (
-                  <th key={label} className="px-5 py-4 font-semibold text-muted-foreground">
-                    {label}
-                  </th>
-                ),
-              )}
-            </tr>
-          </thead>
-          <tbody className="divide-y">
-            {items.map((item) => (
-              <tr key={item._id}>
-                <td className="px-5 py-4">
-                  <p className="font-medium">{item.userId.name}</p>
-                  <p className="text-xs text-muted-foreground">{item.userId.email}</p>
-                </td>
-                <td className="px-5 py-4">
-                  <p className="font-medium">{item.opportunityId.title}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {item.opportunityId.availableUnits}/{item.opportunityId.totalUnits} left
-                  </p>
-                </td>
-                <td className="px-5 py-4">{item.units}</td>
-                <td className="px-5 py-4 font-medium">{money(item.amountMinorUnits)}</td>
-                <td className="px-5 py-4">
-                  <div className="min-w-28">
-                    <span className="text-xs text-muted-foreground">{item.progressPercent}%</span>
-                    <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-muted">
-                      <div
-                        className="h-full rounded-full bg-brand"
-                        style={{ width: `${item.progressPercent}%` }}
-                      />
-                    </div>
-                  </div>
-                </td>
-                <td className="px-5 py-4">{item.status}</td>
-              </tr>
+          <select
+            value={memberId}
+            onChange={(event) => setMemberId(event.target.value)}
+            className="h-9 min-w-56 rounded-lg border bg-background px-3 text-xs outline-none focus:border-brand focus:ring-1 focus:ring-brand"
+          >
+            <option value="all">All members</option>
+            {members.map((member) => (
+              <option key={member._id} value={member._id}>
+                {member.name} · {member.email}
+              </option>
             ))}
-            {items.length === 0 && (
+          </select>
+        </section>
+
+        <section className="grid gap-3 sm:grid-cols-3">
+          <Metric label="Ownerships" value={String(visible.length)} />
+          <Metric label="Amount invested" value={money(totalInvested)} />
+          <Metric label="Expected return" value={money(totalExpected)} />
+        </section>
+
+        <section className="app-surface overflow-x-auto rounded-xl border">
+          <table className="w-full min-w-[900px] text-left text-xs">
+            <thead className="border-b bg-muted/30 text-muted-foreground">
               <tr>
-                <td colSpan={6} className="px-5 py-10 text-center text-muted-foreground">
-                  No acquired opportunities yet.
-                </td>
+                {['Member', 'Opportunity', 'Units', 'Amount invested', 'Expected return', 'Status', 'Created', 'Maturity'].map((label) => (
+                  <th key={label} className="px-4 py-3 font-medium">{label}</th>
+                ))}
               </tr>
-            )}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className="divide-y">
+              {visible.map((item) => {
+                const expected = Math.round((item.amountMinorUnits * item.projectedReturnRatePercent) / 100);
+                return (
+                  <tr key={item._id} className="hover:bg-muted/20">
+                    <td className="px-4 py-3">
+                      <p className="font-semibold text-foreground">{item.userId.name}</p>
+                      <p className="mt-0.5 text-[11px] text-muted-foreground">{item.userId.email}</p>
+                    </td>
+                    <td className="px-4 py-3 font-medium">{item.opportunityId.title}</td>
+                    <td className="px-4 py-3">{item.units}</td>
+                    <td className="px-4 py-3 font-medium">{money(item.amountMinorUnits)}</td>
+                    <td className="px-4 py-3">
+                      <p className="font-medium text-brand">{money(expected)}</p>
+                      <p className="mt-0.5 text-[11px] text-muted-foreground">{item.projectedReturnRatePercent}% ROI</p>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className={`rounded-full px-2 py-1 text-[10px] font-semibold ${statusClass[item.status]}`}>
+                        {item.status.toLowerCase()}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-muted-foreground">{new Date(item.createdAt).toLocaleDateString('en-NG')}</td>
+                    <td className="px-4 py-3 text-muted-foreground">{item.maturityAt ? new Date(item.maturityAt).toLocaleDateString('en-NG') : '—'}</td>
+                  </tr>
+                );
+              })}
+              {visible.length === 0 && (
+                <tr><td colSpan={8} className="px-4 py-10 text-center text-muted-foreground">No ownerships match this member.</td></tr>
+              )}
+            </tbody>
+          </table>
+        </section>
       </div>
     </DashboardShell>
   );
+}
+
+function Metric({ label, value }: { label: string; value: string }) {
+  return <article className="app-surface rounded-xl border p-4"><p className="text-xs text-muted-foreground">{label}</p><p className="mt-2 text-lg font-semibold">{value}</p></article>;
 }

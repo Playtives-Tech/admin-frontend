@@ -38,7 +38,6 @@ export type PayoutDetail = Readonly<{
           returnSchedule: string;
           rolloverAllowed: boolean;
           rolloverCompoundsReturns: boolean;
-          operator: string;
           location: string;
           principalReleaseDate: string | null;
           imageUrl: string;

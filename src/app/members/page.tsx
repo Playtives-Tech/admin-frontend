@@ -123,7 +123,7 @@ export default function MembersPage(): React.JSX.Element {
                   <tr key={member._id} className="transition hover:bg-muted/30">
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
-                        <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-brand/10 font-heading font-semibold text-brand">
+                        <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-brand/10 font-sans font-semibold text-brand">
                           {member.name.charAt(0)}
                         </div>
                         <div>
