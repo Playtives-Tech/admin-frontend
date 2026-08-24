@@ -1,151 +1,391 @@
 'use client';
 
-import { useState } from 'react';
-import { 
-  MdAccountBalanceWallet, 
-  MdTrendingUp, 
-  MdPayments,
+import { useCallback, useEffect, useState } from 'react';
+import {
+  MdAccountBalanceWallet,
   MdCheckCircle,
-  MdAccessTime,
-  MdArrowUpward,
-  MdArrowDownward
+  MdClose,
+  MdPendingActions,
+  MdVisibility,
 } from 'react-icons/md';
 import { DashboardShell } from '@/components/dashboard/shell';
 import { notify } from '@/lib/notify';
-import { cn } from '@/lib/utils';
+import {
+  payoutService,
+  type MaturityPayout,
+  type MaturityPayoutStatus,
+  type PayoutDetail,
+} from '@/lib/services/payout-service';
 
-// Mock Data
-const stats = [
-  { label: 'Total Distributed', value: '₦125.8M', change: '+24%', isPositive: true, icon: MdAccountBalanceWallet },
-  { label: 'Next Scheduled', value: '₦12.4M', date: 'Oct 30, 2026', isPositive: null, icon: MdAccessTime },
-  { label: 'Average Yield', value: '14.2%', change: '+1.2%', isPositive: true, icon: MdTrendingUp },
-];
-
-const payouts = [
-  { id: '1', opportunity: 'Palm oil trade cycle 08', type: 'Monthly Dividend', amount: 4500000, recipients: 142, date: 'Oct 15, 2026', status: 'Completed' },
-  { id: '2', opportunity: 'Real Estate Fund A', type: 'Maturity Principal + Interest', amount: 85000000, recipients: 45, date: 'Oct 30, 2026', status: 'Pending' },
-  { id: '3', opportunity: 'Agro Export Batch 10', type: 'Quarterly Dividend', amount: 2100000, recipients: 88, date: 'Nov 05, 2026', status: 'Pending' },
-  { id: '4', opportunity: 'Logistics Fleet 02', type: 'Monthly Dividend', amount: 3200000, recipients: 210, date: 'Sep 15, 2026', status: 'Completed' },
-];
+const money = (value: number) =>
+  new Intl.NumberFormat('en-NG', {
+    style: 'currency',
+    currency: 'NGN',
+    maximumFractionDigits: 0,
+  }).format(value / 100);
+const date = (value?: string | null) =>
+  value ? new Date(value).toLocaleDateString('en-NG', { dateStyle: 'medium' }) : 'Not available';
 
 export default function PayoutsPage(): React.JSX.Element {
-  const [activeTab, setActiveTab] = useState<'Upcoming' | 'History'>('Upcoming');
-  const [payoutList, setPayoutList] = useState(payouts);
-
-  const filteredPayouts = payoutList.filter(p => 
-    activeTab === 'Upcoming' ? p.status === 'Pending' : p.status === 'Completed'
+  const [items, setItems] = useState<MaturityPayout[]>([]);
+  const [status, setStatus] = useState<'ALL' | MaturityPayoutStatus>('ALL');
+  const [detail, setDetail] = useState<PayoutDetail>();
+  const [loadingDetail, setLoadingDetail] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [note, setNote] = useState('');
+  const load = useCallback(
+    () => payoutService.list(status === 'ALL' ? undefined : status).then(setItems),
+    [status],
   );
-
-  const handleProcess = (id: string) => {
-    setPayoutList(prev => prev.map(p => p.id === id ? { ...p, status: 'Completed' } : p));
-    notify.success('Payout processed successfully');
+  useEffect(() => {
+    void load().catch(() => notify.error('Could not load maturity payouts'));
+  }, [load]);
+  const open = async (id: string) => {
+    setLoadingDetail(true);
+    setNote('');
+    try {
+      setDetail(await payoutService.get(id));
+    } catch (error) {
+      notify.error(error instanceof Error ? error.message : 'Could not load payout details');
+    } finally {
+      setLoadingDetail(false);
+    }
   };
-
+  const review = async (action: 'APPROVED' | 'REJECTED') => {
+    if (!detail) return;
+    if (action === 'REJECTED' && !note.trim()) {
+      notify.error('Add a reason before rejecting this payout');
+      return;
+    }
+    if (
+      action === 'APPROVED' &&
+      !window.confirm(
+        `Credit ${money(detail.payout.totalPayoutMinorUnits)} to ${detail.payout.userId.name}'s earnings balance?`,
+      )
+    )
+      return;
+    setBusy(true);
+    try {
+      await payoutService.review(detail.payout, action, note);
+      setDetail(undefined);
+      await load();
+      notify.success(action === 'APPROVED' ? 'Payout approved and credited' : 'Payout rejected');
+    } catch (error) {
+      notify.error(error instanceof Error ? error.message : 'Payout review failed');
+    } finally {
+      setBusy(false);
+    }
+  };
+  const pending = items.filter((item) => item.status === 'PENDING' || item.status === 'PROCESSING');
   return (
-    <DashboardShell title="Payouts" description="Manage distributions and payout history">
-      <div className="mx-auto max-w-6xl space-y-8">
-        
-        {/* Statistics Cards */}
+    <DashboardShell
+      title="User payouts"
+      description="Review completed ownerships and credit verified earnings directly to a member wallet."
+    >
+      <div className="mx-auto max-w-6xl space-y-6">
         <div className="grid gap-4 sm:grid-cols-3">
-          {stats.map((stat, i) => (
-            <div key={i} className="app-surface rounded-2xl border p-5 shadow-sm transition hover:border-brand/35">
-              <div className="flex items-center justify-between text-muted-foreground">
-                <p className="text-xs font-bold uppercase tracking-wider">{stat.label}</p>
-                <stat.icon className="size-4" />
-              </div>
-              <div className="mt-4 flex items-end justify-between">
-                <div>
-                  <h3 className="font-heading text-2xl font-semibold">{stat.value}</h3>
-                  {stat.date && <p className="text-xs text-muted-foreground mt-1">{stat.date}</p>}
-                </div>
-                {stat.change && (
-                  <div className={`flex items-center gap-1 text-xs font-medium ${stat.isPositive ? 'text-emerald-500' : 'text-red-500'}`}>
-                  {stat.isPositive !== null && (
-                    stat.isPositive ? <MdArrowUpward className="size-3" /> : <MdArrowDownward className="size-3" />
-                  )}  {stat.change}
-                  </div>
-                )}
-              </div>
-            </div>
+          <Stat label="Completed ownerships" value={String(items.length)} icon={MdPendingActions} />
+          <Stat
+            label="Pending value"
+            value={money(pending.reduce((sum, item) => sum + item.totalPayoutMinorUnits, 0))}
+            icon={MdAccountBalanceWallet}
+          />
+          <Stat
+            label="Approved in view"
+            value={String(items.filter((item) => item.status === 'APPROVED').length)}
+            icon={MdCheckCircle}
+          />
+        </div>
+        <div className="flex gap-2 overflow-x-auto">
+          {(['ALL', 'PENDING', 'APPROVED', 'REJECTED'] as const).map((value) => (
+            <button
+              key={value}
+              onClick={() => setStatus(value)}
+              className={`rounded-full px-4 py-2 text-sm font-semibold ${status === value ? 'bg-brand text-brand-foreground' : 'bg-muted text-muted-foreground'}`}
+            >
+              {value}
+            </button>
           ))}
         </div>
-
-        {/* Payouts Section */}
-        <div className="app-surface rounded-2xl border shadow-sm">
-          {/* Header & Tabs */}
-          <div className="flex flex-col gap-4 border-b p-6 sm:flex-row sm:items-center sm:justify-between">
-            <h3 className="font-semibold">Distribution Schedule</h3>
-            <div className="flex rounded-lg border bg-muted/30 p-1">
-              {(['Upcoming', 'History'] as const).map((tab) => (
-                <button
-                  key={tab}
-                  onClick={() => setActiveTab(tab)}
-                  className={cn(
-                    "rounded-md px-4 py-1.5 text-xs font-semibold transition",
-                    activeTab === tab 
-                      ? "bg-background text-foreground shadow-sm" 
-                      : "text-muted-foreground hover:text-foreground"
-                  )}
-                >
-                  {tab}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Table */}
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
-              <thead className="bg-muted/30">
-                <tr>
-                  <th className="px-6 py-4 font-semibold text-muted-foreground">Opportunity / Type</th>
-                  <th className="px-6 py-4 font-semibold text-muted-foreground text-right">Total Amount</th>
-                  <th className="px-6 py-4 font-semibold text-muted-foreground text-right">Recipients</th>
-                  <th className="px-6 py-4 font-semibold text-muted-foreground">Date</th>
-                  <th className="px-6 py-4 font-semibold text-muted-foreground text-right">Action</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y">
-                {filteredPayouts.map((payout) => (
-                  <tr key={payout.id} className="transition hover:bg-muted/30">
-                    <td className="px-6 py-4">
-                      <p className="font-medium text-foreground">{payout.opportunity}</p>
-                      <p className="text-xs text-muted-foreground">{payout.type}</p>
-                    </td>
-                    <td className="px-6 py-4 text-right font-medium">₦{payout.amount.toLocaleString()}</td>
-                    <td className="px-6 py-4 text-right">{payout.recipients}</td>
-                    <td className="px-6 py-4 text-muted-foreground">{payout.date}</td>
-                    <td className="px-6 py-4 text-right">
-                      {payout.status === 'Pending' ? (
-                        <button 
-                          onClick={() => handleProcess(payout.id)}
-                          className="inline-flex items-center gap-1.5 rounded-lg bg-brand px-3 py-1.5 text-xs font-semibold text-brand-foreground shadow-sm transition hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
-                        >
-                          <MdPayments className="size-3.5" />
-                          Process
-                        </button>
-                      ) : (
-                        <span className="inline-flex items-center gap-1.5 rounded-lg border bg-emerald-500/10 px-3 py-1.5 text-xs font-semibold text-emerald-500">
-                          <MdCheckCircle className="size-3.5" />
-                          Done
-                        </span>
-                      )}
-                    </td>
-                  </tr>
+        <div className="app-surface overflow-x-auto rounded-2xl border">
+          <table className="w-full text-left text-sm">
+            <thead className="border-b bg-muted/30">
+              <tr>
+                {[
+                  'Member',
+                  'Opportunity',
+                  'Units',
+                  'Principal',
+                  'Projected return',
+                  'Total payout',
+                  'Status',
+                  'Review',
+                ].map((label) => (
+                  <th key={label} className="px-4 py-4 font-semibold text-muted-foreground">
+                    {label}
+                  </th>
                 ))}
-                {filteredPayouts.length === 0 && (
-                  <tr>
-                    <td colSpan={5} className="p-8 text-center text-sm text-muted-foreground">
-                      No payouts found for this category.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
+              </tr>
+            </thead>
+            <tbody className="divide-y">
+              {items.map((item) => (
+                <tr key={item._id}>
+                  <td className="px-4 py-4">
+                    <p className="font-medium">{item.userId.name}</p>
+                    <p className="text-xs text-muted-foreground">{item.userId.email}</p>
+                  </td>
+                  <td className="px-4 py-4">{item.opportunityId.title}</td>
+                  <td className="px-4 py-4">{item.ownershipId.units}</td>
+                  <td className="px-4 py-4">{money(item.principalMinorUnits)}</td>
+                  <td className="px-4 py-4 text-brand">{money(item.returnMinorUnits)}</td>
+                  <td className="px-4 py-4 font-semibold">{money(item.totalPayoutMinorUnits)}</td>
+                  <td className="px-4 py-4">{item.status}</td>
+                  <td className="px-4 py-4">
+                    <button
+                      disabled={loadingDetail}
+                      onClick={() => void open(item._id)}
+                      className="inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold hover:bg-muted"
+                    >
+                      <MdVisibility /> Review details
+                    </button>
+                  </td>
+                </tr>
+              ))}
+              {items.length === 0 && (
+                <tr>
+                  <td colSpan={8} className="p-10 text-center text-muted-foreground">
+                    No payouts match this view.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
         </div>
-
       </div>
+      {detail && (
+        <ReviewPanel
+          detail={detail}
+          note={note}
+          setNote={setNote}
+          busy={busy}
+          close={() => setDetail(undefined)}
+          review={review}
+        />
+      )}
     </DashboardShell>
+  );
+}
+
+function ReviewPanel({
+  detail,
+  note,
+  setNote,
+  busy,
+  close,
+  review,
+}: {
+  detail: PayoutDetail;
+  note: string;
+  setNote: (value: string) => void;
+  busy: boolean;
+  close: () => void;
+  review: (action: 'APPROVED' | 'REJECTED') => Promise<void>;
+}) {
+  const { payout, wallet, accruals } = detail;
+  const reviewable = payout.status === 'PENDING' || payout.status === 'PROCESSING';
+  return (
+    <div className="fixed inset-0 z-50 flex justify-end bg-black/45 backdrop-blur-sm">
+      <aside className="h-full w-full max-w-3xl overflow-y-auto bg-background shadow-2xl">
+        <header className="sticky top-0 z-10 flex items-start justify-between border-b bg-background/95 p-6 backdrop-blur">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-wider text-brand">
+              Maturity validation
+            </p>
+            <h2 className="mt-1 font-sans text-2xl font-semibold">
+              {payout.opportunityId.title}
+            </h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Review every factor before approving this payout.
+            </p>
+          </div>
+          <button onClick={close} className="rounded-lg border p-2">
+            <MdClose />
+          </button>
+        </header>
+        <div className="space-y-6 p-6">
+          <Section title="Member and wallet">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Metric label="Member" value={payout.userId.name} helper={payout.userId.email} />
+              <Metric
+                label="Account status"
+                value={payout.userId.status}
+                helper={`Joined ${date(payout.userId.createdAt)}`}
+              />
+              <Metric
+                label="Deposit balance"
+                value={money(wallet.deposit.availableBalanceMinorUnits)}
+                helper={`${money(wallet.deposit.pendingBalanceMinorUnits)} pending`}
+              />
+              <Metric
+                label="Earnings balance"
+                value={money(wallet.earnings.availableBalanceMinorUnits)}
+                helper={`${money(wallet.earnings.lifetimeEarningsMinorUnits)} lifetime earnings`}
+              />
+              <Metric
+                label="Total available wallet"
+                value={money(wallet.totalAvailableBalanceMinorUnits)}
+              />
+            </div>
+          </Section>
+          <Section title="Opportunity terms">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Metric
+                label="Opportunity"
+                value={payout.opportunityId.title}
+                helper={payout.opportunityId.category}
+              />
+              <Metric label="Location" value={payout.opportunityId.location || 'Not specified'} />
+              <Metric
+                label="Duration"
+                value={`${payout.opportunityId.durationMonths} months`}
+                helper={`${payout.opportunityId.returnSchedule.replaceAll('_', ' ').toLowerCase()} returns`}
+              />
+              <Metric
+                label="Projected ROI"
+                value={`${payout.opportunityId.projectedReturnRatePercent}%`}
+                helper={`Monthly for ${payout.ownershipId.units} units: ${money((payout.opportunityId.projectedMonthlyProfitMinorUnits ?? Math.round(payout.opportunityId.projectedProfitMinorUnits / Math.max(1, payout.opportunityId.durationMonths))) * payout.ownershipId.units)}`}
+              />
+              <Metric
+                label="Rollover"
+                value={payout.opportunityId.rolloverAllowed ? 'Enabled' : 'Disabled'}
+                helper={
+                  payout.opportunityId.rolloverCompoundsReturns
+                    ? 'Returns compound into capital'
+                    : 'No compounding'
+                }
+              />
+            </div>
+          </Section>
+          <Section title="Ownership and maturity">
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              <Metric label="Units acquired" value={String(payout.ownershipId.units)} />
+              <Metric label="Original principal" value={money(payout.principalMinorUnits)} />
+              <Metric
+                label="Final capital"
+                value={money(payout.ownershipId.investmentCapitalMinorUnits)}
+              />
+              <Metric label="Accrued return" value={money(payout.returnMinorUnits)} />
+              <Metric label="Total payout" value={money(payout.totalPayoutMinorUnits)} />
+              <Metric
+                label="Time held"
+                value={`${payout.ownershipId.cyclesAccrued} monthly cycles`}
+                helper={`${date(payout.ownershipId.createdAt)} – ${date(payout.ownershipId.completedAt ?? payout.ownershipId.maturityAt)}`}
+              />
+            </div>
+          </Section>
+          <Section title="Monthly accrual evidence">
+            <div className="overflow-x-auto rounded-xl border">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-muted/40">
+                  <tr>
+                    {[
+                      'Cycle',
+                      'Scheduled',
+                      'Opening capital',
+                      'Return',
+                      'Closing capital',
+                      'Treatment',
+                    ].map((label) => (
+                      <th key={label} className="px-3 py-3">
+                        {label}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y">
+                  {accruals.map((item) => (
+                    <tr key={item._id}>
+                      <td className="px-3 py-3">{item.cycleNumber}</td>
+                      <td className="px-3 py-3">{date(item.scheduledFor)}</td>
+                      <td className="px-3 py-3">{money(item.principalBeforeMinorUnits)}</td>
+                      <td className="px-3 py-3 text-brand">{money(item.returnMinorUnits)}</td>
+                      <td className="px-3 py-3">{money(item.principalAfterMinorUnits)}</td>
+                      <td className="px-3 py-3">
+                        {item.rolledOver ? 'Rolled over' : item.status.replaceAll('_', ' ')}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </Section>
+          {reviewable && (
+            <Section title="Admin decision">
+              <textarea
+                value={note}
+                onChange={(event) => setNote(event.target.value)}
+                placeholder="Optional approval note; required when rejecting"
+                className="min-h-24 w-full rounded-xl border bg-background p-3 text-sm outline-none focus:ring-2 focus:ring-brand"
+              />
+              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                <button
+                  disabled={busy}
+                  onClick={() => void review('REJECTED')}
+                  className="h-11 rounded-xl border font-semibold text-red-500 disabled:opacity-50"
+                >
+                  Reject payout
+                </button>
+                <button
+                  disabled={busy}
+                  onClick={() => void review('APPROVED')}
+                  className="h-11 rounded-xl bg-brand font-semibold text-brand-foreground disabled:opacity-50"
+                >
+                  Approve and credit earnings
+                </button>
+              </div>
+            </Section>
+          )}
+        </div>
+      </aside>
+    </div>
+  );
+}
+
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <section className="rounded-2xl border bg-background p-5">
+      <h3 className="mb-4 font-sans text-lg font-semibold">{title}</h3>
+      {children}
+    </section>
+  );
+}
+function Metric({ label, value, helper }: { label: string; value: string; helper?: string }) {
+  return (
+    <div className="rounded-xl bg-muted/40 p-4">
+      <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+        {label}
+      </p>
+      <p className="mt-2 font-semibold capitalize">{value}</p>
+      {helper && <p className="mt-1 text-xs text-muted-foreground">{helper}</p>}
+    </div>
+  );
+}
+function Stat({
+  label,
+  value,
+  icon: Icon,
+}: {
+  label: string;
+  value: string;
+  icon: React.ComponentType<{ className?: string }>;
+}) {
+  return (
+    <div className="app-surface rounded-2xl border p-5">
+      <div className="flex items-center justify-between text-muted-foreground">
+        <p className="text-xs font-bold uppercase tracking-wider">{label}</p>
+        <Icon className="size-4" />
+      </div>
+      <p className="mt-4 text-2xl font-semibold">{value}</p>
+    </div>
   );
 }

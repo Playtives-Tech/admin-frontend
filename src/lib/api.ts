@@ -1,5 +1,5 @@
 import { env } from './env';
-import { getToken } from './auth';
+import { clearToken, getToken } from './auth';
 
 export class ApiError extends Error {
   constructor(
@@ -13,15 +13,29 @@ export class ApiError extends Error {
 
 export async function api<T>(path: string, init?: RequestInit): Promise<T> {
   const token = getToken();
+  const isFormData = init?.body instanceof FormData;
   const response = await fetch(new URL(path, env.NEXT_PUBLIC_API_URL), {
     ...init,
     headers: {
       Accept: 'application/json',
-      'Content-Type': 'application/json',
+      ...(!isFormData && init?.body ? { 'Content-Type': 'application/json' } : {}),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...init?.headers,
     },
   });
-  if (!response.ok) throw new ApiError(response.status, await response.text());
+  if (!response.ok) {
+    if (response.status === 401 && typeof window !== 'undefined') {
+      clearToken();
+      window.location.replace('/login');
+    }
+    const body: unknown = await response.json().catch(() => null);
+    const message =
+      typeof body === 'object' && body !== null && 'message' in body
+        ? Array.isArray(body.message)
+          ? body.message.join('. ')
+          : String(body.message)
+        : 'Request failed. Please try again.';
+    throw new ApiError(response.status, message);
+  }
   return response.json() as Promise<T>;
 }

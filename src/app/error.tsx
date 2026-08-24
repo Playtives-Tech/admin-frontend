@@ -4,7 +4,7 @@ export default function ErrorPage({ reset }: { reset: () => void }): React.JSX.E
     <main className="container grid min-h-screen place-items-center">
       <section className="text-center">
         <p className="text-sm font-semibold text-brand">Something went wrong</p>
-        <h1 className="mt-2 font-heading text-3xl font-semibold">Please try again.</h1>
+        <h1 className="mt-2 font-sans text-3xl font-semibold">Please try again.</h1>
         <button
           type="button"
           onClick={reset}

@@ -1,120 +1,92 @@
 'use client';
 
+import { ArrowDownRight, ArrowUpRight, TrendingUp, UsersRound, WalletCards } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { DashboardShell } from '@/components/dashboard/shell';
-import { 
-  UsersRound, 
-  Wallet, 
-  TrendingUp, 
-  AlertCircle,
-  ShieldCheck
-} from 'lucide-react';
+import { getAdminOverview, type AdminOverview } from '@/lib/services/member-operations-service';
+import { notify } from '@/lib/notify';
 
-// Mock Data
-const kpis = [
-  { label: 'Total Users', value: '2,845', change: '+12.5%', isPositive: true, icon: UsersRound },
-  { label: 'Total Investment', value: '₦1.2B', change: '+8.2%', isPositive: true, icon: Wallet },
-  { label: 'Avg ROI', value: '14.5%', change: '+1.2%', isPositive: true, icon: TrendingUp },
-  { label: 'Pending KYC', value: '124', change: '-5.4%', isPositive: false, icon: AlertCircle },
-];
-
-const recentActivity = [
-  { id: 1, action: 'New user joined', user: 'sarah.j@example.com', time: '10 mins ago', type: 'signup' },
-  { id: 2, action: 'Opportunity fully funded', user: 'Palm oil trade cycle 08', time: '1 hour ago', type: 'investment' },
-  { id: 3, action: 'Payout processed', user: 'Real Estate Fund A', time: '3 hours ago', type: 'payout' },
-  { id: 4, action: 'New user joined', user: 'michael.t@example.com', time: '5 hours ago', type: 'signup' },
-  { id: 5, action: 'Draft published', user: 'Agro Export Batch 12', time: '1 day ago', type: 'investment' },
-];
-
-const chartData = [40, 55, 45, 70, 65, 85, 100, 90, 110, 130, 120, 150];
+const money = (value: number) =>
+  new Intl.NumberFormat('en-NG', {
+    style: 'currency',
+    currency: 'NGN',
+    maximumFractionDigits: 0,
+  }).format(value / 100);
 
 export default function OverviewPage(): React.JSX.Element {
+  const [overview, setOverview] = useState<AdminOverview | null>(null);
+
+  useEffect(() => {
+    void getAdminOverview().then(setOverview).catch(() => notify.error('Could not load overview'));
+  }, []);
+
+  const metrics = [
+    { label: 'Settled deposits', value: money(overview?.depositsMinorUnits ?? 0), icon: ArrowDownRight },
+    {
+      label: 'Completed withdrawals',
+      value: money(overview?.withdrawalsMinorUnits ?? 0),
+      icon: ArrowUpRight,
+    },
+    { label: 'Members', value: (overview?.users ?? 0).toLocaleString(), icon: UsersRound },
+    {
+      label: 'Amount invested',
+      value: money(overview?.investedMinorUnits ?? 0),
+      icon: WalletCards,
+    },
+    {
+      label: 'Expected return',
+      value: money(overview?.expectedReturnMinorUnits ?? 0),
+      icon: TrendingUp,
+    },
+  ];
+  const maximum = Math.max(...(overview?.growth.map((point) => point.investedMinorUnits) ?? []), 1);
+
   return (
-    <DashboardShell title="Overview" description="Platform statistics and recent activity">
-      <div className="mx-auto max-w-6xl space-y-8">
-        
-        {/* KPI Cards */}
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {kpis.map((kpi, i) => (
-            <div key={i} className="app-surface rounded-2xl border p-5 shadow-sm transition hover:border-brand/35">
-              <div className="flex items-center justify-between text-muted-foreground">
-                <p className="text-xs font-bold uppercase tracking-wider">{kpi.label}</p>
-                <kpi.icon className="size-4" />
+    <DashboardShell
+      title="Overview"
+      description="Settled wallet activity, member ownership, and expected returns."
+    >
+      <div className="mx-auto max-w-6xl space-y-5">
+        <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+          {metrics.map(({ label, value, icon: Icon }) => (
+            <article key={label} className="app-surface rounded-xl border p-4">
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-xs font-medium text-muted-foreground">{label}</p>
+                <Icon className="size-4 text-brand" />
               </div>
-              <div className="mt-4 flex items-end justify-between">
-                <h3 className="font-heading text-2xl font-semibold">{kpi.value}</h3>
-                <div className={`flex items-center gap-1 text-xs font-medium ${kpi.isPositive ? 'text-emerald-500' : 'text-red-500'}`}>
-                  {kpi.change}
-                </div>
-              </div>
-            </div>
+              <p className="mt-3 text-lg font-semibold tracking-tight">{value}</p>
+            </article>
           ))}
-        </div>
+        </section>
 
-        {/* Main Content Grid */}
-        <div className="grid gap-8 lg:grid-cols-3">
-          
-          {/* Chart Section */}
-          <div className="app-surface rounded-2xl border p-6 shadow-sm lg:col-span-2">
-            <div className="mb-6 flex items-center justify-between">
-              <div>
-                <h3 className="font-semibold">Growth Overview</h3>
-                <p className="text-xs text-muted-foreground">Monthly active investments (6mo)</p>
-              </div>
-              <TrendingUp className="size-5 text-muted-foreground" fill="currentColor" fillOpacity={0.2} />
+        <section className="app-surface rounded-xl border p-5">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h2 className="text-sm font-semibold">Growth overview</h2>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Ownership capital recorded over the last six months.
+              </p>
             </div>
-            
-            {/* Simple CSS Bar Chart Mock */}
-            <div className="mt-8 flex h-48 items-end justify-between gap-2 md:gap-4">
-              {chartData.map((height, i) => (
-                <div key={i} className="group relative flex w-full flex-col justify-end">
-                  <div 
-                    className="w-full rounded-t-sm bg-brand/20 transition-all group-hover:bg-brand"
-                    style={{ height: `${(height / 150) * 100}%` }}
-                  />
-                  {/* Tooltip on hover */}
-                  <div className="absolute -top-8 left-1/2 -translate-x-1/2 rounded bg-foreground px-2 py-1 text-[10px] font-medium text-background opacity-0 transition-opacity group-hover:opacity-100">
-                    {height}k
-                  </div>
-                </div>
-              ))}
-            </div>
-            <div className="mt-4 flex justify-between border-t pt-4 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-              <span>Jan</span>
-              <span>Feb</span>
-              <span>Mar</span>
-              <span>Apr</span>
-              <span>May</span>
-              <span>Jun</span>
-            </div>
+            <TrendingUp className="size-4 text-brand" />
           </div>
-
-          {/* Recent Activity */}
-          <div className="app-surface rounded-2xl border p-6 shadow-sm">
-            <h3 className="font-semibold">Recent Activity</h3>
-            <p className="text-xs text-muted-foreground">Latest platform events</p>
-            
-            <div className="mt-6 grid gap-6">
-              {recentActivity.map((activity) => (
-                <div key={activity.id} className="flex gap-4">
-                  <div className="relative mt-1 flex size-6 shrink-0 items-center justify-center">
-                    {activity.type === 'signup' ? <UsersRound className="size-4" fill="currentColor" fillOpacity={0.2} /> : 
-                     activity.type === 'investment' ? <Wallet className="size-4" fill="currentColor" fillOpacity={0.2} /> : 
-                     <ShieldCheck className="size-4" fill="currentColor" fillOpacity={0.2} />}
-                    {activity.id !== recentActivity.length && (
-                      <div className="absolute left-1/2 top-6 h-6 w-px -translate-x-1/2 bg-border" />
-                    )}
+          <div className="mt-6 grid h-44 grid-cols-6 items-end gap-3">
+            {(overview?.growth ?? []).map((point) => {
+              const height = Math.max(6, (point.investedMinorUnits / maximum) * 100);
+              return (
+                <div key={point.month} className="group flex h-full flex-col justify-end">
+                  <div className="relative flex flex-1 items-end">
+                    <div
+                      className="w-full rounded-t-md bg-brand/75 transition-colors group-hover:bg-brand"
+                      style={{ height: `${height}%` }}
+                      title={`${point.label}: ${money(point.investedMinorUnits)}`}
+                    />
                   </div>
-                  <div className="grid gap-0.5">
-                    <p className="text-sm font-medium">{activity.action}</p>
-                    <p className="text-xs text-muted-foreground">{activity.user}</p>
-                    <p className="text-[10px] font-medium text-muted-foreground/60">{activity.time}</p>
-                  </div>
+                  <p className="mt-2 text-center text-[11px] text-muted-foreground">{point.label}</p>
                 </div>
-              ))}
-            </div>
+              );
+            })}
           </div>
-          
-        </div>
+        </section>
       </div>
     </DashboardShell>
   );

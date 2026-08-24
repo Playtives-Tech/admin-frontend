@@ -3,7 +3,8 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/components/providers/auth-provider';
-
+import { ApiError } from '@/lib/api';
+import { loginAdmin } from '@/lib/services/auth-service';
 import { cn } from '@/lib/utils';
 
 export default function LoginPage(): React.JSX.Element {
@@ -23,13 +24,15 @@ export default function LoginPage(): React.JSX.Element {
       if (!email || !password) {
         throw new Error('Email and password are required');
       }
-      // Temporary bypass for backend login
-      await new Promise((resolve) => setTimeout(resolve, 500));
-      
-      login('mock-access-token');
+      const response = await loginAdmin(email.trim().toLowerCase(), password);
+      if (!response.user.roles.includes('ADMIN')) throw new Error('Admin access is required');
+      login(response.accessToken);
       router.replace('/overview');
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Something went wrong. Please try again.';
+      const message =
+        err instanceof ApiError || err instanceof Error
+          ? err.message
+          : 'Something went wrong. Please try again.';
       setError(message);
     } finally {
       setIsPending(false);
@@ -42,12 +45,11 @@ export default function LoginPage(): React.JSX.Element {
         {/* Logo / wordmark */}
         <div className="mb-10 text-center">
           <span className="inline-flex items-center gap-2">
-            <span className="size-8 rounded-lg bg-brand" aria-hidden="true" />
-            <span className="font-heading text-2xl font-semibold tracking-tight">
+            <span className="font-sans text-2xl font-semibold tracking-tight">
               Playtives Admin
             </span>
           </span>
-          <p className="mt-2 text-sm text-muted-foreground">Sign in to your admin workspace</p>
+          <p className="text-sm text-muted-foreground">Sign in to your admin workspace</p>
         </div>
 
         {/* Card */}

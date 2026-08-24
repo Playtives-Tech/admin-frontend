@@ -6,6 +6,7 @@ import { clearToken, decodeToken, getToken, setToken } from '@/lib/auth';
 interface AdminUser {
   sub: string;
   email: string;
+  roles: string[];
 }
 
 interface AuthContextValue {
@@ -20,18 +21,22 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 
 function parseToken(token: string | null): AdminUser | null {
   if (!token) return null;
-  if (token === 'mock-access-token') {
-    return { sub: 'mock-sub', email: 'admin@playtives.com' };
-  }
   const payload = decodeToken(token);
-  if (!payload || typeof payload.sub !== 'string' || typeof payload.email !== 'string')
+  if (
+    !payload ||
+    typeof payload.sub !== 'string' ||
+    typeof payload.email !== 'string' ||
+    !Array.isArray(payload.roles) ||
+    !payload.roles.every((role) => typeof role === 'string') ||
+    !payload.roles.includes('ADMIN')
+  )
     return null;
   // Check expiry
   if (typeof payload.exp === 'number' && payload.exp * 1000 < Date.now()) {
     clearToken();
     return null;
   }
-  return { sub: payload.sub, email: payload.email };
+  return { sub: payload.sub, email: payload.email, roles: payload.roles };
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }): React.JSX.Element {

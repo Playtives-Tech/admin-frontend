@@ -47,7 +47,7 @@ export function DashboardSidebar(): React.JSX.Element {
       {/* Wordmark */}
       <Link
         href="/overview"
-        className="flex items-center gap-3 px-2 font-heading text-xl font-semibold"
+        className="flex items-center gap-3 px-2 font-sans text-xl font-semibold"
       >
         <span className="size-7 rounded-lg bg-brand" aria-hidden="true" />
         Playtives

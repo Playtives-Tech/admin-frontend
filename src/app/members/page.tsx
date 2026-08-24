@@ -1,36 +1,53 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { MdSearch, MdTune, MdChevronLeft, MdChevronRight, MdVisibility } from 'react-icons/md';
 import { DashboardShell } from '@/components/dashboard/shell';
 import { cn } from '@/lib/utils';
-
-// Mock Data
-const members = [
-  { id: '1', name: 'Sarah Jenkins', email: 'sarah.j@example.com', joined: 'Oct 12, 2025', activeInvestments: 3, totalInvested: 4500000, status: 'Active' },
-  { id: '2', name: 'Michael Tosin', email: 'michael.t@example.com', joined: 'Nov 02, 2025', activeInvestments: 1, totalInvested: 100000, status: 'Active' },
-  { id: '3', name: 'Zainab Bello', email: 'zainab.b@example.com', joined: 'Nov 15, 2025', activeInvestments: 0, totalInvested: 0, status: 'Pending KYC' },
-  { id: '4', name: 'David Olatunji', email: 'david.o@example.com', joined: 'Dec 01, 2025', activeInvestments: 5, totalInvested: 12500000, status: 'Active' },
-  { id: '5', name: 'Chika Nnamdi', email: 'chika.n@example.com', joined: 'Jan 10, 2026', activeInvestments: 2, totalInvested: 800000, status: 'Suspended' },
-  { id: '6', name: 'Aisha Yekini', email: 'aisha.y@example.com', joined: 'Feb 22, 2026', activeInvestments: 4, totalInvested: 3200000, status: 'Active' },
-];
+import { getMembers, type AdminMember } from '@/lib/services/member-operations-service';
+import { notify } from '@/lib/notify';
 
 export default function MembersPage(): React.JSX.Element {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [members, setMembers] = useState<AdminMember[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+  const pageSize = 20;
 
-  const filteredMembers = members.filter((m) => {
-    const matchesSearch = m.name.toLowerCase().includes(search.toLowerCase()) || m.email.toLowerCase().includes(search.toLowerCase());
-    const matchesStatus = statusFilter === 'All' || m.status === statusFilter;
-    return matchesSearch && matchesStatus;
-  });
+  useEffect(() => {
+    setIsLoading(true);
+    const timer = window.setTimeout(() => {
+      const status =
+        statusFilter === 'Active'
+          ? 'active'
+          : statusFilter === 'Pending KYC'
+            ? 'pending'
+            : statusFilter === 'Suspended'
+              ? 'suspended'
+              : 'all';
+      void getMembers({ page, limit: pageSize, search: search.trim(), status })
+        .then(
+          (response) => {
+            setMembers(response.items);
+            setTotalItems(response.pagination.totalItems);
+            setTotalPages(response.pagination.totalPages);
+          },
+          (error: unknown) =>
+            notify.error(error instanceof Error ? error.message : 'Could not load members'),
+        )
+        .finally(() => setIsLoading(false));
+    }, 300);
+    return () => window.clearTimeout(timer);
+  }, [page, search, statusFilter]);
 
   return (
     <DashboardShell title="Members" description="Manage user accounts and portfolios">
       <div className="mx-auto max-w-6xl">
-        
         {/* Header Controls */}
         <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="relative w-full max-w-md">
@@ -39,12 +56,15 @@ export default function MembersPage(): React.JSX.Element {
               type="text"
               placeholder="Search by name or email..."
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setPage(1);
+              }}
               className="w-full rounded-xl border bg-background py-2 pl-9 pr-4 text-sm outline-none transition focus:border-brand focus:ring-1 focus:ring-brand"
             />
           </div>
           <div className="relative">
-            <button 
+            <button
               onClick={() => setIsFilterOpen(!isFilterOpen)}
               className="flex w-max items-center gap-2 rounded-xl border bg-background px-4 py-2 text-sm font-medium transition hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
             >
@@ -53,17 +73,20 @@ export default function MembersPage(): React.JSX.Element {
             </button>
             {isFilterOpen && (
               <div className="absolute right-0 top-full z-10 mt-2 w-48 rounded-xl border bg-surface p-2 shadow-xl">
-                <div className="text-xs font-bold uppercase tracking-wider text-muted-foreground px-3 py-2">Status</div>
+                <div className="px-3 py-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                  Status
+                </div>
                 {['All', 'Active', 'Pending KYC', 'Suspended'].map((status) => (
                   <button
                     key={status}
                     onClick={() => {
                       setStatusFilter(status);
+                      setPage(1);
                       setIsFilterOpen(false);
                     }}
                     className={cn(
-                      "w-full rounded-lg px-3 py-2 text-left text-sm transition hover:bg-muted",
-                      statusFilter === status && "bg-brand/10 text-brand font-medium"
+                      'w-full rounded-lg px-3 py-2 text-left text-sm transition hover:bg-muted',
+                      statusFilter === status && 'bg-brand/10 font-medium text-brand',
                     )}
                   >
                     {status}
@@ -82,18 +105,25 @@ export default function MembersPage(): React.JSX.Element {
                 <tr>
                   <th className="px-6 py-4 font-semibold text-muted-foreground">User</th>
                   <th className="px-6 py-4 font-semibold text-muted-foreground">Join Date</th>
-                  <th className="px-6 py-4 font-semibold text-muted-foreground text-right">Active Inv.</th>
-                  <th className="px-6 py-4 font-semibold text-muted-foreground text-right">Total Invested</th>
+                  <th className="px-6 py-4 font-semibold text-muted-foreground">Role</th>
+                  <th className="px-6 py-4 text-right font-semibold text-muted-foreground">
+                    Active Inv.
+                  </th>
+                  <th className="px-6 py-4 text-right font-semibold text-muted-foreground">
+                    Total Invested
+                  </th>
                   <th className="px-6 py-4 font-semibold text-muted-foreground">Status</th>
-                  <th className="px-6 py-4 font-semibold text-muted-foreground text-right">Actions</th>
+                  <th className="px-6 py-4 text-right font-semibold text-muted-foreground">
+                    Actions
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y">
-                {filteredMembers.map((member) => (
-                  <tr key={member.id} className="transition hover:bg-muted/30">
+                {members.map((member) => (
+                  <tr key={member._id} className="transition hover:bg-muted/30">
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
-                        <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-brand/10 font-heading font-semibold text-brand">
+                        <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-brand/10 font-sans font-semibold text-brand">
                           {member.name.charAt(0)}
                         </div>
                         <div>
@@ -102,22 +132,45 @@ export default function MembersPage(): React.JSX.Element {
                         </div>
                       </div>
                     </td>
-                    <td className="px-6 py-4 text-muted-foreground">{member.joined}</td>
-                    <td className="px-6 py-4 text-right font-medium">{member.activeInvestments}</td>
-                    <td className="px-6 py-4 text-right font-medium">₦{member.totalInvested.toLocaleString()}</td>
+                    <td className="px-6 py-4 text-muted-foreground">
+                      {new Date(member.createdAt).toLocaleDateString('en-NG')}
+                    </td>
                     <td className="px-6 py-4">
-                      <span className={cn(
-                        "inline-flex items-center rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider",
-                        member.status === 'Active' ? 'bg-emerald-500/10 text-emerald-500' :
-                        member.status === 'Pending KYC' ? 'bg-amber-500/10 text-amber-500' :
-                        'bg-red-500/10 text-red-500'
-                      )}>
-                        {member.status}
+                      <span className="rounded-full bg-brand/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-brand">
+                        {member.roles?.join(', ') || 'Member'}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-right font-medium">
+                      {member.activeOwnershipCount ?? 0}
+                    </td>
+                    <td className="px-6 py-4 text-right font-medium">
+                      {new Intl.NumberFormat('en-NG', {
+                        style: 'currency',
+                        currency: 'NGN',
+                        maximumFractionDigits: 0,
+                      }).format((member.totalInvestedMinorUnits ?? 0) / 100)}
+                    </td>
+                    <td className="px-6 py-4">
+                      <span
+                        className={cn(
+                          'inline-flex items-center rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider',
+                          member.status === 'active' && member.emailVerifiedAt
+                            ? 'bg-emerald-500/10 text-emerald-500'
+                            : member.status === 'active'
+                              ? 'bg-amber-500/10 text-amber-500'
+                              : 'bg-red-500/10 text-red-500',
+                        )}
+                      >
+                        {member.status === 'suspended'
+                          ? 'Suspended'
+                          : member.emailVerifiedAt
+                            ? 'Active'
+                            : 'Pending KYC'}
                       </span>
                     </td>
                     <td className="px-6 py-4 text-right">
-                      <Link 
-                        href={`/members/${member.id}`} 
+                      <Link
+                        href={`/members/${member._id}`}
                         className="inline-flex items-center gap-1.5 rounded-lg border bg-background px-3 py-1.5 text-xs font-medium transition hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
                       >
                         <MdVisibility className="size-3.5" />
@@ -126,24 +179,47 @@ export default function MembersPage(): React.JSX.Element {
                     </td>
                   </tr>
                 ))}
+                {!isLoading && members.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="px-6 py-10 text-center text-muted-foreground">
+                      No members match this view.
+                    </td>
+                  </tr>
+                ) : null}
               </tbody>
             </table>
           </div>
-          
+
           {/* Pagination */}
           <div className="flex items-center justify-between border-t p-4">
-            <p className="text-xs text-muted-foreground">Showing 1 to {filteredMembers.length} of 142</p>
+            <p className="text-xs text-muted-foreground">
+              {totalItems === 0
+                ? 'No members'
+                : `Showing ${(page - 1) * pageSize + 1}–${Math.min(page * pageSize, totalItems)} of ${totalItems}`}
+            </p>
             <div className="flex items-center gap-2">
-              <button className="grid size-8 place-items-center rounded-lg border bg-background text-muted-foreground transition hover:bg-muted hover:text-foreground">
+              <span className="px-2 text-xs text-muted-foreground">
+                Page {page} of {totalPages}
+              </span>
+              <button
+                type="button"
+                disabled={page <= 1 || isLoading}
+                onClick={() => setPage((current) => Math.max(1, current - 1))}
+                className="grid size-8 place-items-center rounded-lg border bg-background text-muted-foreground transition hover:bg-muted hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
+              >
                 <MdChevronLeft className="size-4" />
               </button>
-              <button className="grid size-8 place-items-center rounded-lg border bg-background text-muted-foreground transition hover:bg-muted hover:text-foreground">
+              <button
+                type="button"
+                disabled={page >= totalPages || isLoading}
+                onClick={() => setPage((current) => Math.min(totalPages, current + 1))}
+                className="grid size-8 place-items-center rounded-lg border bg-background text-muted-foreground transition hover:bg-muted hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
+              >
                 <MdChevronRight className="size-4" />
               </button>
             </div>
           </div>
         </div>
-
       </div>
     </DashboardShell>
   );
