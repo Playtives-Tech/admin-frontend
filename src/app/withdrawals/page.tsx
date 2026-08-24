@@ -16,6 +16,8 @@ import {
   getWithdrawalRequests,
   reviewWithdrawalRequest,
 } from '@/lib/services/member-operations-service';
+import { DateRangeFilter } from '@/components/ui/date-range-filter';
+import { defaultAdminDateRange, type AdminDateRange } from '@/lib/date-range';
 
 interface WithdrawalRequest {
   id: string;
@@ -41,13 +43,15 @@ export default function WithdrawalsPage(): React.JSX.Element {
   const [paymentReference, setPaymentReference] = useState('');
   const [reviewNote, setReviewNote] = useState('');
   const [isReviewing, setIsReviewing] = useState(false);
+  const [range, setRange] = useState<AdminDateRange>(defaultAdminDateRange);
 
   const filteredWithdrawals = withdrawals.filter(
     (w) => statusFilter === 'All' || w.status === statusFilter,
   );
 
   useEffect(() => {
-    void getWithdrawalRequests().then(
+    if (range.preset === 'custom' && (!range.from || !range.to)) return;
+    void getWithdrawalRequests(range).then(
       (records) =>
         setWithdrawals(
           records.map((record) => ({
@@ -73,7 +77,7 @@ export default function WithdrawalsPage(): React.JSX.Element {
         ),
       () => notify.error('Could not load withdrawal requests'),
     );
-  }, []);
+  }, [range]);
 
   const pending = withdrawals.filter((request) => request.status === 'Pending');
   const stats = [
@@ -121,6 +125,7 @@ export default function WithdrawalsPage(): React.JSX.Element {
   return (
     <DashboardShell title="Withdrawals" description="Process user withdrawal requests">
       <div className="mx-auto max-w-6xl space-y-8">
+        <DateRangeFilter value={range} onChange={setRange} />
         {/* Statistics Cards */}
         <div className="grid gap-4 sm:grid-cols-3">
           {stats.map((stat, i) => (

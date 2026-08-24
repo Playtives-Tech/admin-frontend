@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { DashboardShell } from '@/components/dashboard/shell';
 import { acquisitionService, type AdminAcquisition } from '@/lib/services/acquisition-service';
 import { notify } from '@/lib/notify';
+import { DateRangeFilter } from '@/components/ui/date-range-filter';
+import { defaultAdminDateRange, type AdminDateRange } from '@/lib/date-range';
 
 const money = (value: number) =>
   new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN', maximumFractionDigits: 0 }).format(value / 100);
@@ -17,15 +19,16 @@ const statusClass: Record<AdminAcquisition['status'], string> = {
 export default function AcquisitionsPage(): React.JSX.Element {
   const [items, setItems] = useState<AdminAcquisition[]>([]);
   const [memberId, setMemberId] = useState('all');
+  const [range, setRange] = useState<AdminDateRange>(defaultAdminDateRange);
 
   useEffect(() => {
     void acquisitionService
-      .list()
+      .list(range)
       .then(setItems)
       .catch((error: unknown) =>
         notify.error(error instanceof Error ? error.message : 'Could not load ownerships'),
       );
-  }, []);
+  }, [range]);
 
   const members = useMemo(
     () => Array.from(new Map(items.map((item) => [item.userId._id, item.userId])).values()),
@@ -41,6 +44,7 @@ export default function AcquisitionsPage(): React.JSX.Element {
   return (
     <DashboardShell title="User ownerships" description="A concise ledger of member opportunity ownerships.">
       <div className="mx-auto max-w-6xl space-y-5">
+        <DateRangeFilter value={range} onChange={setRange} />
         <section className="app-surface flex flex-col gap-3 rounded-xl border p-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h2 className="text-sm font-semibold">Ownership ledger</h2>

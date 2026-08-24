@@ -7,6 +7,8 @@ import { DashboardShell } from '@/components/dashboard/shell';
 import { cn } from '@/lib/utils';
 import { getMembers, type AdminMember } from '@/lib/services/member-operations-service';
 import { notify } from '@/lib/notify';
+import { DateRangeFilter } from '@/components/ui/date-range-filter';
+import { defaultAdminDateRange, type AdminDateRange } from '@/lib/date-range';
 
 export default function MembersPage(): React.JSX.Element {
   const [search, setSearch] = useState('');
@@ -17,6 +19,7 @@ export default function MembersPage(): React.JSX.Element {
   const [page, setPage] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
+  const [range, setRange] = useState<AdminDateRange>(defaultAdminDateRange);
   const pageSize = 20;
 
   useEffect(() => {
@@ -30,7 +33,8 @@ export default function MembersPage(): React.JSX.Element {
             : statusFilter === 'Suspended'
               ? 'suspended'
               : 'all';
-      void getMembers({ page, limit: pageSize, search: search.trim(), status })
+      if (range.preset === 'custom' && (!range.from || !range.to)) return;
+      void getMembers({ page, limit: pageSize, search: search.trim(), status, range })
         .then(
           (response) => {
             setMembers(response.items);
@@ -43,7 +47,7 @@ export default function MembersPage(): React.JSX.Element {
         .finally(() => setIsLoading(false));
     }, 300);
     return () => window.clearTimeout(timer);
-  }, [page, search, statusFilter]);
+  }, [page, range, search, statusFilter]);
 
   return (
     <DashboardShell title="Members" description="Manage user accounts and portfolios">
@@ -96,6 +100,7 @@ export default function MembersPage(): React.JSX.Element {
             )}
           </div>
         </div>
+        <div className="mb-5"><DateRangeFilter value={range} onChange={(value) => { setRange(value); setPage(1); }} /></div>
 
         {/* Data Table */}
         <div className="app-surface overflow-hidden rounded-2xl border shadow-sm">

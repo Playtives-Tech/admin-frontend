@@ -65,6 +65,18 @@ const inputClass =
 const money = (minor: number) =>
   new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN' }).format(minor / 100);
 const numberOrUndefined = (value: string) => (value === '' ? undefined : Number(value));
+const draftStoragePrefix = 'playtives-admin:opportunity-editor-draft:';
+
+function readDraft(key: string): FormState | null {
+  try {
+    const stored = window.localStorage.getItem(key);
+    if (!stored) return null;
+    const parsed = JSON.parse(stored) as { form?: FormState };
+    return parsed.form && typeof parsed.form === 'object' ? parsed.form : null;
+  } catch {
+    return null;
+  }
+}
 
 function toForm(opportunity: Opportunity): FormState {
   return {
@@ -103,20 +115,47 @@ export function OpportunityEditor({
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [revision, setRevision] = useState(1);
+  const [draftReady, setDraftReady] = useState(false);
+  const [isDirty, setIsDirty] = useState(false);
+  const draftKey = `${draftStoragePrefix}${opportunityId ?? 'new'}`;
 
   useEffect(() => {
-    if (!opportunityId) return;
+    const draft = readDraft(draftKey);
+    if (!opportunityId) {
+      if (draft) {
+        setForm(draft);
+        setIsDirty(true);
+        notify.info('Restored your local opportunity draft.');
+      }
+      setDraftReady(true);
+      return;
+    }
+
     opportunityService
       .get(opportunityId)
       .then((value) => {
-        setForm(toForm(value));
         setRevision(value.revision);
+        if (draft) {
+          setForm(draft);
+          setIsDirty(true);
+          notify.info('Restored your local opportunity draft.');
+        } else {
+          setForm(toForm(value));
+        }
       })
       .catch((error: unknown) =>
         notify.error(error instanceof Error ? error.message : 'Unable to load opportunity'),
       )
-      .finally(() => setLoading(false));
-  }, [opportunityId]);
+      .finally(() => {
+        setLoading(false);
+        setDraftReady(true);
+      });
+  }, [draftKey, opportunityId]);
+
+  useEffect(() => {
+    if (!draftReady || !isDirty) return;
+    window.localStorage.setItem(draftKey, JSON.stringify({ form, savedAt: new Date().toISOString() }));
+  }, [draftKey, draftReady, form, isDirty]);
 
   const projection = useMemo(() => {
     const principal = Math.round((Number(form.price) || 0) * 100);
@@ -177,6 +216,8 @@ export function OpportunityEditor({
     try {
       if (opportunityId) await opportunityService.update(opportunityId, revision, payload(status));
       else await opportunityService.create(payload(status));
+      window.localStorage.removeItem(draftKey);
+      setIsDirty(false);
       notify.success(status === 'PUBLISHED' ? 'Opportunity published.' : 'Draft saved.');
       router.push('/opportunities');
     } catch (error) {
@@ -192,6 +233,7 @@ export function OpportunityEditor({
     try {
       const image = await opportunityService.uploadImage(file);
       setForm((current) => ({ ...current, ...image }));
+      setIsDirty(true);
       notify.success('Image optimized and uploaded.');
     } catch (error) {
       notify.error(error instanceof Error ? error.message : 'Unable to upload image');
@@ -200,8 +242,16 @@ export function OpportunityEditor({
     }
   }
 
-  const set = <K extends keyof FormState>(key: K, value: FormState[K]) =>
+  const set = <K extends keyof FormState>(key: K, value: FormState[K]) => {
+    setIsDirty(true);
     setForm((current) => ({ ...current, [key]: value }));
+  };
+
+  const discardLocalDraft = (): void => {
+    window.localStorage.removeItem(draftKey);
+    setIsDirty(false);
+    window.location.reload();
+  };
   if (loading)
     return (
       <DashboardShell title="Opportunity" description="Loading">
@@ -229,8 +279,22 @@ export function OpportunityEditor({
               Fields marked * are required to save. Publishing requires complete member-facing
               details.
             </p>
+            <p className="mt-2 text-xs text-muted-foreground">
+              {isDirty
+                ? 'Your changes are saved locally on this device.'
+                : 'Draft recovery is ready for any changes you make.'}
+            </p>
           </div>
           <div className="flex gap-2">
+            {isDirty ? (
+              <button
+                type="button"
+                onClick={discardLocalDraft}
+                className="rounded-xl border px-4 py-2 text-sm font-semibold text-muted-foreground"
+              >
+                Discard local changes
+              </button>
+            ) : null}
             {opportunityId && (
               <Link
                 href={`/opportunities/${opportunityId}/delete`}
