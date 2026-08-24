@@ -1,4 +1,5 @@
 import { api } from '@/lib/api';
+import { type AdminDateRange, dateRangeSearchParams } from '@/lib/date-range';
 
 export type MaturityPayoutStatus = 'PENDING' | 'PROCESSING' | 'APPROVED' | 'REJECTED';
 export type MaturityPayout = Readonly<{
@@ -72,8 +73,8 @@ export type PayoutDetail = Readonly<{
 
 const keys = new Map<string, string>();
 export const payoutService = {
-  list: (status?: MaturityPayoutStatus) =>
-    api<MaturityPayout[]>(`/v1/admin/payouts${status ? `?status=${status}` : ''}`, {
+  list: (status: MaturityPayoutStatus | undefined, range: AdminDateRange) =>
+    api<MaturityPayout[]>(`/v1/admin/payouts?${new URLSearchParams({ ...(status ? { status } : {}), ...Object.fromEntries(new URLSearchParams(dateRangeSearchParams(range))) }).toString()}`, {
       cache: 'no-store',
     }),
   get: (id: string) => api<PayoutDetail>(`/v1/admin/payouts/${id}`, { cache: 'no-store' }),

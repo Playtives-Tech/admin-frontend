@@ -5,6 +5,8 @@ import { useEffect, useState } from 'react';
 import { DashboardShell } from '@/components/dashboard/shell';
 import { getAdminOverview, type AdminOverview } from '@/lib/services/member-operations-service';
 import { notify } from '@/lib/notify';
+import { DateRangeFilter } from '@/components/ui/date-range-filter';
+import { defaultAdminDateRange, dateRangeLabel, type AdminDateRange } from '@/lib/date-range';
 
 const money = (value: number) =>
   new Intl.NumberFormat('en-NG', {
@@ -15,10 +17,12 @@ const money = (value: number) =>
 
 export default function OverviewPage(): React.JSX.Element {
   const [overview, setOverview] = useState<AdminOverview | null>(null);
+  const [range, setRange] = useState<AdminDateRange>(defaultAdminDateRange);
 
   useEffect(() => {
-    void getAdminOverview().then(setOverview).catch(() => notify.error('Could not load overview'));
-  }, []);
+    if (range.preset === 'custom' && (!range.from || !range.to)) return;
+    void getAdminOverview(range).then(setOverview).catch(() => notify.error('Could not load overview'));
+  }, [range]);
 
   const metrics = [
     { label: 'Settled deposits', value: money(overview?.depositsMinorUnits ?? 0), icon: ArrowDownRight },
@@ -47,6 +51,7 @@ export default function OverviewPage(): React.JSX.Element {
       description="Settled wallet activity, member ownership, and expected returns."
     >
       <div className="mx-auto max-w-6xl space-y-5">
+        <DateRangeFilter value={range} onChange={setRange} />
         <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
           {metrics.map(({ label, value, icon: Icon }) => (
             <article key={label} className="app-surface rounded-xl border p-4">
@@ -64,7 +69,7 @@ export default function OverviewPage(): React.JSX.Element {
             <div>
               <h2 className="text-sm font-semibold">Growth overview</h2>
               <p className="mt-1 text-xs text-muted-foreground">
-                Ownership capital recorded over the last six months.
+                Ownership capital recorded over the {dateRangeLabel(range)}.
               </p>
             </div>
             <TrendingUp className="size-4 text-brand" />

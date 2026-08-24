@@ -16,6 +16,8 @@ import {
   type MaturityPayoutStatus,
   type PayoutDetail,
 } from '@/lib/services/payout-service';
+import { DateRangeFilter } from '@/components/ui/date-range-filter';
+import { defaultAdminDateRange, type AdminDateRange } from '@/lib/date-range';
 
 const money = (value: number) =>
   new Intl.NumberFormat('en-NG', {
@@ -33,9 +35,10 @@ export default function PayoutsPage(): React.JSX.Element {
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState('');
+  const [range, setRange] = useState<AdminDateRange>(defaultAdminDateRange);
   const load = useCallback(
-    () => payoutService.list(status === 'ALL' ? undefined : status).then(setItems),
-    [status],
+    () => payoutService.list(status === 'ALL' ? undefined : status, range).then(setItems),
+    [range, status],
   );
   useEffect(() => {
     void load().catch(() => notify.error('Could not load maturity payouts'));
@@ -83,6 +86,7 @@ export default function PayoutsPage(): React.JSX.Element {
       description="Review completed ownerships and credit verified earnings directly to a member wallet."
     >
       <div className="mx-auto max-w-6xl space-y-6">
+        <DateRangeFilter value={range} onChange={setRange} />
         <div className="grid gap-4 sm:grid-cols-3">
           <Stat label="Completed ownerships" value={String(items.length)} icon={MdPendingActions} />
           <Stat

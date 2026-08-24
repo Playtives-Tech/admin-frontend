@@ -1,4 +1,6 @@
 import { api } from '@/lib/api';
+import { type AdminDateRange, dateRangeSearchParams } from '@/lib/date-range';
+import { defaultAdminDateRange } from '@/lib/date-range';
 
 export type AcquisitionStatus = 'ACTIVE' | 'COMPLETED' | 'CANCELLED';
 export type AdminAcquisition = Readonly<{
@@ -38,6 +40,6 @@ export type AcquisitionStats = Readonly<{
 }>;
 
 export const acquisitionService = {
-  list: () => api<AdminAcquisition[]>('/v1/admin/acquisitions', { cache: 'no-store' }),
-  stats: () => api<AcquisitionStats>('/v1/admin/acquisitions/stats', { cache: 'no-store' }),
+  list: (range: AdminDateRange = defaultAdminDateRange) => api<AdminAcquisition[]>(`/v1/admin/acquisitions?${dateRangeSearchParams(range)}`, { cache: 'no-store' }),
+  stats: (range: AdminDateRange = defaultAdminDateRange) => api<AcquisitionStats>(`/v1/admin/acquisitions/stats?${dateRangeSearchParams(range)}`, { cache: 'no-store' }),
 };
