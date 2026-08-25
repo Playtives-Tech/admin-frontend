@@ -3,21 +3,55 @@ import { env } from '@/lib/env';
 
 export type OpportunityStatus = 'DRAFT' | 'PUBLISHED' | 'DELETING';
 export type ReturnSchedule = 'MONTHLY' | 'YEARLY' | 'AT_MATURITY';
+export type OpportunityStructure = 'CO_OWNERSHIP' | 'CO_FUNDING' | 'FULL_OWNERSHIP';
+export type ReturnModel = 'PROFIT_SHARING_VARIABLE' | 'REVENUE_SHARING_VARIABLE' | 'PROJECTED_MONTHLY_RETURN' | 'CAPITAL_APPRECIATION' | 'HYBRID' | 'NO_PERIODIC_INCOME';
+export type ProjectionType = 'PERCENTAGE' | 'AMOUNT' | 'RANGE' | 'PERCENTAGE_RANGE' | 'AMOUNT_AND_PERCENTAGE_RANGE' | 'NOT_APPLICABLE';
+export type TermType = 'FIXED_TERM' | 'LIFE_OF_ASSET';
+export type DurationUnit = 'DAYS' | 'MONTHS' | 'YEARS';
+export type AgreementStatus = 'DRAFT' | 'ACTIVE' | 'RETIRED';
 
 export interface Opportunity {
   _id: string;
   slug: string;
   title: string;
   category: string;
+  opportunityStructure: OpportunityStructure;
+  returnModel: ReturnModel;
+  projectionType: ProjectionType;
   summary: string;
   about?: string;
   agreement?: string;
+  agreementVersion: string;
+  agreementEffectiveDate: string | null;
+  agreementStatus: AgreementStatus;
+  agreementResourceUrl: string;
   pricePerUnitMinorUnits: number;
   minimumUnits: number;
   totalUnits: number;
+  memberFundedUnits: number;
+  sponsorUnits: number;
+  totalEconomicUnits: number;
+  fundingTargetMinorUnits: number;
+  ownershipPerUnitPercent: number | null;
+  maximumUnitsPerMember: number | null;
   availableUnits: number;
   durationMonths: number | null;
+  termType: TermType;
+  durationValue: number | null;
+  durationUnit: DurationUnit | null;
+  fundingOpensAt: string | null;
+  fundingDeadlineAt: string | null;
+  closeWhenFullySubscribed: boolean;
+  targetActivationAt: string | null;
+  capitalExitDescription: string;
+  projectionDisclaimer: string;
   projectedReturnRatePercent: number;
+  projectedDistributionPerUnitMinorUnits: number | null;
+  projectedDistributionPerUnitMinimumMinorUnits: number | null;
+  projectedDistributionPerUnitMaximumMinorUnits: number | null;
+  equivalentProjectedPercentage: number | null;
+  equivalentProjectedMinimumPercentage: number | null;
+  equivalentProjectedMaximumPercentage: number | null;
   projectedProfitMinorUnits: number;
   projectedMonthlyProfitMinorUnits: number | null;
   returnSchedule: ReturnSchedule;
@@ -26,7 +60,7 @@ export interface Opportunity {
   rolloverCompoundsReturns: boolean;
   rolloverNextPrincipalMinorUnits: number | null;
   rolloverNextProjectedProfitMinorUnits: number | null;
-  principalReleaseDate?: string | null;
+  memberAvailabilityDate?: string | null;
   location?: string;
   imageUrl?: string;
   imageKey?: string;
@@ -45,6 +79,12 @@ export type OpportunityPayload = Partial<
     | 'slug'
     | 'availableUnits'
     | 'projectedProfitMinorUnits'
+    | 'totalEconomicUnits'
+    | 'fundingTargetMinorUnits'
+    | 'ownershipPerUnitPercent'
+    | 'equivalentProjectedPercentage'
+    | 'equivalentProjectedMinimumPercentage'
+    | 'equivalentProjectedMaximumPercentage'
     | 'projectedMonthlyProfitMinorUnits'
     | 'rolloverNextPrincipalMinorUnits'
     | 'rolloverNextProjectedProfitMinorUnits'

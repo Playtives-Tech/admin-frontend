@@ -40,7 +40,7 @@ export type PayoutDetail = Readonly<{
           rolloverAllowed: boolean;
           rolloverCompoundsReturns: boolean;
           location: string;
-          principalReleaseDate: string | null;
+          memberAvailabilityDate: string | null;
           imageUrl: string;
         }>;
       ownershipId: MaturityPayout['ownershipId'] &
