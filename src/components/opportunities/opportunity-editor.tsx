@@ -10,8 +10,14 @@ import { notify } from '@/lib/notify';
 import {
   Opportunity,
   OpportunityPayload,
+  AgreementStatus,
+  DurationUnit,
   opportunityService,
+  OpportunityStructure,
+  ProjectionType,
+  ReturnModel,
   ReturnSchedule,
+  TermType,
 } from '@/lib/services/opportunity-service';
 
 type FormState = {
@@ -20,16 +26,31 @@ type FormState = {
   summary: string;
   about: string;
   agreement: string;
+  agreementVersion: string;
+  agreementEffectiveDate: string;
+  agreementStatus: AgreementStatus;
+  agreementResourceUrl: string;
   price: string;
   minimumUnits: string;
   totalUnits: string;
-  durationMonths: string;
+  sponsorUnits: string;
+  maximumUnitsPerMember: string;
+  opportunityStructure: OpportunityStructure;
+  returnModel: ReturnModel;
+  projectionType: ProjectionType;
+  projectedDistribution: string;
+  projectedDistributionMinimum: string;
+  projectedDistributionMaximum: string;
+  termType: TermType;
+  durationValue: string;
+  durationUnit: DurationUnit;
+  capitalExitDescription: string;
+  projectionDisclaimer: string;
   returnRate: string;
   returnSchedule: ReturnSchedule;
-  ownershipModel: 'CO_OWNERSHIP' | 'FULL_OWNERSHIP';
   rolloverAllowed: boolean;
   rolloverCompoundsReturns: boolean;
-  principalReleaseDate: string;
+  memberAvailabilityDate: string;
   location: string;
   imageUrl: string;
   imageKey: string;
@@ -44,16 +65,31 @@ const emptyForm: FormState = {
   summary: '',
   about: '',
   agreement: '',
+  agreementVersion: '1.0',
+  agreementEffectiveDate: '',
+  agreementStatus: 'DRAFT',
+  agreementResourceUrl: '',
   price: '',
   minimumUnits: '1',
   totalUnits: '',
-  durationMonths: '',
+  sponsorUnits: '0',
+  maximumUnitsPerMember: '',
+  opportunityStructure: 'CO_OWNERSHIP',
+  returnModel: 'PROJECTED_MONTHLY_RETURN',
+  projectionType: 'PERCENTAGE',
+  projectedDistribution: '',
+  projectedDistributionMinimum: '',
+  projectedDistributionMaximum: '',
+  termType: 'FIXED_TERM',
+  durationValue: '',
+  durationUnit: 'MONTHS',
+  capitalExitDescription: '',
+  projectionDisclaimer: 'Projected distribution figures are provided for planning only and are not guaranteed.',
   returnRate: '',
   returnSchedule: 'MONTHLY',
-  ownershipModel: 'CO_OWNERSHIP',
   rolloverAllowed: false,
   rolloverCompoundsReturns: false,
-  principalReleaseDate: '',
+  memberAvailabilityDate: '',
   location: '',
   imageUrl: '',
   imageKey: '',
@@ -72,7 +108,7 @@ function readDraft(key: string): FormState | null {
     const stored = window.localStorage.getItem(key);
     if (!stored) return null;
     const parsed = JSON.parse(stored) as { form?: FormState };
-    return parsed.form && typeof parsed.form === 'object' ? parsed.form : null;
+    return parsed.form && typeof parsed.form === 'object' ? { ...emptyForm, ...parsed.form } : null;
   } catch {
     return null;
   }
@@ -85,16 +121,48 @@ function toForm(opportunity: Opportunity): FormState {
     summary: opportunity.summary,
     about: opportunity.about ?? '',
     agreement: opportunity.agreement ?? '',
+    agreementVersion: opportunity.agreementVersion ?? '1.0',
+    agreementEffectiveDate: opportunity.agreementEffectiveDate?.slice(0, 10) ?? '',
+    agreementStatus: opportunity.agreementStatus ?? 'DRAFT',
+    agreementResourceUrl: opportunity.agreementResourceUrl ?? '',
     price: String(opportunity.pricePerUnitMinorUnits / 100),
     minimumUnits: String(opportunity.minimumUnits),
     totalUnits: String(opportunity.totalUnits),
-    durationMonths: opportunity.durationMonths == null ? '' : String(opportunity.durationMonths),
+    sponsorUnits: String(opportunity.sponsorUnits ?? 0),
+    maximumUnitsPerMember:
+      opportunity.maximumUnitsPerMember == null ? '' : String(opportunity.maximumUnitsPerMember),
+    opportunityStructure: opportunity.opportunityStructure ?? opportunity.ownershipModel,
+    returnModel: opportunity.returnModel ?? 'PROJECTED_MONTHLY_RETURN',
+    projectionType: opportunity.projectionType ?? 'PERCENTAGE',
+    projectedDistribution:
+      opportunity.projectedDistributionPerUnitMinorUnits == null
+        ? ''
+        : String(opportunity.projectedDistributionPerUnitMinorUnits / 100),
+    projectedDistributionMinimum:
+      opportunity.projectedDistributionPerUnitMinimumMinorUnits == null
+        ? ''
+        : String(opportunity.projectedDistributionPerUnitMinimumMinorUnits / 100),
+    projectedDistributionMaximum:
+      opportunity.projectedDistributionPerUnitMaximumMinorUnits == null
+        ? ''
+        : String(opportunity.projectedDistributionPerUnitMaximumMinorUnits / 100),
+    termType: opportunity.termType ?? 'FIXED_TERM',
+    durationValue:
+      opportunity.durationValue == null
+        ? opportunity.durationMonths == null
+          ? ''
+          : String(opportunity.durationMonths)
+        : String(opportunity.durationValue),
+    durationUnit: opportunity.durationUnit ?? 'MONTHS',
+    capitalExitDescription: opportunity.capitalExitDescription ?? '',
+    projectionDisclaimer:
+      opportunity.projectionDisclaimer ??
+      'Projected distribution figures are provided for planning only and are not guaranteed.',
     returnRate: String(opportunity.projectedReturnRatePercent),
-    returnSchedule: opportunity.returnSchedule,
-    ownershipModel: opportunity.ownershipModel,
-    rolloverAllowed: opportunity.rolloverAllowed,
-    rolloverCompoundsReturns: opportunity.rolloverCompoundsReturns,
-    principalReleaseDate: opportunity.principalReleaseDate?.slice(0, 10) ?? '',
+    returnSchedule: opportunity.returnSchedule ?? 'MONTHLY',
+    rolloverAllowed: opportunity.rolloverAllowed ?? false,
+    rolloverCompoundsReturns: opportunity.rolloverCompoundsReturns ?? false,
+    memberAvailabilityDate: opportunity.memberAvailabilityDate?.slice(0, 10) ?? '',
     location: opportunity.location ?? '',
     imageUrl: opportunity.imageUrl ?? '',
     imageKey: opportunity.imageKey ?? '',
@@ -115,6 +183,7 @@ export function OpportunityEditor({
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [revision, setRevision] = useState(1);
+  const [currentStatus, setCurrentStatus] = useState<'DRAFT' | 'PUBLISHED'>('DRAFT');
   const [draftReady, setDraftReady] = useState(false);
   const [isDirty, setIsDirty] = useState(false);
   const draftKey = `${draftStoragePrefix}${opportunityId ?? 'new'}`;
@@ -135,6 +204,7 @@ export function OpportunityEditor({
       .get(opportunityId)
       .then((value) => {
         setRevision(value.revision);
+        setCurrentStatus(value.status === 'PUBLISHED' ? 'PUBLISHED' : 'DRAFT');
         if (draft) {
           setForm(draft);
           setIsDirty(true);
@@ -154,13 +224,16 @@ export function OpportunityEditor({
 
   useEffect(() => {
     if (!draftReady || !isDirty) return;
-    window.localStorage.setItem(draftKey, JSON.stringify({ form, savedAt: new Date().toISOString() }));
+    window.localStorage.setItem(
+      draftKey,
+      JSON.stringify({ form, savedAt: new Date().toISOString() }),
+    );
   }, [draftKey, draftReady, form, isDirty]);
 
   const projection = useMemo(() => {
     const principal = Math.round((Number(form.price) || 0) * 100);
     const profit = Math.round((principal * (Number(form.returnRate) || 0)) / 100);
-    const duration = Number(form.durationMonths) || 0;
+    const duration = Number(form.durationValue) || 0;
     const monthly =
       form.returnSchedule === 'MONTHLY' && duration > 0 ? Math.round(profit / duration) : null;
     const nextPrincipal = form.rolloverAllowed
@@ -176,7 +249,7 @@ export function OpportunityEditor({
           : Math.round((nextPrincipal * (Number(form.returnRate) || 0)) / 100),
     };
   }, [
-    form.durationMonths,
+    form.durationValue,
     form.price,
     form.returnRate,
     form.returnSchedule,
@@ -190,16 +263,48 @@ export function OpportunityEditor({
     summary: form.summary.trim(),
     about: form.about.trim(),
     agreement: form.agreement.trim(),
+    agreementVersion: form.agreementVersion.trim() || '1.0',
+    agreementEffectiveDate: form.agreementEffectiveDate || undefined,
+    agreementStatus: form.agreementStatus,
+    agreementResourceUrl: form.agreementResourceUrl.trim() || undefined,
     pricePerUnitMinorUnits: Math.round((Number(form.price) || 0) * 100),
     minimumUnits: numberOrUndefined(form.minimumUnits),
     totalUnits: numberOrUndefined(form.totalUnits),
-    durationMonths: numberOrUndefined(form.durationMonths),
+    memberFundedUnits: numberOrUndefined(form.totalUnits),
+    sponsorUnits: numberOrUndefined(form.sponsorUnits),
+    maximumUnitsPerMember: numberOrUndefined(form.maximumUnitsPerMember),
+    opportunityStructure: form.opportunityStructure,
+    returnModel: form.returnModel,
+    projectionType: form.projectionType,
+    projectedDistributionPerUnitMinorUnits:
+      form.projectedDistribution === ''
+        ? undefined
+        : Math.round(Number(form.projectedDistribution) * 100),
+    projectedDistributionPerUnitMinimumMinorUnits:
+      form.projectedDistributionMinimum === ''
+        ? undefined
+        : Math.round(Number(form.projectedDistributionMinimum) * 100),
+    projectedDistributionPerUnitMaximumMinorUnits:
+      form.projectedDistributionMaximum === ''
+        ? undefined
+        : Math.round(Number(form.projectedDistributionMaximum) * 100),
+    termType: form.termType,
+    durationValue:
+      form.termType === 'FIXED_TERM' ? numberOrUndefined(form.durationValue) : undefined,
+    durationUnit: form.termType === 'FIXED_TERM' ? form.durationUnit : undefined,
+    durationMonths:
+      form.termType === 'FIXED_TERM' && form.durationUnit === 'MONTHS'
+        ? numberOrUndefined(form.durationValue)
+        : undefined,
+    capitalExitDescription: form.capitalExitDescription.trim() || undefined,
+    projectionDisclaimer: form.projectionDisclaimer.trim() || undefined,
     projectedReturnRatePercent: numberOrUndefined(form.returnRate),
     returnSchedule: form.returnSchedule,
-    ownershipModel: form.ownershipModel,
+    ownershipModel:
+      form.opportunityStructure === 'FULL_OWNERSHIP' ? 'FULL_OWNERSHIP' : 'CO_OWNERSHIP',
     rolloverAllowed: form.rolloverAllowed,
     rolloverCompoundsReturns: form.rolloverAllowed && form.rolloverCompoundsReturns,
-    principalReleaseDate: form.principalReleaseDate || undefined,
+    memberAvailabilityDate: form.memberAvailabilityDate || undefined,
     location: form.location.trim(),
     imageUrl: form.imageUrl || undefined,
     imageKey: form.imageKey || undefined,
@@ -218,7 +323,13 @@ export function OpportunityEditor({
       else await opportunityService.create(payload(status));
       window.localStorage.removeItem(draftKey);
       setIsDirty(false);
-      notify.success(status === 'PUBLISHED' ? 'Opportunity published.' : 'Draft saved.');
+      notify.success(
+        opportunityId
+          ? 'Opportunity updated.'
+          : status === 'PUBLISHED'
+            ? 'Opportunity published.'
+            : 'Draft saved.',
+      );
       router.push('/opportunities');
     } catch (error) {
       notify.error(error instanceof Error ? error.message : 'Unable to save opportunity');
@@ -272,9 +383,7 @@ export function OpportunityEditor({
         </nav>
         <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-semibold">
-              {form.title || 'Untitled opportunity'}
-            </h1>
+            <h1 className="text-2xl font-semibold">{form.title || 'Untitled opportunity'}</h1>
             <p className="mt-1 text-sm text-muted-foreground">
               Fields marked * are required to save. Publishing requires complete member-facing
               details.
@@ -305,23 +414,26 @@ export function OpportunityEditor({
             )}
             <button
               disabled={saving}
-              onClick={() => save('DRAFT')}
+              onClick={() => save(opportunityId ? currentStatus : 'DRAFT')}
               className="rounded-xl border px-4 py-2 text-sm font-semibold"
             >
-              Save draft
+              {opportunityId ? 'Save changes' : 'Save draft'}
             </button>
             <button
               disabled={saving}
-              onClick={() => save('PUBLISHED')}
+              onClick={() => save(opportunityId ? currentStatus : 'PUBLISHED')}
               className="rounded-xl bg-brand px-4 py-2 text-sm font-semibold text-brand-foreground"
             >
-              Publish
+              {opportunityId ? 'Update opportunity' : 'Publish'}
             </button>
           </div>
         </div>
         <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(320px,0.62fr)]">
           <div className="grid gap-4">
-            <Section title="Opportunity details" description="What members see before they decide to participate.">
+            <Section
+              title="Opportunity details"
+              description="What members see before they decide to participate."
+            >
               <Field label="Opportunity title *" wide>
                 <input
                   className={inputClass}
@@ -329,12 +441,12 @@ export function OpportunityEditor({
                   onChange={(e) => set('title', e.target.value)}
                 />
               </Field>
-              <Field label="Category *">
+              <Field label="Sector / industry *">
                 <input
                   className={inputClass}
                   value={form.category}
                   onChange={(e) => set('category', e.target.value)}
-                  placeholder="Enter any category"
+                  placeholder="e.g. Agriculture, Property, Logistics"
                 />
               </Field>
               <Field label="Summary *" wide>
@@ -359,11 +471,52 @@ export function OpportunityEditor({
                   rows={12}
                   value={form.agreement}
                   onChange={(e) => set('agreement', e.target.value)}
-                  placeholder={'# Member agreement\n\nUse headings, bullet lists, **bold text**, and normal paragraphs. Members see a short preview and can open the complete agreement.'}
+                  placeholder={
+                    '# Member agreement\n\nUse headings, bullet lists, **bold text**, and normal paragraphs. Members see a short preview and can open the complete agreement.'
+                  }
+                />
+              </Field>
+              <Field label="Agreement version">
+                <input
+                  className={inputClass}
+                  value={form.agreementVersion}
+                  onChange={(e) => set('agreementVersion', e.target.value)}
+                  placeholder="e.g. 1.0"
+                />
+              </Field>
+              <Field label="Agreement status">
+                <select
+                  className={inputClass}
+                  value={form.agreementStatus}
+                  onChange={(e) => set('agreementStatus', e.target.value as AgreementStatus)}
+                >
+                  <option value="DRAFT">Draft</option>
+                  <option value="ACTIVE">Active — members can accept</option>
+                  <option value="RETIRED">Retired — no new acceptances</option>
+                </select>
+              </Field>
+              <Field label="Effective date">
+                <input
+                  type="date"
+                  className={inputClass}
+                  value={form.agreementEffectiveDate}
+                  onChange={(e) => set('agreementEffectiveDate', e.target.value)}
+                />
+              </Field>
+              <Field label="Downloadable agreement resource (optional)">
+                <input
+                  type="url"
+                  className={inputClass}
+                  value={form.agreementResourceUrl}
+                  onChange={(e) => set('agreementResourceUrl', e.target.value)}
+                  placeholder="https://…/agreement.pdf"
                 />
               </Field>
             </Section>
-            <Section title="Commercial terms" description="Use the agreed unit price and return terms.">
+            <Section
+              title="Commercial terms"
+              description="Use the agreed unit price and return terms."
+            >
               <Field label="Price per unit (NGN)">
                 <input
                   type="number"
@@ -382,7 +535,7 @@ export function OpportunityEditor({
                   onChange={(e) => set('minimumUnits', e.target.value)}
                 />
               </Field>
-              <Field label="Total units">
+              <Field label="Member-funded units">
                 <input
                   type="number"
                   min="0"
@@ -391,25 +544,164 @@ export function OpportunityEditor({
                   onChange={(e) => set('totalUnits', e.target.value)}
                 />
               </Field>
-              <Field label="Duration (months)">
+              <Field label="Opportunity structure">
+                <select
+                  className={inputClass}
+                  value={form.opportunityStructure}
+                  onChange={(e) =>
+                    set('opportunityStructure', e.target.value as OpportunityStructure)
+                  }
+                >
+                  <option value="CO_OWNERSHIP">Co-ownership</option>
+                  <option value="CO_FUNDING">Co-funding</option>
+                  <option value="FULL_OWNERSHIP">Full ownership</option>
+                </select>
+              </Field>
+              <Field label="Sponsor / sweat-equity units">
+                <input
+                  type="number"
+                  min="0"
+                  className={inputClass}
+                  value={form.sponsorUnits}
+                  onChange={(e) => set('sponsorUnits', e.target.value)}
+                />
+              </Field>
+              <Field label="Maximum units per member">
                 <input
                   type="number"
                   min="1"
                   className={inputClass}
-                  value={form.durationMonths}
-                  onChange={(e) => set('durationMonths', e.target.value)}
+                  value={form.maximumUnitsPerMember}
+                  onChange={(e) => set('maximumUnitsPerMember', e.target.value)}
                 />
               </Field>
-              <Field label="Projected return (%)">
-                <input
-                  type="number"
-                  min="0"
-                  step="0.01"
+              <Field label="Return model">
+                <select
                   className={inputClass}
-                  value={form.returnRate}
-                  onChange={(e) => set('returnRate', e.target.value)}
+                  value={form.returnModel}
+                  onChange={(e) => set('returnModel', e.target.value as ReturnModel)}
+                >
+                  <option value="PROFIT_SHARING_VARIABLE">Profit sharing — variable</option>
+                  <option value="REVENUE_SHARING_VARIABLE">Revenue sharing — variable</option>
+                  <option value="PROJECTED_MONTHLY_RETURN">Projected monthly return</option>
+                  <option value="CAPITAL_APPRECIATION">Capital appreciation</option>
+                  <option value="HYBRID">Hybrid</option>
+                  <option value="NO_PERIODIC_INCOME">No periodic income</option>
+                </select>
+              </Field>
+              <Field label="Projection type">
+                <select
+                  className={inputClass}
+                  value={form.projectionType}
+                  onChange={(e) => set('projectionType', e.target.value as ProjectionType)}
+                >
+                  <option value="PERCENTAGE">Percentage</option>
+                  <option value="AMOUNT">Amount</option>
+                  <option value="RANGE">Amount range</option>
+                  <option value="PERCENTAGE_RANGE">Percentage range</option>
+                  <option value="AMOUNT_AND_PERCENTAGE_RANGE">Amount + percentage range</option>
+                  <option value="NOT_APPLICABLE">Not applicable</option>
+                </select>
+              </Field>
+              {['AMOUNT', 'RANGE', 'AMOUNT_AND_PERCENTAGE_RANGE'].includes(form.projectionType) ? (
+                <>
+                  <Field label="Projected distribution per unit (NGN)">
+                    <input
+                      type="number"
+                      min="0"
+                      className={inputClass}
+                      value={form.projectedDistribution}
+                      onChange={(e) => set('projectedDistribution', e.target.value)}
+                    />
+                  </Field>
+                  <Field label="Projected minimum per unit (NGN)">
+                    <input
+                      type="number"
+                      min="0"
+                      className={inputClass}
+                      value={form.projectedDistributionMinimum}
+                      onChange={(e) => set('projectedDistributionMinimum', e.target.value)}
+                    />
+                  </Field>
+                  <Field label="Projected maximum per unit (NGN)">
+                    <input
+                      type="number"
+                      min="0"
+                      className={inputClass}
+                      value={form.projectedDistributionMaximum}
+                      onChange={(e) => set('projectedDistributionMaximum', e.target.value)}
+                    />
+                  </Field>
+                </>
+              ) : null}
+              <Field label="Term type">
+                <select
+                  className={inputClass}
+                  value={form.termType}
+                  onChange={(e) => set('termType', e.target.value as TermType)}
+                >
+                  <option value="FIXED_TERM">Fixed term</option>
+                  <option value="LIFE_OF_ASSET">Life of asset / open-ended</option>
+                </select>
+              </Field>
+              {form.termType === 'FIXED_TERM' && (
+                <>
+                  <Field label="Duration (months)">
+                    <input
+                      type="number"
+                      min="1"
+                      className={inputClass}
+                      value={form.durationValue}
+                      onChange={(e) => set('durationValue', e.target.value)}
+                    />
+                  </Field>
+                  <Field label="Duration unit">
+                    <select
+                      className={inputClass}
+                      value={form.durationUnit}
+                      onChange={(e) => set('durationUnit', e.target.value as DurationUnit)}
+                    >
+                      <option value="DAYS">Days</option>
+                      <option value="MONTHS">Months</option>
+                      <option value="YEARS">Years</option>
+                    </select>
+                  </Field>
+                </>
+              )}
+              <Field
+                label="Capital return terms"
+                hint={
+                  form.termType === 'LIFE_OF_ASSET'
+                    ? 'Explain the qualifying event that returns members’ capital. This is shown to members.'
+                    : 'Optional context shown alongside the fixed-term principal return date.'
+                }
+                wide
+              >
+                <textarea
+                  className={`${inputClass} min-h-20 resize-y`}
+                  value={form.capitalExitDescription}
+                  onChange={(e) => set('capitalExitDescription', e.target.value)}
+                  placeholder={
+                    form.termType === 'LIFE_OF_ASSET'
+                      ? 'Capital is returned upon sale of the truck or another qualifying exit event.'
+                      : 'Capital is returned at the end of the fixed term.'
+                  }
                 />
               </Field>
+              {['PERCENTAGE', 'PERCENTAGE_RANGE', 'AMOUNT_AND_PERCENTAGE_RANGE'].includes(
+                form.projectionType,
+              ) && (
+                <Field label="Projected return (%)">
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    className={inputClass}
+                    value={form.returnRate}
+                    onChange={(e) => set('returnRate', e.target.value)}
+                  />
+                </Field>
+              )}
               <Field label="Return schedule">
                 <select
                   className={inputClass}
@@ -421,17 +713,16 @@ export function OpportunityEditor({
                   <option value="AT_MATURITY">At maturity</option>
                 </select>
               </Field>
-              <Field label="Ownership model">
-                <select
-                  className={inputClass}
-                  value={form.ownershipModel}
-                  onChange={(e) =>
-                    set('ownershipModel', e.target.value as FormState['ownershipModel'])
-                  }
-                >
-                  <option value="CO_OWNERSHIP">Co-ownership</option>
-                  <option value="FULL_OWNERSHIP">Full ownership</option>
-                </select>
+              <Field
+                label="Projection disclaimer"
+                hint="Explain that projected distributions are estimates, not guaranteed returns."
+                wide
+              >
+                <textarea
+                  className={`${inputClass} min-h-20 resize-y`}
+                  value={form.projectionDisclaimer}
+                  onChange={(e) => set('projectionDisclaimer', e.target.value)}
+                />
               </Field>
               <Field label="Location">
                 <input
@@ -440,16 +731,19 @@ export function OpportunityEditor({
                   onChange={(e) => set('location', e.target.value)}
                 />
               </Field>
-              <Field label="Principal release date">
+              <Field label="Member availability date" hint="Members can discover and acquire this opportunity from this date.">
                 <input
                   type="date"
                   className={inputClass}
-                  value={form.principalReleaseDate}
-                  onChange={(e) => set('principalReleaseDate', e.target.value)}
+                  value={form.memberAvailabilityDate}
+                  onChange={(e) => set('memberAvailabilityDate', e.target.value)}
                 />
               </Field>
             </Section>
-            <Section title="Rollover at maturity" description="Only enable this if the offer can continue after maturity.">
+            <Section
+              title="Rollover at maturity"
+              description="Only enable this if the offer can continue after maturity."
+            >
               <label className="flex gap-3 text-sm">
                 <input
                   type="checkbox"
@@ -469,7 +763,10 @@ export function OpportunityEditor({
                 </label>
               )}
             </Section>
-            <Section title="Cover image" description="One optimised image used across the member app.">
+            <Section
+              title="Cover image"
+              description="One optimised image used across the member app."
+            >
               <label className="flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed p-6 text-sm">
                 <MdFileUpload />
                 {uploading ? 'Optimizing and uploading…' : 'Choose JPEG, PNG, WebP or AVIF'}
@@ -514,7 +811,7 @@ export function OpportunityEditor({
             <div className="space-y-6 p-6">
               <div>
                 <p className="text-xs font-bold uppercase text-brand">
-                  {form.category || 'Category'}
+                  {form.category || 'Sector / industry'}
                 </p>
                 <h2 className="mt-2 text-2xl font-semibold">{form.title || 'Opportunity title'}</h2>
                 <p className="mt-3 whitespace-pre-wrap text-sm text-muted-foreground">
@@ -529,11 +826,17 @@ export function OpportunityEditor({
                 <Fact label="Projected profit" value={money(projection.profit)} />
                 <Fact
                   label="Return schedule"
-                  value={form.returnSchedule.replaceAll('_', ' ').toLowerCase()}
+                  value={(form.returnSchedule ?? 'MONTHLY').replaceAll('_', ' ').toLowerCase()}
                 />
                 <Fact
                   label="Duration"
-                  value={form.durationMonths ? `${form.durationMonths} months` : '—'}
+                  value={
+                    form.termType === 'LIFE_OF_ASSET'
+                      ? 'Life of asset'
+                      : form.durationValue
+                        ? `${form.durationValue} ${(form.durationUnit ?? 'MONTHS').toLowerCase()}`
+                        : '—'
+                  }
                 />
                 {projection.monthly != null && (
                   <Fact label="Projected monthly profit" value={money(projection.monthly)} />
@@ -579,16 +882,19 @@ function Section({
 }
 function Field({
   label,
+  hint,
   wide = false,
   children,
 }: {
   label: string;
+  hint?: string;
   wide?: boolean;
   children: React.ReactNode;
 }) {
   return (
     <label className={`grid gap-1.5 text-sm font-medium ${wide ? 'sm:col-span-2' : ''}`}>
-      {label}
+      <span>{label}</span>
+      {hint ? <span className="-mt-1 text-xs font-normal text-muted-foreground">{hint}</span> : null}
       {children}
     </label>
   );

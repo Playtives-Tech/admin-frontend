@@ -2,7 +2,14 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { DashboardShell } from '@/components/dashboard/shell';
-import { acquisitionService, type AdminAcquisition } from '@/lib/services/acquisition-service';
+import {
+  acquisitionService,
+  hasVariableProjectedDistribution,
+  projectedDistributionLabel,
+  projectedDistributionSupportingText,
+  projectedReturnForAcquisition,
+  type AdminAcquisition,
+} from '@/lib/services/acquisition-service';
 import { notify } from '@/lib/notify';
 import { DateRangeFilter } from '@/components/ui/date-range-filter';
 import { defaultAdminDateRange, type AdminDateRange } from '@/lib/date-range';
@@ -37,7 +44,7 @@ export default function AcquisitionsPage(): React.JSX.Element {
   const visible = memberId === 'all' ? items : items.filter((item) => item.userId._id === memberId);
   const totalInvested = visible.reduce((total, item) => total + item.amountMinorUnits, 0);
   const totalExpected = visible.reduce(
-    (total, item) => total + Math.round((item.amountMinorUnits * item.projectedReturnRatePercent) / 100),
+    (total, item) => total + (hasVariableProjectedDistribution(item) ? 0 : projectedReturnForAcquisition(item)),
     0,
   );
 
@@ -67,21 +74,20 @@ export default function AcquisitionsPage(): React.JSX.Element {
         <section className="grid gap-3 sm:grid-cols-3">
           <Metric label="Ownerships" value={String(visible.length)} />
           <Metric label="Amount invested" value={money(totalInvested)} />
-          <Metric label="Expected return" value={money(totalExpected)} />
+          <Metric label="Fixed projected returns" value={money(totalExpected)} />
         </section>
 
         <section className="app-surface overflow-x-auto rounded-xl border">
           <table className="w-full min-w-[900px] text-left text-xs">
             <thead className="border-b bg-muted/30 text-muted-foreground">
               <tr>
-                {['Member', 'Opportunity', 'Units', 'Amount invested', 'Expected return', 'Status', 'Created', 'Maturity'].map((label) => (
+                {['Member', 'Opportunity', 'Units', 'Amount invested', 'Projected distribution', 'Status', 'Created', 'Maturity'].map((label) => (
                   <th key={label} className="px-4 py-3 font-medium">{label}</th>
                 ))}
               </tr>
             </thead>
             <tbody className="divide-y">
               {visible.map((item) => {
-                const expected = Math.round((item.amountMinorUnits * item.projectedReturnRatePercent) / 100);
                 return (
                   <tr key={item._id} className="hover:bg-muted/20">
                     <td className="px-4 py-3">
@@ -92,8 +98,10 @@ export default function AcquisitionsPage(): React.JSX.Element {
                     <td className="px-4 py-3">{item.units}</td>
                     <td className="px-4 py-3 font-medium">{money(item.amountMinorUnits)}</td>
                     <td className="px-4 py-3">
-                      <p className="font-medium text-brand">{money(expected)}</p>
-                      <p className="mt-0.5 text-[11px] text-muted-foreground">{item.projectedReturnRatePercent}% ROI</p>
+                      <p className="font-medium text-brand">{projectedDistributionLabel(item)}</p>
+                      <p className="mt-0.5 text-[11px] text-muted-foreground">
+                        {projectedDistributionSupportingText(item)}
+                      </p>
                     </td>
                     <td className="px-4 py-3">
                       <span className={`rounded-full px-2 py-1 text-[10px] font-semibold ${statusClass[item.status]}`}>

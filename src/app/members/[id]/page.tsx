@@ -13,7 +13,14 @@ import {
   type AdminWalletSummary,
   updateMemberStatus,
 } from '@/lib/services/member-operations-service';
-import { acquisitionService, type AdminAcquisition } from '@/lib/services/acquisition-service';
+import {
+  acquisitionService,
+  hasVariableProjectedDistribution,
+  projectedDistributionLabel,
+  projectedDistributionSupportingText,
+  projectedReturnForAcquisition,
+  type AdminAcquisition,
+} from '@/lib/services/acquisition-service';
 
 const money = (value: number) =>
   new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN', maximumFractionDigits: 0 }).format(value / 100);
@@ -39,7 +46,7 @@ export default function MemberDetailPage(): React.JSX.Element {
     () => ({
       invested: ownerships.reduce((total, item) => total + item.amountMinorUnits, 0),
       expected: ownerships.reduce(
-        (total, item) => total + Math.round((item.amountMinorUnits * item.projectedReturnRatePercent) / 100),
+        (total, item) => total + (hasVariableProjectedDistribution(item) ? 0 : projectedReturnForAcquisition(item)),
         0,
       ),
     }),
@@ -89,15 +96,15 @@ export default function MemberDetailPage(): React.JSX.Element {
               <Metric label="Wallet balance" value={money(wallet?.totalAvailableBalanceMinorUnits ?? 0)} />
               <Metric label="Ownerships" value={String(ownerships.length)} />
               <Metric label="Amount invested" value={money(totals.invested)} />
-              <Metric label="Expected return" value={money(totals.expected)} />
+              <Metric label="Fixed projected returns" value={money(totals.expected)} />
             </section>
 
             <section className="app-surface overflow-x-auto rounded-xl border">
               <div className="border-b px-4 py-3"><h2 className="text-sm font-semibold">Ownerships</h2><p className="mt-1 text-xs text-muted-foreground">Earnings are approved from the Payouts section after completion.</p></div>
               <table className="w-full min-w-[760px] text-left text-xs">
-                <thead className="border-b bg-muted/30 text-muted-foreground"><tr>{['Opportunity', 'Units', 'Invested', 'Expected return', 'Status', 'Created', 'Maturity'].map((label) => <th key={label} className="px-4 py-3 font-medium">{label}</th>)}</tr></thead>
+                <thead className="border-b bg-muted/30 text-muted-foreground"><tr>{['Opportunity', 'Units', 'Invested', 'Projected distribution', 'Status', 'Created', 'Maturity'].map((label) => <th key={label} className="px-4 py-3 font-medium">{label}</th>)}</tr></thead>
                 <tbody className="divide-y">
-                  {ownerships.map((item) => <tr key={item._id}><td className="px-4 py-3 font-medium">{item.opportunityId.title}</td><td className="px-4 py-3">{item.units}</td><td className="px-4 py-3">{money(item.amountMinorUnits)}</td><td className="px-4 py-3 text-brand">{money(Math.round((item.amountMinorUnits * item.projectedReturnRatePercent) / 100))}<span className="ml-1 text-[11px] text-muted-foreground">({item.projectedReturnRatePercent}%)</span></td><td className="px-4 py-3">{item.status.toLowerCase()}</td><td className="px-4 py-3 text-muted-foreground">{new Date(item.createdAt).toLocaleDateString('en-NG')}</td><td className="px-4 py-3 text-muted-foreground">{item.maturityAt ? new Date(item.maturityAt).toLocaleDateString('en-NG') : '—'}</td></tr>)}
+                  {ownerships.map((item) => <tr key={item._id}><td className="px-4 py-3 font-medium">{item.opportunityId.title}</td><td className="px-4 py-3">{item.units}</td><td className="px-4 py-3">{money(item.amountMinorUnits)}</td><td className="px-4 py-3"><p className="font-medium text-brand">{projectedDistributionLabel(item)}</p><p className="mt-0.5 text-[11px] text-muted-foreground">{projectedDistributionSupportingText(item)}</p></td><td className="px-4 py-3">{item.status.toLowerCase()}</td><td className="px-4 py-3 text-muted-foreground">{new Date(item.createdAt).toLocaleDateString('en-NG')}</td><td className="px-4 py-3 text-muted-foreground">{item.maturityAt ? new Date(item.maturityAt).toLocaleDateString('en-NG') : '—'}</td></tr>)}
                   {ownerships.length === 0 ? <tr><td colSpan={7} className="px-4 py-10 text-center text-muted-foreground">This member has no ownerships yet.</td></tr> : null}
                 </tbody>
               </table>
