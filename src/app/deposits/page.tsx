@@ -4,7 +4,13 @@ import { useEffect, useState } from 'react';
 import { MdCheckCircle, MdClose, MdContentCopy, MdImage, MdOpenInNew, MdPendingActions, MdPictureAsPdf } from 'react-icons/md';
 import { DashboardShell } from '@/components/dashboard/shell';
 import { notify } from '@/lib/notify';
-import { getDepositRequests, reviewDepositRequest, type AdminDepositRequest } from '@/lib/services/member-operations-service';
+import {
+  getDepositRequests,
+  getSettledPaystackDeposits,
+  reviewDepositRequest,
+  type AdminDepositRequest,
+  type SettledPaystackDeposit,
+} from '@/lib/services/member-operations-service';
 import { DateRangeFilter } from '@/components/ui/date-range-filter';
 import { defaultAdminDateRange, type AdminDateRange } from '@/lib/date-range';
 
@@ -12,12 +18,20 @@ const money = (value: number) => new Intl.NumberFormat('en-NG', { style: 'curren
 
 export default function DepositsPage(): React.JSX.Element {
   const [items, setItems] = useState<AdminDepositRequest[]>([]);
+  const [settledPaystack, setSettledPaystack] = useState<SettledPaystackDeposit[]>([]);
   const [selected, setSelected] = useState<AdminDepositRequest | null>(null);
   const [reviewing, setReviewing] = useState(false);
   const [receiptLoading, setReceiptLoading] = useState(true);
   const [range, setRange] = useState<AdminDateRange>(defaultAdminDateRange);
 
-  const load = () => getDepositRequests(range).then(setItems);
+  const load = async () => {
+    const [requests, settled] = await Promise.all([
+      getDepositRequests(range),
+      getSettledPaystackDeposits(range),
+    ]);
+    setItems(requests);
+    setSettledPaystack(settled);
+  };
   useEffect(() => { if (range.preset !== 'custom' || (range.from && range.to)) void load().catch(() => notify.error('Could not load deposit requests')); }, [range]);
   const review = async (status: 'approved' | 'rejected') => {
     if (!selected) return;
@@ -33,13 +47,13 @@ export default function DepositsPage(): React.JSX.Element {
   };
   const pending = items.filter((item) => item.status === 'pending');
   return (
-    <DashboardShell title="User deposits" description="Review payment receipts and credit verified transfers.">
+    <DashboardShell title="User deposits" description="Review transfer receipts and track settled Paystack wallet inflows.">
       <div className="mx-auto max-w-6xl space-y-5">
         <DateRangeFilter value={range} onChange={setRange} />
         <section className="grid gap-3 sm:grid-cols-3">
           <Metric label="Requests" value={String(items.length)} />
           <Metric label="Awaiting review" value={String(pending.length)} />
-          <Metric label="Pending value" value={money(pending.reduce((sum, item) => sum + item.amountMinorUnits, 0))} />
+          <Metric label="Paystack settled" value={money(settledPaystack.reduce((sum, item) => sum + item.amountMinorUnits, 0))} />
         </section>
         <section className="app-surface overflow-x-auto rounded-xl border">
           <table className="w-full min-w-[720px] text-left text-xs">
@@ -47,6 +61,22 @@ export default function DepositsPage(): React.JSX.Element {
             <tbody className="divide-y">
               {items.map((item) => <tr key={item._id} className="hover:bg-muted/20"><td className="px-4 py-3"><p className="font-semibold text-foreground">{item.userId.name}</p><p className="mt-0.5 text-[11px] text-muted-foreground">{item.userId.email}</p></td><td className="px-4 py-3 font-medium">{money(item.amountMinorUnits)}</td><td className="max-w-52 truncate px-4 py-3 font-mono text-[11px]" title={item.narration ?? 'Not provided'}>{item.narration ?? 'Not provided'}</td><td className="px-4 py-3 text-muted-foreground">{new Date(item.createdAt).toLocaleString('en-NG')}</td><td className="px-4 py-3"><Status status={item.status} /></td><td className="px-4 py-3 text-right"><button onClick={() => { setReceiptLoading(true); setSelected(item); }} className="inline-flex h-8 items-center gap-1.5 rounded-lg border px-2.5 font-semibold hover:bg-muted"><MdPendingActions className="size-4" />Review</button></td></tr>)}
               {items.length === 0 ? <tr><td colSpan={6} className="px-4 py-10 text-center text-muted-foreground">No deposit requests yet.</td></tr> : null}
+            </tbody>
+          </table>
+        </section>
+        <section className="app-surface overflow-x-auto rounded-xl border">
+          <div className="flex items-center justify-between gap-3 border-b px-4 py-3">
+            <div>
+              <h2 className="text-sm font-semibold">Settled Paystack deposits</h2>
+              <p className="mt-0.5 text-xs text-muted-foreground">Automatically verified and already credited to member wallets.</p>
+            </div>
+            <span className="rounded-full bg-emerald-500/10 px-2.5 py-1 text-[10px] font-semibold text-emerald-700">{settledPaystack.length} settled</span>
+          </div>
+          <table className="w-full min-w-[720px] text-left text-xs">
+            <thead className="border-b bg-muted/30 text-muted-foreground"><tr>{['Member', 'Amount', 'Channel', 'Reference', 'Credited'].map((label) => <th key={label} className="px-4 py-3 font-medium">{label}</th>)}</tr></thead>
+            <tbody className="divide-y">
+              {settledPaystack.map((item) => <tr key={item._id} className="hover:bg-muted/20"><td className="px-4 py-3"><p className="font-semibold text-foreground">{item.userId.name}</p><p className="mt-0.5 text-[11px] text-muted-foreground">{item.userId.email}</p></td><td className="px-4 py-3 font-medium text-emerald-700">{money(item.amountMinorUnits)}</td><td className="px-4 py-3 capitalize text-muted-foreground">{item.channel.replace('_', ' ')}</td><td className="max-w-44 truncate px-4 py-3 font-mono text-[11px] text-muted-foreground" title={item.reference}>{item.reference}</td><td className="px-4 py-3 text-muted-foreground">{new Date(item.creditedAt ?? item.paidAt ?? item.createdAt).toLocaleString('en-NG')}</td></tr>)}
+              {settledPaystack.length === 0 ? <tr><td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">No settled Paystack deposits in this period.</td></tr> : null}
             </tbody>
           </table>
         </section>

@@ -123,6 +123,24 @@ export function getDepositRequests(range: AdminDateRange): Promise<AdminDepositR
   return api<AdminDepositRequest[]>(`/v1/admin/wallet/deposits?${dateRangeSearchParams(range)}`);
 }
 
+export type SettledPaystackDeposit = Readonly<{
+  _id: string;
+  userId: RequestUser;
+  amountMinorUnits: number;
+  currency: 'NGN';
+  reference: string;
+  channel: 'card' | 'bank_transfer';
+  paidAt: string | null;
+  creditedAt: string | null;
+  createdAt: string;
+}>;
+
+export function getSettledPaystackDeposits(range: AdminDateRange): Promise<SettledPaystackDeposit[]> {
+  return api<SettledPaystackDeposit[]>(
+    `/v1/admin/wallet/deposits/settled?${dateRangeSearchParams(range)}`,
+  );
+}
+
 export function reviewDepositRequest(
   requestId: string,
   status: 'approved' | 'rejected',
