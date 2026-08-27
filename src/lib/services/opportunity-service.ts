@@ -4,8 +4,20 @@ import { env } from '@/lib/env';
 export type OpportunityStatus = 'DRAFT' | 'PUBLISHED' | 'DELETING';
 export type ReturnSchedule = 'MONTHLY' | 'YEARLY' | 'AT_MATURITY';
 export type OpportunityStructure = 'CO_OWNERSHIP' | 'CO_FUNDING' | 'FULL_OWNERSHIP';
-export type ReturnModel = 'PROFIT_SHARING_VARIABLE' | 'REVENUE_SHARING_VARIABLE' | 'PROJECTED_MONTHLY_RETURN' | 'CAPITAL_APPRECIATION' | 'HYBRID' | 'NO_PERIODIC_INCOME';
-export type ProjectionType = 'PERCENTAGE' | 'AMOUNT' | 'RANGE' | 'PERCENTAGE_RANGE' | 'AMOUNT_AND_PERCENTAGE_RANGE' | 'NOT_APPLICABLE';
+export type ReturnModel =
+  | 'PROFIT_SHARING_VARIABLE'
+  | 'REVENUE_SHARING_VARIABLE'
+  | 'PROJECTED_MONTHLY_RETURN'
+  | 'CAPITAL_APPRECIATION'
+  | 'HYBRID'
+  | 'NO_PERIODIC_INCOME';
+export type ProjectionType =
+  | 'PERCENTAGE'
+  | 'AMOUNT'
+  | 'RANGE'
+  | 'PERCENTAGE_RANGE'
+  | 'AMOUNT_AND_PERCENTAGE_RANGE'
+  | 'NOT_APPLICABLE';
 export type TermType = 'FIXED_TERM' | 'LIFE_OF_ASSET';
 export type DurationUnit = 'DAYS' | 'MONTHS' | 'YEARS';
 export type AgreementStatus = 'DRAFT' | 'ACTIVE' | 'RETIRED';
@@ -55,12 +67,12 @@ export interface Opportunity {
   projectedProfitMinorUnits: number;
   projectedMonthlyProfitMinorUnits: number | null;
   returnSchedule: ReturnSchedule;
-  ownershipModel: 'CO_OWNERSHIP' | 'FULL_OWNERSHIP';
   rolloverAllowed: boolean;
   rolloverCompoundsReturns: boolean;
   rolloverNextPrincipalMinorUnits: number | null;
   rolloverNextProjectedProfitMinorUnits: number | null;
   memberAvailabilityDate?: string | null;
+  commencementDate?: string | null;
   location?: string;
   imageUrl?: string;
   imageKey?: string;
