@@ -51,6 +51,7 @@ type FormState = {
   rolloverAllowed: boolean;
   rolloverCompoundsReturns: boolean;
   memberAvailabilityDate: string;
+  commencementDate: string;
   location: string;
   imageUrl: string;
   imageKey: string;
@@ -84,12 +85,14 @@ const emptyForm: FormState = {
   durationValue: '',
   durationUnit: 'MONTHS',
   capitalExitDescription: '',
-  projectionDisclaimer: 'Projected distribution figures are provided for planning only and are not guaranteed.',
+  projectionDisclaimer:
+    'Projected distribution figures are provided for planning only and are not guaranteed.',
   returnRate: '',
   returnSchedule: 'MONTHLY',
   rolloverAllowed: false,
   rolloverCompoundsReturns: false,
   memberAvailabilityDate: '',
+  commencementDate: '',
   location: '',
   imageUrl: '',
   imageKey: '',
@@ -131,7 +134,7 @@ function toForm(opportunity: Opportunity): FormState {
     sponsorUnits: String(opportunity.sponsorUnits ?? 0),
     maximumUnitsPerMember:
       opportunity.maximumUnitsPerMember == null ? '' : String(opportunity.maximumUnitsPerMember),
-    opportunityStructure: opportunity.opportunityStructure ?? opportunity.ownershipModel,
+    opportunityStructure: opportunity.opportunityStructure ?? 'CO_OWNERSHIP',
     returnModel: opportunity.returnModel ?? 'PROJECTED_MONTHLY_RETURN',
     projectionType: opportunity.projectionType ?? 'PERCENTAGE',
     projectedDistribution:
@@ -163,6 +166,7 @@ function toForm(opportunity: Opportunity): FormState {
     rolloverAllowed: opportunity.rolloverAllowed ?? false,
     rolloverCompoundsReturns: opportunity.rolloverCompoundsReturns ?? false,
     memberAvailabilityDate: opportunity.memberAvailabilityDate?.slice(0, 10) ?? '',
+    commencementDate: opportunity.commencementDate?.slice(0, 10) ?? '',
     location: opportunity.location ?? '',
     imageUrl: opportunity.imageUrl ?? '',
     imageKey: opportunity.imageKey ?? '',
@@ -300,11 +304,10 @@ export function OpportunityEditor({
     projectionDisclaimer: form.projectionDisclaimer.trim() || undefined,
     projectedReturnRatePercent: numberOrUndefined(form.returnRate),
     returnSchedule: form.returnSchedule,
-    ownershipModel:
-      form.opportunityStructure === 'FULL_OWNERSHIP' ? 'FULL_OWNERSHIP' : 'CO_OWNERSHIP',
     rolloverAllowed: form.rolloverAllowed,
     rolloverCompoundsReturns: form.rolloverAllowed && form.rolloverCompoundsReturns,
     memberAvailabilityDate: form.memberAvailabilityDate || undefined,
+    commencementDate: form.commencementDate || undefined,
     location: form.location.trim(),
     imageUrl: form.imageUrl || undefined,
     imageKey: form.imageKey || undefined,
@@ -731,12 +734,26 @@ export function OpportunityEditor({
                   onChange={(e) => set('location', e.target.value)}
                 />
               </Field>
-              <Field label="Member availability date" hint="Members can discover and acquire this opportunity from this date.">
+              <Field
+                label="Member availability date"
+                hint="Members can discover and acquire this opportunity from this date."
+              >
                 <input
                   type="date"
                   className={inputClass}
                   value={form.memberAvailabilityDate}
                   onChange={(e) => set('memberAvailabilityDate', e.target.value)}
+                />
+              </Field>
+              <Field
+                label="Commencement date"
+                hint="Acquisitions close on this date, and the return schedule starts from it."
+              >
+                <input
+                  type="date"
+                  className={inputClass}
+                  value={form.commencementDate}
+                  onChange={(e) => set('commencementDate', e.target.value)}
                 />
               </Field>
             </Section>
@@ -894,7 +911,9 @@ function Field({
   return (
     <label className={`grid gap-1.5 text-sm font-medium ${wide ? 'sm:col-span-2' : ''}`}>
       <span>{label}</span>
-      {hint ? <span className="-mt-1 text-xs font-normal text-muted-foreground">{hint}</span> : null}
+      {hint ? (
+        <span className="-mt-1 text-xs font-normal text-muted-foreground">{hint}</span>
+      ) : null}
       {children}
     </label>
   );

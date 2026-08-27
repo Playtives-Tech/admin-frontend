@@ -59,7 +59,9 @@ export function getMembers(input: {
   const query = new URLSearchParams({ page: String(input.page), limit: String(input.limit) });
   if (input.search) query.set('search', input.search);
   if (input.status && input.status !== 'all') query.set('status', input.status);
-  new URLSearchParams(dateRangeSearchParams(input.range)).forEach((value, key) => query.set(key, value));
+  new URLSearchParams(dateRangeSearchParams(input.range)).forEach((value, key) =>
+    query.set(key, value),
+  );
   return api<MembersPage>(`/v1/admin/users?${query.toString()}`);
 }
 
@@ -112,7 +114,6 @@ export type AdminDepositRequest = Readonly<{
   _id: string;
   userId: RequestUser;
   amountMinorUnits: number;
-  narration?: string;
   receiptImageUrl: string;
   status: 'pending' | 'approved' | 'rejected';
   createdAt: string;
@@ -135,7 +136,9 @@ export type SettledPaystackDeposit = Readonly<{
   createdAt: string;
 }>;
 
-export function getSettledPaystackDeposits(range: AdminDateRange): Promise<SettledPaystackDeposit[]> {
+export function getSettledPaystackDeposits(
+  range: AdminDateRange,
+): Promise<SettledPaystackDeposit[]> {
   return api<SettledPaystackDeposit[]>(
     `/v1/admin/wallet/deposits/settled?${dateRangeSearchParams(range)}`,
   );
@@ -168,7 +171,9 @@ export type AdminWithdrawalRequest = Readonly<{
 }>;
 
 export function getWithdrawalRequests(range: AdminDateRange): Promise<AdminWithdrawalRequest[]> {
-  return api<AdminWithdrawalRequest[]>(`/v1/admin/wallet/withdrawals?${dateRangeSearchParams(range)}`);
+  return api<AdminWithdrawalRequest[]>(
+    `/v1/admin/wallet/withdrawals?${dateRangeSearchParams(range)}`,
+  );
 }
 
 export function reviewWithdrawalRequest(
@@ -203,7 +208,9 @@ export type AdminOverview = Readonly<{
 }>;
 
 export function getAdminOverview(range: AdminDateRange): Promise<AdminOverview> {
-  return api<AdminOverview>(`/v1/admin/overview?${dateRangeSearchParams(range)}`, { cache: 'no-store' });
+  return api<AdminOverview>(`/v1/admin/overview?${dateRangeSearchParams(range)}`, {
+    cache: 'no-store',
+  });
 }
 
 export type AdminNameChangeRequest = Readonly<{
@@ -217,7 +224,10 @@ export type AdminNameChangeRequest = Readonly<{
 }>;
 
 export function getNameChangeRequests(range: AdminDateRange): Promise<AdminNameChangeRequest[]> {
-  return api<AdminNameChangeRequest[]>(`/v1/admin/name-change-requests?${dateRangeSearchParams(range)}`, { cache: 'no-store' });
+  return api<AdminNameChangeRequest[]>(
+    `/v1/admin/name-change-requests?${dateRangeSearchParams(range)}`,
+    { cache: 'no-store' },
+  );
 }
 
 export function sendNameChangeLink(requestId: string): Promise<AdminNameChangeRequest> {
