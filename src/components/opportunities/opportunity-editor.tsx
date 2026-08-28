@@ -10,7 +10,6 @@ import { notify } from '@/lib/notify';
 import {
   Opportunity,
   OpportunityPayload,
-  AgreementStatus,
   DurationUnit,
   opportunityService,
   OpportunityStructure,
@@ -26,9 +25,6 @@ type FormState = {
   summary: string;
   about: string;
   agreement: string;
-  agreementVersion: string;
-  agreementEffectiveDate: string;
-  agreementStatus: AgreementStatus;
   agreementResourceUrl: string;
   price: string;
   minimumUnits: string;
@@ -66,9 +62,6 @@ const emptyForm: FormState = {
   summary: '',
   about: '',
   agreement: '',
-  agreementVersion: '1.0',
-  agreementEffectiveDate: '',
-  agreementStatus: 'DRAFT',
   agreementResourceUrl: '',
   price: '',
   minimumUnits: '1',
@@ -124,9 +117,6 @@ function toForm(opportunity: Opportunity): FormState {
     summary: opportunity.summary,
     about: opportunity.about ?? '',
     agreement: opportunity.agreement ?? '',
-    agreementVersion: opportunity.agreementVersion ?? '1.0',
-    agreementEffectiveDate: opportunity.agreementEffectiveDate?.slice(0, 10) ?? '',
-    agreementStatus: opportunity.agreementStatus ?? 'DRAFT',
     agreementResourceUrl: opportunity.agreementResourceUrl ?? '',
     price: String(opportunity.pricePerUnitMinorUnits / 100),
     minimumUnits: String(opportunity.minimumUnits),
@@ -258,9 +248,6 @@ export function OpportunityEditor({
     summary: form.summary.trim(),
     about: form.about.trim(),
     agreement: form.agreement.trim(),
-    agreementVersion: form.agreementVersion.trim() || '1.0',
-    agreementEffectiveDate: form.agreementEffectiveDate || undefined,
-    agreementStatus: form.agreementStatus,
     agreementResourceUrl: form.agreementResourceUrl.trim() || undefined,
     pricePerUnitMinorUnits: Math.round((Number(form.price) || 0) * 100),
     minimumUnits: numberOrUndefined(form.minimumUnits),
@@ -468,33 +455,6 @@ export function OpportunityEditor({
                   placeholder={
                     '# Member agreement\n\nUse headings, bullet lists, **bold text**, and normal paragraphs. Members see a short preview and can open the complete agreement.'
                   }
-                />
-              </Field>
-              <Field label="Agreement version">
-                <input
-                  className={inputClass}
-                  value={form.agreementVersion}
-                  onChange={(e) => set('agreementVersion', e.target.value)}
-                  placeholder="e.g. 1.0"
-                />
-              </Field>
-              <Field label="Agreement status">
-                <select
-                  className={inputClass}
-                  value={form.agreementStatus}
-                  onChange={(e) => set('agreementStatus', e.target.value as AgreementStatus)}
-                >
-                  <option value="DRAFT">Draft</option>
-                  <option value="ACTIVE">Active — members can accept</option>
-                  <option value="RETIRED">Retired — no new acceptances</option>
-                </select>
-              </Field>
-              <Field label="Effective date">
-                <input
-                  type="date"
-                  className={inputClass}
-                  value={form.agreementEffectiveDate}
-                  onChange={(e) => set('agreementEffectiveDate', e.target.value)}
                 />
               </Field>
               <Field label="Downloadable agreement resource (optional)">
