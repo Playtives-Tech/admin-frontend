@@ -12,7 +12,7 @@
     --border: 220 16% 88%;
     --brand: 157 52% 31%;
     --brand-foreground: 0 0% 100%;
-    --stripe: 157 52% 31% / 0.018;
+    --stripe: 157 52% 31% / 0.022;
   }
   .dark {
     --background: 224 28% 8%;
@@ -40,13 +40,16 @@
   .app-background,
   .app-surface {
     background-color: hsl(var(--background));
-    background-image: repeating-linear-gradient(
-      -45deg,
-      hsl(var(--stripe)) 0,
-      hsl(var(--stripe)) 1px,
-      transparent 1px,
-      transparent 18px
-    );
+    background-image:
+      radial-gradient(circle at 1px 1px, hsl(var(--brand) / 0.035) 1px, transparent 1.25px),
+      repeating-linear-gradient(
+        -45deg,
+        hsl(var(--stripe)) 0,
+        hsl(var(--stripe)) 1px,
+        transparent 1px,
+        transparent 24px
+      );
+    background-size: 26px 26px, auto;
   }
 
   .app-surface {
