@@ -6,7 +6,6 @@ import {
   ArrowDownCircle,
   ArrowUpCircle,
   ChartNoAxesCombined,
-  ScrollText,
   BadgeCheck,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
