@@ -240,9 +240,7 @@ export function OpportunityEditor({
     const duration = Number(form.durationValue) || 0;
     const monthly =
       form.returnSchedule === 'MONTHLY' && duration > 0 ? Math.round(profit / duration) : null;
-    const nextPrincipal = form.rolloverAllowed
-      ? principal + (form.rolloverCompoundsReturns ? profit : 0)
-      : null;
+    const nextPrincipal = form.rolloverAllowed ? principal + profit : null;
     return {
       profit,
       monthly,
@@ -252,14 +250,7 @@ export function OpportunityEditor({
           ? null
           : Math.round((nextPrincipal * (Number(form.returnRate) || 0)) / 100),
     };
-  }, [
-    form.durationValue,
-    form.price,
-    form.returnRate,
-    form.returnSchedule,
-    form.rolloverAllowed,
-    form.rolloverCompoundsReturns,
-  ]);
+  }, [form.durationValue, form.price, form.returnRate, form.returnSchedule, form.rolloverAllowed]);
 
   const payload = (status: 'DRAFT' | 'PUBLISHED'): OpportunityPayload => ({
     title: form.title.trim(),
@@ -305,7 +296,7 @@ export function OpportunityEditor({
     projectedReturnRatePercent: numberOrUndefined(form.returnRate),
     returnSchedule: form.returnSchedule,
     rolloverAllowed: form.rolloverAllowed,
-    rolloverCompoundsReturns: form.rolloverAllowed && form.rolloverCompoundsReturns,
+    rolloverCompoundsReturns: false,
     memberAvailabilityDate: form.memberAvailabilityDate || undefined,
     commencementDate: form.commencementDate || undefined,
     location: form.location.trim(),
@@ -758,8 +749,8 @@ export function OpportunityEditor({
               </Field>
             </Section>
             <Section
-              title="Rollover at maturity"
-              description="Only enable this if the offer can continue after maturity."
+              title="Member profit rollover"
+              description="Enable this only when members may choose to add approved monthly profit to their contribution."
             >
               <label className="flex gap-3 text-sm">
                 <input
@@ -767,18 +758,9 @@ export function OpportunityEditor({
                   checked={form.rolloverAllowed}
                   onChange={(e) => set('rolloverAllowed', e.target.checked)}
                 />
-                Allow members to roll the principal into another cycle at maturity
+                Let members choose whether approved monthly profit is paid to their wallet or rolled
+                into their contribution
               </label>
-              {form.rolloverAllowed && (
-                <label className="flex gap-3 text-sm">
-                  <input
-                    type="checkbox"
-                    checked={form.rolloverCompoundsReturns}
-                    onChange={(e) => set('rolloverCompoundsReturns', e.target.checked)}
-                  />
-                  Add profit to principal before calculating the next cycle&apos;s return
-                </label>
-              )}
             </Section>
             <Section
               title="Cover image"
@@ -863,7 +845,7 @@ export function OpportunityEditor({
               {form.agreement && <PreviewText title="Agreement" text={form.agreement} />}{' '}
               {projection.nextPrincipal != null && (
                 <div className="rounded-xl bg-brand/5 p-4 text-sm">
-                  <p className="font-semibold">Rollover projection</p>
+                  <p className="font-semibold">Member rollover illustration</p>
                   <p className="mt-1 text-muted-foreground">
                     Next principal: {money(projection.nextPrincipal)} · Next projected profit:{' '}
                     {money(projection.nextProfit ?? 0)}

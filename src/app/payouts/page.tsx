@@ -44,19 +44,18 @@ export default function PayoutsPage(): React.JSX.Element {
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState('');
   const [range, setRange] = useState<AdminDateRange>(defaultAdminDateRange);
-  const load = useCallback(
-    async () => {
-      const response = await payoutService.list(status === 'ALL' ? undefined : status, range, page);
-      setItems(response.items);
-      setTotalItems(response.pagination.totalItems);
-      setTotalPages(response.pagination.totalPages);
-    },
-    [page, range, status],
-  );
+  const load = useCallback(async () => {
+    const response = await payoutService.list(status === 'ALL' ? undefined : status, range, page);
+    setItems(response.items);
+    setTotalItems(response.pagination.totalItems);
+    setTotalPages(response.pagination.totalPages);
+  }, [page, range, status]);
   useEffect(() => {
     void load().catch(() => notify.error('Could not load maturity payouts'));
   }, [load]);
-  useEffect(() => { setPage(1); }, [range, status]);
+  useEffect(() => {
+    setPage(1);
+  }, [range, status]);
   const open = async (id: string) => {
     setLoadingDetail(true);
     setNote('');
@@ -86,7 +85,9 @@ export default function PayoutsPage(): React.JSX.Element {
       await payoutService.review(detail.payout, action, note);
       setDetail(undefined);
       await load();
-      notify.success(action === 'APPROVED' ? 'Principal payout approved and credited' : 'Payout rejected');
+      notify.success(
+        action === 'APPROVED' ? 'Principal payout approved and credited' : 'Payout rejected',
+      );
     } catch (error) {
       notify.error(error instanceof Error ? error.message : 'Payout review failed');
     } finally {
@@ -102,100 +103,154 @@ export default function PayoutsPage(): React.JSX.Element {
       <div className="mx-auto max-w-6xl space-y-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="inline-flex flex-wrap gap-2">
-            <button onClick={() => setTab('MONTHLY')} className={`inline-flex items-center gap-2 rounded-xl border px-3.5 py-2 text-sm font-semibold transition-colors ${tab === 'MONTHLY' ? 'border-brand bg-brand text-brand-foreground' : 'bg-background text-muted-foreground hover:border-brand/40 hover:text-foreground'}`}><MdPayments className="size-4" />Monthly earnings</button>
-            <button onClick={() => setTab('PRINCIPAL')} className={`inline-flex items-center gap-2 rounded-xl border px-3.5 py-2 text-sm font-semibold transition-colors ${tab === 'PRINCIPAL' ? 'border-brand bg-brand text-brand-foreground' : 'bg-background text-muted-foreground hover:border-brand/40 hover:text-foreground'}`}><MdAccountBalanceWallet className="size-4" />Capital returns</button>
+            <button
+              onClick={() => setTab('MONTHLY')}
+              className={`inline-flex items-center gap-2 rounded-xl border px-3.5 py-2 text-sm font-semibold transition-colors ${tab === 'MONTHLY' ? 'border-brand bg-brand text-brand-foreground' : 'bg-background text-muted-foreground hover:border-brand/40 hover:text-foreground'}`}
+            >
+              <MdPayments className="size-4" />
+              Monthly earnings
+            </button>
+            <button
+              onClick={() => setTab('PRINCIPAL')}
+              className={`inline-flex items-center gap-2 rounded-xl border px-3.5 py-2 text-sm font-semibold transition-colors ${tab === 'PRINCIPAL' ? 'border-brand bg-brand text-brand-foreground' : 'bg-background text-muted-foreground hover:border-brand/40 hover:text-foreground'}`}
+            >
+              <MdAccountBalanceWallet className="size-4" />
+              Capital returns
+            </button>
           </div>
           <DateRangeFilter value={range} onChange={setRange} />
         </div>
-        {tab === 'MONTHLY' ? <MonthlyDistributionPanel range={range} /> : <>
-        <div className="pt-2">
-          <p className="text-xs font-bold uppercase tracking-wider text-brand">Capital returns</p>
-          <h2 className="mt-1 font-sans text-xl font-semibold">Principal payout review</h2>
-          <p className="mt-1 text-sm text-muted-foreground">Approve the final principal return separately once a fixed-term ownership completes.</p>
-        </div>
-        <div className="grid gap-4 sm:grid-cols-3">
-          <Stat label="Completed ownerships" value={String(items.length)} icon={MdPendingActions} />
-          <Stat
-            label="Pending value"
-            value={money(pending.reduce((sum, item) => sum + (item.actualPayoutMinorUnits ?? item.totalPayoutMinorUnits), 0))}
-            icon={MdAccountBalanceWallet}
-          />
-          <Stat
-            label="Approved in view"
-            value={String(items.filter((item) => item.status === 'APPROVED').length)}
-            icon={MdCheckCircle}
-          />
-        </div>
-        <div className="flex gap-2 overflow-x-auto">
-          {(['ALL', 'PENDING', 'APPROVED', 'REJECTED'] as const).map((value) => (
-            <button
-              key={value}
-              onClick={() => setStatus(value)}
-              className={`rounded-full px-4 py-2 text-sm font-semibold ${status === value ? 'bg-brand text-brand-foreground' : 'bg-muted text-muted-foreground'}`}
-            >
-              {value}
-            </button>
-          ))}
-        </div>
-        <div className="app-surface overflow-x-auto rounded-2xl border">
-          <table className="w-full text-left text-sm">
-            <thead className="border-b bg-muted/30">
-              <tr>
-                {[
-                  'Member',
-                  'Opportunity',
-                  'Units',
-                  'Principal',
-                  'Projected return',
-                  'Total payout',
-                  'Status',
-                  'Review',
-                ].map((label) => (
-                  <th key={label} className="px-4 py-4 font-semibold text-muted-foreground">
-                    {label}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y">
-              {items.map((item) => (
-                <tr key={item._id}>
-                  <td className="px-4 py-4">
-                    <p className="font-medium">{item.userId.name}</p>
-                    <p className="text-xs text-muted-foreground">{item.userId.email}</p>
-                  </td>
-                  <td className="px-4 py-4">{item.opportunityId.title}</td>
-                  <td className="px-4 py-4">{item.ownershipId.units}</td>
-                  <td className="px-4 py-4">{money(item.principalMinorUnits)}</td>
-                  <td className="px-4 py-4 text-brand">{money(item.returnMinorUnits)}</td>
-                  <td className="px-4 py-4 font-semibold">{money(item.actualPayoutMinorUnits ?? item.totalPayoutMinorUnits)}</td>
-                  <td className="px-4 py-4">{item.status}</td>
-                  <td className="px-4 py-4">
-                    <button
-                      disabled={loadingDetail}
-                      onClick={() => void open(item._id)}
-                      className="inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold hover:bg-muted"
-                    >
-                      <MdVisibility /> Review details
-                    </button>
-                  </td>
-                </tr>
+        {tab === 'MONTHLY' ? (
+          <MonthlyDistributionPanel range={range} />
+        ) : (
+          <>
+            <div className="pt-2">
+              <p className="text-xs font-bold uppercase tracking-wider text-brand">
+                Capital returns
+              </p>
+              <h2 className="mt-1 font-sans text-xl font-semibold">Principal payout review</h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Approve the final principal return separately once a fixed-term ownership completes.
+              </p>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-3">
+              <Stat
+                label="Completed ownerships"
+                value={String(items.length)}
+                icon={MdPendingActions}
+              />
+              <Stat
+                label="Pending value"
+                value={money(
+                  pending.reduce(
+                    (sum, item) =>
+                      sum + (item.actualPayoutMinorUnits ?? item.totalPayoutMinorUnits),
+                    0,
+                  ),
+                )}
+                icon={MdAccountBalanceWallet}
+              />
+              <Stat
+                label="Approved in view"
+                value={String(items.filter((item) => item.status === 'APPROVED').length)}
+                icon={MdCheckCircle}
+              />
+            </div>
+            <div className="flex gap-2 overflow-x-auto">
+              {(['ALL', 'PENDING', 'APPROVED', 'REJECTED'] as const).map((value) => (
+                <button
+                  key={value}
+                  onClick={() => setStatus(value)}
+                  className={`rounded-full px-4 py-2 text-sm font-semibold ${status === value ? 'bg-brand text-brand-foreground' : 'bg-muted text-muted-foreground'}`}
+                >
+                  {value}
+                </button>
               ))}
-              {items.length === 0 && (
-                <tr>
-                  <td colSpan={8} className="p-10 text-center text-muted-foreground">
-                    No payouts match this view.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-          <div className="flex items-center justify-between border-t p-4 text-xs text-muted-foreground">
-            <span>{totalItems ? `Showing ${(page - 1) * 20 + 1}–${Math.min(page * 20, totalItems)} of ${totalItems}` : 'No capital returns'}</span>
-            <div className="flex items-center gap-2"><span>Page {page} of {totalPages}</span><button disabled={page <= 1} onClick={() => setPage((current) => current - 1)} className="grid size-8 place-items-center rounded-lg border disabled:opacity-40"><MdChevronLeft /></button><button disabled={page >= totalPages} onClick={() => setPage((current) => current + 1)} className="grid size-8 place-items-center rounded-lg border disabled:opacity-40"><MdChevronRight /></button></div>
-          </div>
-        </div>
-        </>}
+            </div>
+            <div className="app-surface overflow-x-auto rounded-2xl border">
+              <table className="w-full text-left text-sm">
+                <thead className="border-b bg-muted/30">
+                  <tr>
+                    {[
+                      'Member',
+                      'Opportunity',
+                      'Units',
+                      'Principal',
+                      'Projected return',
+                      'Total payout',
+                      'Status',
+                      'Review',
+                    ].map((label) => (
+                      <th key={label} className="px-4 py-4 font-semibold text-muted-foreground">
+                        {label}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y">
+                  {items.map((item) => (
+                    <tr key={item._id}>
+                      <td className="px-4 py-4">
+                        <p className="font-medium">{item.userId.name}</p>
+                        <p className="text-xs text-muted-foreground">{item.userId.email}</p>
+                      </td>
+                      <td className="px-4 py-4">{item.opportunityId.title}</td>
+                      <td className="px-4 py-4">{item.ownershipId.units}</td>
+                      <td className="px-4 py-4">{money(item.principalMinorUnits)}</td>
+                      <td className="px-4 py-4 text-brand">{money(item.returnMinorUnits)}</td>
+                      <td className="px-4 py-4 font-semibold">
+                        {money(item.actualPayoutMinorUnits ?? item.totalPayoutMinorUnits)}
+                      </td>
+                      <td className="px-4 py-4">{item.status}</td>
+                      <td className="px-4 py-4">
+                        <button
+                          disabled={loadingDetail}
+                          onClick={() => void open(item._id)}
+                          className="inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold hover:bg-muted"
+                        >
+                          <MdVisibility /> Review details
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                  {items.length === 0 && (
+                    <tr>
+                      <td colSpan={8} className="p-10 text-center text-muted-foreground">
+                        No payouts match this view.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+              <div className="flex items-center justify-between border-t p-4 text-xs text-muted-foreground">
+                <span>
+                  {totalItems
+                    ? `Showing ${(page - 1) * 20 + 1}–${Math.min(page * 20, totalItems)} of ${totalItems}`
+                    : 'No capital returns'}
+                </span>
+                <div className="flex items-center gap-2">
+                  <span>
+                    Page {page} of {totalPages}
+                  </span>
+                  <button
+                    disabled={page <= 1}
+                    onClick={() => setPage((current) => current - 1)}
+                    className="grid size-8 place-items-center rounded-lg border disabled:opacity-40"
+                  >
+                    <MdChevronLeft />
+                  </button>
+                  <button
+                    disabled={page >= totalPages}
+                    onClick={() => setPage((current) => current + 1)}
+                    className="grid size-8 place-items-center rounded-lg border disabled:opacity-40"
+                  >
+                    <MdChevronRight />
+                  </button>
+                </div>
+              </div>
+            </div>
+          </>
+        )}
       </div>
       {detail && (
         <ReviewPanel
@@ -230,11 +285,14 @@ function ReviewPanel({
   review: (action: 'APPROVED' | 'REJECTED') => Promise<void>;
 }) {
   const { payout, wallet, accruals } = detail;
-  const [actualAmount, setActualAmount] = useState(String((payout.actualPayoutMinorUnits ?? payout.totalPayoutMinorUnits) / 100));
+  const [actualAmount, setActualAmount] = useState(
+    String((payout.actualPayoutMinorUnits ?? payout.totalPayoutMinorUnits) / 100),
+  );
   const reviewable = payout.status === 'PENDING' || payout.status === 'PROCESSING';
   const saveActualAmount = async () => {
     const value = Number(actualAmount);
-    if (!Number.isFinite(value) || value < 0) return notify.error('Enter a valid capital return amount');
+    if (!Number.isFinite(value) || value < 0)
+      return notify.error('Enter a valid capital return amount');
     try {
       const updated = await payoutService.setActualAmount(payout, value);
       updateDetail({
@@ -258,9 +316,7 @@ function ReviewPanel({
             <p className="text-xs font-bold uppercase tracking-wider text-brand">
               Maturity validation
             </p>
-            <h2 className="mt-1 font-sans text-2xl font-semibold">
-              {payout.opportunityId.title}
-            </h2>
+            <h2 className="mt-1 font-sans text-2xl font-semibold">{payout.opportunityId.title}</h2>
             <p className="mt-1 text-sm text-muted-foreground">
               Review every factor before approving this payout.
             </p>
@@ -313,12 +369,14 @@ function ReviewPanel({
                 helper={`Monthly for ${payout.ownershipId.units} units: ${money((payout.opportunityId.projectedMonthlyProfitMinorUnits ?? Math.round(payout.opportunityId.projectedProfitMinorUnits / Math.max(1, payout.opportunityId.durationMonths))) * payout.ownershipId.units)}`}
               />
               <Metric
-                label="Rollover"
-                value={payout.opportunityId.rolloverAllowed ? 'Enabled' : 'Disabled'}
+                label="Member profit rollover"
+                value={
+                  payout.opportunityId.rolloverAllowed ? 'Member choice enabled' : 'Not offered'
+                }
                 helper={
                   payout.opportunityId.rolloverCompoundsReturns
-                    ? 'Returns compound into capital'
-                    : 'No compounding'
+                    ? 'Legacy setting: returns compound into capital'
+                    : 'Members who opt in have approved profit added to their contribution'
                 }
               />
             </div>
@@ -332,7 +390,15 @@ function ReviewPanel({
                 value={money(payout.ownershipId.investmentCapitalMinorUnits)}
               />
               <Metric label="Accrued return" value={money(payout.returnMinorUnits)} />
-              <Metric label="Capital amount to return" value={money(payout.actualPayoutMinorUnits ?? payout.totalPayoutMinorUnits)} helper={payout.actualPayoutMinorUnits == null ? 'Calculated capital amount' : `Override saved · calculated ${money(payout.totalPayoutMinorUnits)}`} />
+              <Metric
+                label="Capital amount to return"
+                value={money(payout.actualPayoutMinorUnits ?? payout.totalPayoutMinorUnits)}
+                helper={
+                  payout.actualPayoutMinorUnits == null
+                    ? 'Calculated capital amount'
+                    : `Override saved · calculated ${money(payout.totalPayoutMinorUnits)}`
+                }
+              />
               <Metric
                 label="Time held"
                 value={`${payout.ownershipId.cyclesAccrued} monthly cycles`}
@@ -380,8 +446,27 @@ function ReviewPanel({
             <Section title="Admin decision">
               <div className="mb-4 rounded-xl bg-muted/40 p-4">
                 <label className="text-sm font-semibold">Exact capital amount to return</label>
-                <p className="mt-1 text-xs text-muted-foreground">This manual amount overrides the calculated principal return and is the amount credited when approved.</p>
-                <div className="mt-3 flex flex-wrap gap-2"><input type="number" min="0" step="0.01" value={actualAmount} onChange={(event) => setActualAmount(event.target.value)} className="h-11 min-w-48 rounded-xl border bg-background px-3 text-sm" /><button type="button" onClick={() => void saveActualAmount()} className="h-11 rounded-xl border px-4 text-sm font-semibold hover:bg-background">Save amount</button></div>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  This manual amount overrides the calculated principal return and is the amount
+                  credited when approved.
+                </p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={actualAmount}
+                    onChange={(event) => setActualAmount(event.target.value)}
+                    className="h-11 min-w-48 rounded-xl border bg-background px-3 text-sm"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => void saveActualAmount()}
+                    className="h-11 rounded-xl border px-4 text-sm font-semibold hover:bg-background"
+                  >
+                    Save amount
+                  </button>
+                </div>
               </div>
               <textarea
                 value={note}

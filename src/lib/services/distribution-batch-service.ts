@@ -2,11 +2,7 @@ import { api } from '@/lib/api';
 import { type AdminDateRange, dateRangeSearchParams } from '@/lib/date-range';
 
 export type DistributionBatchStatus =
-  | 'AWAITING_AMOUNT'
-  | 'READY_FOR_APPROVAL'
-  | 'PROCESSING'
-  | 'APPROVED'
-  | 'REJECTED';
+  'AWAITING_AMOUNT' | 'READY_FOR_APPROVAL' | 'PROCESSING' | 'APPROVED' | 'REJECTED';
 
 export type DistributionBatch = Readonly<{
   _id: string;
@@ -14,7 +10,8 @@ export type DistributionBatch = Readonly<{
   scheduledFor: string;
   cycleNumber: number;
   status: DistributionBatchStatus;
-  inputMethod: 'RATE_PERCENT' | 'AMOUNT_PER_UNIT' | 'TOTAL_DISTRIBUTION_AMOUNT' | 'MANUAL_ALLOCATION' | null;
+  inputMethod:
+    'RATE_PERCENT' | 'AMOUNT_PER_UNIT' | 'TOTAL_DISTRIBUTION_AMOUNT' | 'MANUAL_ALLOCATION' | null;
   actualRatePercent: number | null;
   actualAmountPerUnitMinorUnits: number | null;
   totalDistributionMinorUnits: number | null;
@@ -38,7 +35,11 @@ export type DistributionBatchDetail = Readonly<{
       manuallySet?: boolean;
       status: string;
       userId: Readonly<{ name: string; email: string }>;
-      ownershipId: Readonly<{ units: number }>;
+      ownershipId: Readonly<{
+        units: number;
+        rolloverElection: 'PAYOUT' | 'COMPOUND' | null;
+        rolloverCompoundsReturns: boolean;
+      }>;
     }>
   >;
 }>;
@@ -58,10 +59,18 @@ const query = (status: string | undefined, range: AdminDateRange, page: number, 
   }).toString();
 
 export const distributionBatchService = {
-  list: (status: DistributionBatchStatus | undefined, range: AdminDateRange, page = 1, limit = 20) =>
-    api<DistributionBatchPage>(`/v1/admin/distribution-batches?${query(status, range, page, limit)}`, {
-      cache: 'no-store',
-    }),
+  list: (
+    status: DistributionBatchStatus | undefined,
+    range: AdminDateRange,
+    page = 1,
+    limit = 20,
+  ) =>
+    api<DistributionBatchPage>(
+      `/v1/admin/distribution-batches?${query(status, range, page, limit)}`,
+      {
+        cache: 'no-store',
+      },
+    ),
   get: (id: string) =>
     api<DistributionBatchDetail>(`/v1/admin/distribution-batches/${id}`, { cache: 'no-store' }),
   setAmount: (
@@ -85,7 +94,11 @@ export const distributionBatchService = {
     request<DistributionBatch>(batch, 'review', { status, note }),
 };
 
-function request<T>(batch: DistributionBatch, action: 'amount' | 'manual-allocations' | 'review', body: object) {
+function request<T>(
+  batch: DistributionBatch,
+  action: 'amount' | 'manual-allocations' | 'review',
+  body: object,
+) {
   const fingerprint = `${batch._id}:${batch.revision}:${action}:${JSON.stringify(body)}`;
   const key = keys.get(fingerprint) ?? crypto.randomUUID();
   keys.set(fingerprint, key);
