@@ -93,9 +93,11 @@ export default function OpportunitiesPage(): React.JSX.Element {
                 <div className="mt-5 flex items-center justify-between border-t pt-4 text-xs text-muted-foreground">
                   <span className="flex items-center gap-1">
                     <MdCalendarMonth />
-                    {item.memberAvailabilityDate
-                      ? `Available ${new Date(item.memberAvailabilityDate).toLocaleDateString()}`
-                      : 'Availability date required'}
+                    {item.offerClosesAt
+                      ? `Closes ${new Date(item.offerClosesAt).toLocaleDateString()}`
+                      : item.memberAvailabilityDate
+                        ? `Opens ${new Date(item.memberAvailabilityDate).toLocaleDateString()}`
+                        : 'Offer dates required'}
                   </span>
                   <span className="flex items-center gap-3">
                     <Link href={`/opportunities/${item._id}`} className="font-semibold text-brand">
