@@ -47,6 +47,7 @@ type FormState = {
   rolloverAllowed: boolean;
   rolloverCompoundsReturns: boolean;
   memberAvailabilityDate: string;
+  offerClosesAt: string;
   commencementDate: string;
   location: string;
   imageUrl: string;
@@ -85,6 +86,7 @@ const emptyForm: FormState = {
   rolloverAllowed: false,
   rolloverCompoundsReturns: false,
   memberAvailabilityDate: '',
+  offerClosesAt: '',
   commencementDate: '',
   location: '',
   imageUrl: '',
@@ -156,6 +158,7 @@ function toForm(opportunity: Opportunity): FormState {
     rolloverAllowed: opportunity.rolloverAllowed ?? false,
     rolloverCompoundsReturns: opportunity.rolloverCompoundsReturns ?? false,
     memberAvailabilityDate: opportunity.memberAvailabilityDate?.slice(0, 10) ?? '',
+    offerClosesAt: opportunity.offerClosesAt?.slice(0, 10) ?? '',
     commencementDate: opportunity.commencementDate?.slice(0, 10) ?? '',
     location: opportunity.location ?? '',
     imageUrl: opportunity.imageUrl ?? '',
@@ -285,6 +288,7 @@ export function OpportunityEditor({
     rolloverAllowed: form.rolloverAllowed,
     rolloverCompoundsReturns: false,
     memberAvailabilityDate: form.memberAvailabilityDate || undefined,
+    offerClosesAt: form.offerClosesAt || undefined,
     commencementDate: form.commencementDate || undefined,
     location: form.location.trim(),
     imageUrl: form.imageUrl || undefined,
@@ -298,6 +302,16 @@ export function OpportunityEditor({
   async function save(status: 'DRAFT' | 'PUBLISHED') {
     if (!form.title.trim() || !form.category.trim() || !form.summary.trim())
       return notify.error('Title, category and summary are required.');
+    if (status === 'PUBLISHED') {
+      if (!form.memberAvailabilityDate || !form.offerClosesAt || !form.commencementDate)
+        return notify.error(
+          'Offer open, offer close, and deal start dates are required to publish.',
+        );
+      if (form.offerClosesAt <= form.memberAvailabilityDate)
+        return notify.error('Offer close date must be after the offer open date.');
+      if (form.commencementDate < form.offerClosesAt)
+        return notify.error('Deal start date must be on or after the offer close date.');
+    }
     setSaving(true);
     try {
       if (opportunityId) await opportunityService.update(opportunityId, revision, payload(status));
@@ -690,8 +704,8 @@ export function OpportunityEditor({
                 />
               </Field>
               <Field
-                label="Member availability date"
-                hint="Members can discover and acquire this opportunity from this date."
+                label="Offer opens"
+                hint="Members can discover and own this opportunity from this date."
               >
                 <input
                   type="date"
@@ -701,8 +715,19 @@ export function OpportunityEditor({
                 />
               </Field>
               <Field
-                label="Commencement date"
-                hint="Acquisitions close on this date, and the return schedule starts from it."
+                label="Offer closes"
+                hint="Members cannot own this opportunity after this date."
+              >
+                <input
+                  type="date"
+                  className={inputClass}
+                  value={form.offerClosesAt}
+                  onChange={(e) => set('offerClosesAt', e.target.value)}
+                />
+              </Field>
+              <Field
+                label="Deal start date"
+                hint="The deal begins and the monthly return schedule starts from this date."
               >
                 <input
                   type="date"

@@ -72,6 +72,7 @@ export interface Opportunity {
   rolloverNextPrincipalMinorUnits: number | null;
   rolloverNextProjectedProfitMinorUnits: number | null;
   memberAvailabilityDate?: string | null;
+  offerClosesAt?: string | null;
   commencementDate?: string | null;
   location?: string;
   imageUrl?: string;
