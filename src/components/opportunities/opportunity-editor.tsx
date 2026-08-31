@@ -356,26 +356,28 @@ export function OpportunityEditor({
       title={opportunityId ? 'Edit Opportunity' : 'New Opportunity'}
       description="Set the member-facing details, commercial terms, and payout settings."
     >
-      <div className="mx-auto max-w-6xl">
-        <nav className="mb-5 flex items-center gap-2 text-xs text-muted-foreground">
-          <Link href="/opportunities">Opportunities</Link>
-          <MdChevronRight />
-          <span>{opportunityId ? 'Edit' : 'New'}</span>
-        </nav>
-        <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-semibold">{form.title || 'Untitled opportunity'}</h1>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Fields marked * are required to save. Publishing requires complete member-facing
-              details.
-            </p>
-            <p className="mt-2 text-xs text-muted-foreground">
-              {isDirty
-                ? 'Your changes are saved locally on this device.'
-                : 'Draft recovery is ready for any changes you make.'}
-            </p>
-          </div>
-          <div className="flex gap-2">
+      <div>
+        <div className="sticky top-16 z-20 -mx-5 mb-6 border-b bg-background/95 px-5 py-4 shadow-sm backdrop-blur lg:-mx-10 lg:px-10">
+          <div className="mx-auto max-w-6xl">
+            <nav className="mb-3 flex items-center gap-2 text-xs text-muted-foreground">
+              <Link href="/opportunities">Opportunities</Link>
+              <MdChevronRight />
+              <span>{opportunityId ? 'Edit' : 'New'}</span>
+            </nav>
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div>
+                <h1 className="text-2xl font-semibold">{form.title || 'Untitled opportunity'}</h1>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Fields marked * are required to save. Publishing requires complete member-facing
+                  details.
+                </p>
+                <p className="mt-2 text-xs text-muted-foreground">
+                  {isDirty
+                    ? 'Your changes are saved locally on this device.'
+                    : 'Draft recovery is ready for any changes you make.'}
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2">
             {isDirty ? (
               <button
                 type="button"
@@ -407,9 +409,11 @@ export function OpportunityEditor({
             >
               {opportunityId ? 'Update opportunity' : 'Publish'}
             </button>
+              </div>
+            </div>
           </div>
         </div>
-        <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(320px,0.62fr)]">
+        <div className="mx-auto grid max-w-6xl items-start gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(320px,0.62fr)]">
           <div className="grid gap-4">
             <Section
               title="Opportunity details"

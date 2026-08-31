@@ -32,8 +32,8 @@ export default function DepositsPage(): React.JSX.Element {
   const [items, setItems] = useState<AdminDepositRequest[]>([]);
   const [settledPaystack, setSettledPaystack] = useState<SettledPaystackDeposit[]>([]);
   const [selected, setSelected] = useState<AdminDepositRequest | null>(null);
-  const [reviewing, setReviewing] = useState(false);
-  const [receiptLoading, setReceiptLoading] = useState(true);
+  const [reviewing, setReviewing] = useState<boolean>(false);
+  const [receiptLoading, setReceiptLoading] = useState<boolean>(true);
   const [range, setRange] = useState<AdminDateRange>(defaultAdminDateRange);
 
   const load = async () => {
@@ -72,6 +72,7 @@ export default function DepositsPage(): React.JSX.Element {
     >
       <div className="mx-auto max-w-6xl space-y-5">
         <DateRangeFilter value={range} onChange={setRange} />
+
         <section className="grid gap-3 sm:grid-cols-3">
           <Metric label="Requests" value={String(items.length)} />
           <Metric label="Awaiting review" value={String(pending.length)} />
@@ -80,55 +81,7 @@ export default function DepositsPage(): React.JSX.Element {
             value={money(settledPaystack.reduce((sum, item) => sum + item.amountMinorUnits, 0))}
           />
         </section>
-        <section className="app-surface overflow-x-auto rounded-xl border">
-          <table className="w-full min-w-[720px] text-left text-xs">
-            <thead className="border-b bg-muted/30 text-muted-foreground">
-              <tr>
-                {['Member', 'Amount', 'Submitted', 'Status', ''].map((label) => (
-                  <th key={label} className="px-4 py-3 font-medium">
-                    {label}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y">
-              {items.map((item) => (
-                <tr key={item._id} className="hover:bg-muted/20">
-                  <td className="px-4 py-3">
-                    <p className="font-semibold text-foreground">{item.userId.name}</p>
-                    <p className="mt-0.5 text-[11px] text-muted-foreground">{item.userId.email}</p>
-                  </td>
-                  <td className="px-4 py-3 font-medium">{money(item.amountMinorUnits)}</td>
-                  <td className="px-4 py-3 text-muted-foreground">
-                    {new Date(item.createdAt).toLocaleString('en-NG')}
-                  </td>
-                  <td className="px-4 py-3">
-                    <Status status={item.status} />
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    <button
-                      onClick={() => {
-                        setReceiptLoading(true);
-                        setSelected(item);
-                      }}
-                      className="inline-flex h-8 items-center gap-1.5 rounded-lg border px-2.5 font-semibold hover:bg-muted"
-                    >
-                      <MdPendingActions className="size-4" />
-                      Review
-                    </button>
-                  </td>
-                </tr>
-              ))}
-              {items.length === 0 ? (
-                <tr>
-                  <td colSpan={5} className="px-4 py-10 text-center text-muted-foreground">
-                    No deposit requests yet.
-                  </td>
-                </tr>
-              ) : null}
-            </tbody>
-          </table>
-        </section>
+
         <section className="app-surface overflow-x-auto rounded-xl border">
           <div className="flex items-center justify-between gap-3 border-b px-4 py-3">
             <div>
@@ -181,6 +134,56 @@ export default function DepositsPage(): React.JSX.Element {
                 <tr>
                   <td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">
                     No settled Paystack deposits in this period.
+                  </td>
+                </tr>
+              ) : null}
+            </tbody>
+          </table>
+        </section>
+
+        <section className="app-surface overflow-x-auto rounded-xl border">
+          <table className="w-full min-w-[720px] text-left text-xs">
+            <thead className="border-b bg-muted/30 text-muted-foreground">
+              <tr>
+                {['Member', 'Amount', 'Submitted', 'Status', ''].map((label) => (
+                  <th key={label} className="px-4 py-3 font-medium">
+                    {label}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y">
+              {items.map((item) => (
+                <tr key={item._id} className="hover:bg-muted/20">
+                  <td className="px-4 py-3">
+                    <p className="font-semibold text-foreground">{item.userId.name}</p>
+                    <p className="mt-0.5 text-[11px] text-muted-foreground">{item.userId.email}</p>
+                  </td>
+                  <td className="px-4 py-3 font-medium">{money(item.amountMinorUnits)}</td>
+                  <td className="px-4 py-3 text-muted-foreground">
+                    {new Date(item.createdAt).toLocaleString('en-NG')}
+                  </td>
+                  <td className="px-4 py-3">
+                    <Status status={item.status} />
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    <button
+                      onClick={() => {
+                        setReceiptLoading(true);
+                        setSelected(item);
+                      }}
+                      className="inline-flex h-8 items-center gap-1.5 rounded-lg border px-2.5 font-semibold hover:bg-muted"
+                    >
+                      <MdPendingActions className="size-4" />
+                      Review
+                    </button>
+                  </td>
+                </tr>
+              ))}
+              {items.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="px-4 py-10 text-center text-muted-foreground">
+                    No deposit requests yet.
                   </td>
                 </tr>
               ) : null}
