@@ -55,6 +55,9 @@ type FormState = {
   imageWidth?: number;
   imageHeight?: number;
   imageAlt: string;
+  interestModeEnabled: boolean;
+  interestTargetAmount: string;
+  interestAcknowledgementText: string;
 };
 
 const emptyForm: FormState = {
@@ -92,6 +95,9 @@ const emptyForm: FormState = {
   imageUrl: '',
   imageKey: '',
   imageAlt: '',
+  interestModeEnabled: false,
+  interestTargetAmount: '',
+  interestAcknowledgementText: 'I understand this is an expression of interest only. No payment is required now, and submitting this does not mean that my position has been funded.',
 };
 
 const inputClass =
@@ -166,6 +172,9 @@ function toForm(opportunity: Opportunity): FormState {
     imageWidth: opportunity.imageWidth,
     imageHeight: opportunity.imageHeight,
     imageAlt: opportunity.imageAlt ?? '',
+    interestModeEnabled: opportunity.interestModeEnabled ?? false,
+    interestTargetAmount: opportunity.interestTargetAmount == null ? '' : String(opportunity.interestTargetAmount),
+    interestAcknowledgementText: opportunity.interestAcknowledgementText ?? emptyForm.interestAcknowledgementText,
   };
 }
 
@@ -180,7 +189,7 @@ export function OpportunityEditor({
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [revision, setRevision] = useState(1);
-  const [currentStatus, setCurrentStatus] = useState<'DRAFT' | 'PUBLISHED'>('DRAFT');
+  const [currentStatus, setCurrentStatus] = useState<'DRAFT' | 'PUBLISHED' | 'INTEREST_OPEN' | 'INTEREST_CLOSED'>('DRAFT');
   const [draftReady, setDraftReady] = useState(false);
   const [isDirty, setIsDirty] = useState(false);
   const draftKey = `${draftStoragePrefix}${opportunityId ?? 'new'}`;
@@ -201,7 +210,7 @@ export function OpportunityEditor({
       .get(opportunityId)
       .then((value) => {
         setRevision(value.revision);
-        setCurrentStatus(value.status === 'PUBLISHED' ? 'PUBLISHED' : 'DRAFT');
+        setCurrentStatus(['PUBLISHED', 'INTEREST_OPEN', 'INTEREST_CLOSED'].includes(value.status) ? value.status as 'PUBLISHED' | 'INTEREST_OPEN' | 'INTEREST_CLOSED' : 'DRAFT');
         if (draft) {
           setForm(draft);
           setIsDirty(true);
@@ -245,7 +254,7 @@ export function OpportunityEditor({
     };
   }, [form.durationValue, form.price, form.returnRate, form.returnSchedule, form.rolloverAllowed]);
 
-  const payload = (status: 'DRAFT' | 'PUBLISHED'): OpportunityPayload => ({
+  const payload = (status: 'DRAFT' | 'PUBLISHED' | 'INTEREST_OPEN' | 'INTEREST_CLOSED'): OpportunityPayload => ({
     title: form.title.trim(),
     category: form.category.trim(),
     summary: form.summary.trim(),
@@ -296,10 +305,19 @@ export function OpportunityEditor({
     imageWidth: form.imageWidth,
     imageHeight: form.imageHeight,
     imageAlt: form.imageAlt.trim(),
+    interestModeEnabled: form.interestModeEnabled,
+    interestTargetAmount: numberOrUndefined(form.interestTargetAmount),
+    showInterestProgress: form.interestModeEnabled,
+    collectOpeningCapital: form.interestModeEnabled,
+    collectRecurringAmount: form.interestModeEnabled,
+    recurringFrequency: form.interestModeEnabled ? 'monthly' : null,
+    collectCapitalReadiness: form.interestModeEnabled,
+    interestAcknowledgementText: form.interestAcknowledgementText.trim(),
+    interestAcknowledgementVersion: 'v1',
     status,
   });
 
-  async function save(status: 'DRAFT' | 'PUBLISHED') {
+  async function save(status: 'DRAFT' | 'PUBLISHED' | 'INTEREST_OPEN' | 'INTEREST_CLOSED') {
     if (!form.title.trim() || !form.category.trim() || !form.summary.trim())
       return notify.error('Title, category and summary are required.');
     if (status === 'PUBLISHED') {
@@ -423,6 +441,7 @@ export function OpportunityEditor({
             >
               {opportunityId ? 'Update opportunity' : 'Publish'}
             </button>
+            {form.interestModeEnabled ? <button disabled={saving} onClick={() => save('INTEREST_OPEN')} className="rounded-xl bg-brand px-4 py-2 text-sm font-semibold text-brand-foreground">Open interest</button> : null}
               </div>
             </div>
           </div>
@@ -736,6 +755,10 @@ export function OpportunityEditor({
                   onChange={(e) => set('commencementDate', e.target.value)}
                 />
               </Field>
+            </Section>
+            <Section title="Interest / pre-launch" description="Use this for opportunities that gather interest before funding opens.">
+              <label className="flex items-center gap-3 text-sm font-medium sm:col-span-2"><input type="checkbox" checked={form.interestModeEnabled} onChange={(e) => set('interestModeEnabled', e.target.checked)} />Enable interest stage</label>
+              {form.interestModeEnabled ? <><Field label="Interest target amount (NGN)"><input type="number" min="0" className={inputClass} value={form.interestTargetAmount} onChange={(e) => set('interestTargetAmount', e.target.value)} placeholder="100000000" /></Field><Field label="Interest acknowledgement" wide><textarea className={`${inputClass} min-h-20 resize-y`} value={form.interestAcknowledgementText} onChange={(e) => set('interestAcknowledgementText', e.target.value)} /></Field></> : null}
             </Section>
             <Section
               title="Member profit rollover"

@@ -1,0 +1,1 @@
+import { BlogEditor } from '@/components/blog/blog-editor'; export default async function EditBlogPage({ params }: Readonly<{ params: Promise<{ id: string }> }>): Promise<React.JSX.Element> { const { id } = await params; return <BlogEditor id={id} />; }

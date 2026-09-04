@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useMemo, useState } from 'react';
+import { type FormEvent, useEffect, useMemo, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { MdArrowBack, MdEmail, MdPhone, MdPublic, MdLock, MdLockOpen } from 'react-icons/md';
 import { DashboardShell } from '@/components/dashboard/shell';
@@ -9,6 +9,7 @@ import { notify } from '@/lib/notify';
 import {
   getMember,
   getMemberWallet,
+  creditMemberEarnings,
   type AdminMember,
   type AdminWalletSummary,
   updateMemberStatus,
@@ -31,6 +32,9 @@ export default function MemberDetailPage(): React.JSX.Element {
   const [wallet, setWallet] = useState<AdminWalletSummary | null>(null);
   const [ownerships, setOwnerships] = useState<AdminAcquisition[]>([]);
   const [savingStatus, setSavingStatus] = useState(false);
+  const [creditAmount, setCreditAmount] = useState('');
+  const [creditReference, setCreditReference] = useState('');
+  const [crediting, setCrediting] = useState(false);
 
   useEffect(() => {
     void Promise.all([getMember(id), getMemberWallet(id), acquisitionService.list()])
@@ -63,6 +67,26 @@ export default function MemberDetailPage(): React.JSX.Element {
       notify.error(error instanceof Error ? error.message : 'Could not update member status');
     } finally {
       setSavingStatus(false);
+    }
+  };
+  const creditBalance = async (event: FormEvent<HTMLFormElement>): Promise<void> => {
+    event.preventDefault();
+    const amountMinorUnits = Math.round(Number(creditAmount) * 100);
+    const reference = creditReference.trim();
+    if (!Number.isSafeInteger(amountMinorUnits) || amountMinorUnits < 1 || !reference) {
+      notify.error('Enter a valid credit amount and a unique reference');
+      return;
+    }
+    setCrediting(true);
+    try {
+      setWallet(await creditMemberEarnings(id, { amountMinorUnits, reference }));
+      setCreditAmount('');
+      setCreditReference('');
+      notify.success('Member earnings balance credited');
+    } catch (error) {
+      notify.error(error instanceof Error ? error.message : 'Could not credit the member balance');
+    } finally {
+      setCrediting(false);
     }
   };
 
@@ -98,6 +122,18 @@ export default function MemberDetailPage(): React.JSX.Element {
               <Metric label="Amount invested" value={money(totals.invested)} />
               <Metric label="Fixed projected returns" value={money(totals.expected)} />
             </section>
+
+            <section className="app-surface rounded-xl border p-5">
+              <h2 className="text-sm font-semibold">Credit member balance</h2>
+              <p className="mt-1 text-xs leading-5 text-muted-foreground">Credits the member’s withdrawable earnings balance immediately. Use a unique reference; the same reference cannot be applied twice.</p>
+              <form onSubmit={(event) => void creditBalance(event)} className="mt-4 grid gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1.5fr)_auto] sm:items-end">
+                <label className="grid gap-1.5 text-xs font-semibold">Amount (₦)<input required min="0.01" step="0.01" type="number" value={creditAmount} onChange={(event) => setCreditAmount(event.target.value)} placeholder="0.00" className="h-10 rounded-lg border bg-background px-3 text-sm font-normal" /></label>
+                <label className="grid gap-1.5 text-xs font-semibold">Unique reference<input required maxLength={150} value={creditReference} onChange={(event) => setCreditReference(event.target.value)} placeholder="e.g. MANUAL-PAYOUT-20260904-001" className="h-10 rounded-lg border bg-background px-3 text-sm font-normal" /></label>
+                <button disabled={crediting} className="h-10 rounded-lg bg-brand px-4 text-sm font-semibold text-white transition hover:brightness-110 disabled:opacity-60">{crediting ? 'Crediting…' : 'Credit balance'}</button>
+              </form>
+            </section>
+
+            <section className="app-surface rounded-xl border p-5"><h2 className="text-sm font-semibold">Next of Kin</h2>{member.nextOfKin ? <div className="mt-3 grid gap-2 text-sm sm:grid-cols-2"><p><span className="text-muted-foreground">Name:</span> {member.nextOfKin.fullName}</p><p><span className="text-muted-foreground">Relationship:</span> {member.nextOfKin.relationship}</p><p><span className="text-muted-foreground">Phone:</span> {member.nextOfKin.phone}</p><p><span className="text-muted-foreground">Email:</span> {member.nextOfKin.email ?? '—'}</p>{member.nextOfKin.address ? <p className="sm:col-span-2"><span className="text-muted-foreground">Address:</span> {member.nextOfKin.address}</p> : null}</div> : <p className="mt-2 text-sm text-muted-foreground">No Next of Kin details added.</p>}</section>
 
             <section className="app-surface overflow-x-auto rounded-xl border">
               <div className="border-b px-4 py-3"><h2 className="text-sm font-semibold">Ownerships</h2><p className="mt-1 text-xs text-muted-foreground">Earnings are approved from the Payouts section after completion.</p></div>

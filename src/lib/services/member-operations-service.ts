@@ -42,6 +42,7 @@ export type AdminMember = Readonly<{
   kycStatus: 'pending' | 'verified' | 'rejected';
   kycVerifiedAt: string | null;
   kycReviewNote: string | null;
+  nextOfKin: Readonly<{ fullName: string; relationship: string; phone: string; email: string | null; address: string | null }> | null;
 }>;
 
 export type MembersPage = Readonly<{
@@ -217,6 +218,10 @@ export type AdminNameChangeRequest = Readonly<{
   id: string;
   user: Readonly<{ id: string; name: string; email: string }>;
   reason: string;
+  identityDocumentType?: string | null;
+  identityDocumentNumber?: string | null;
+  identityDocumentUrl?: string | null;
+  identityDocumentFileName?: string | null;
   status: 'PENDING' | 'LINK_SENT' | 'COMPLETED';
   createdAt: string;
   linkSentAt: string | null;
