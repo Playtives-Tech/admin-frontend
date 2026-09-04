@@ -8,6 +8,7 @@ import {
   ChartNoAxesCombined,
   BadgeCheck,
   BookOpen,
+  ClipboardList,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
@@ -21,6 +22,7 @@ export const navItems: NavItem[] = [
   { href: '/overview', label: 'Overview', icon: PieChart },
   { href: '/members', label: 'Members', icon: UsersRound },
   { href: '/opportunities', label: 'Opportunity Editor', icon: FilePenLine },
+  { href: '/interest-registrations', label: 'Interest Registrations', icon: ClipboardList },
   { href: '/blog', label: 'Blog Center', icon: BookOpen },
   { href: '/payouts', label: 'User Payouts', icon: Banknote },
   { href: '/acquisitions', label: 'User Ownerships', icon: ChartNoAxesCombined },

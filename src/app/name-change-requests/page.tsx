@@ -53,13 +53,15 @@ export default function NameChangeRequestsPage(): React.JSX.Element {
           <Metric label="Links sent" value={String(items.filter((item) => item.status === 'LINK_SENT').length)} />
         </section>
         <section className="app-surface overflow-x-auto rounded-xl border">
-          <table className="w-full min-w-[760px] text-left text-xs">
-            <thead className="border-b bg-muted/30 text-muted-foreground"><tr>{['Member', 'Reason', 'Requested', 'Status', 'Secure link'].map((label) => <th key={label} className="px-4 py-3 font-medium">{label}</th>)}</tr></thead>
+          <table className="w-full min-w-[980px] text-left text-xs">
+            <thead className="border-b bg-muted/30 text-muted-foreground"><tr>{['Member', 'Reason', 'Identity document', 'Supporting file', 'Requested', 'Status', 'Secure link'].map((label) => <th key={label} className="px-4 py-3 font-medium">{label}</th>)}</tr></thead>
             <tbody className="divide-y">
               {items.map((item) => (
                 <tr key={item.id} className="hover:bg-muted/20">
                   <td className="px-4 py-3"><p className="font-semibold text-foreground">{item.user.name}</p><p className="mt-0.5 text-[11px] text-muted-foreground">{item.user.email}</p></td>
                   <td className="max-w-[24rem] px-4 py-3 text-muted-foreground"><p className="line-clamp-2">{item.reason}</p></td>
+                  <td className="px-4 py-3">{item.identityDocumentType ? <><p className="font-semibold text-foreground">{item.identityDocumentType.replaceAll('_', ' ')}</p><p className="mt-0.5 text-muted-foreground">{item.identityDocumentNumber ?? 'No number supplied'}</p></> : <span className="text-muted-foreground">Not required for legacy request</span>}</td>
+                  <td className="px-4 py-3">{item.identityDocumentUrl ? <a href={item.identityDocumentUrl} target="_blank" rel="noreferrer" className="font-semibold text-brand underline underline-offset-2">View {item.identityDocumentFileName ?? 'document'}</a> : <span className="text-muted-foreground">No file supplied</span>}</td>
                   <td className="px-4 py-3 text-muted-foreground">{date(item.createdAt)}</td>
                   <td className="px-4 py-3"><Status status={item.status} /></td>
                   <td className="px-4 py-3 text-right">
@@ -71,7 +73,7 @@ export default function NameChangeRequestsPage(): React.JSX.Element {
                   </td>
                 </tr>
               ))}
-              {items.length === 0 ? <tr><td colSpan={5} className="px-4 py-12 text-center text-muted-foreground">No name change requests yet.</td></tr> : null}
+              {items.length === 0 ? <tr><td colSpan={7} className="px-4 py-12 text-center text-muted-foreground">No name change requests yet.</td></tr> : null}
             </tbody>
           </table>
         </section>
