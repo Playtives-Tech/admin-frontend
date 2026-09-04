@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import Image from 'next/image';
+import { useCallback, useEffect, useState } from 'react';
 import {
   MdCheckCircle,
   MdClose,
@@ -36,18 +37,18 @@ export default function DepositsPage(): React.JSX.Element {
   const [receiptLoading, setReceiptLoading] = useState<boolean>(true);
   const [range, setRange] = useState<AdminDateRange>(defaultAdminDateRange);
 
-  const load = async () => {
+  const load = useCallback(async () => {
     const [requests, settled] = await Promise.all([
       getDepositRequests(range),
       getSettledPaystackDeposits(range),
     ]);
     setItems(requests);
     setSettledPaystack(settled);
-  };
+  }, [range]);
   useEffect(() => {
     if (range.preset !== 'custom' || (range.from && range.to))
       void load().catch(() => notify.error('Could not load deposit requests'));
-  }, [range]);
+  }, [load, range]);
   const review = async (status: 'approved' | 'rejected') => {
     if (!selected) return;
     setReviewing(true);
@@ -268,9 +269,12 @@ function DepositReviewModal({
                     <MdImage className="size-6 animate-pulse" />
                   </div>
                 ) : null}
-                <img
+                <Image
                   src={deposit.receiptImageUrl}
                   alt="Payment receipt"
+                  unoptimized
+                  width={1200}
+                  height={1600}
                   onLoad={() => setReceiptLoading(false)}
                   onError={() => setReceiptLoading(false)}
                   className={`h-full min-h-52 w-full object-contain ${receiptLoading ? 'invisible' : ''}`}

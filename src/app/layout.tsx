@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { DM_Sans, Inter, Geist } from 'next/font/google';
+import { Geist } from 'next/font/google';
 import { ThemeProvider } from '@/components/ui/theme-provider';
 import { AuthProvider } from '@/components/providers/auth-provider';
 import { Toaster } from '@/components/ui/toaster';

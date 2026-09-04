@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { MailCheck, Send } from 'lucide-react';
 import { DashboardShell } from '@/components/dashboard/shell';
 import { notify } from '@/lib/notify';
@@ -20,14 +20,14 @@ export default function NameChangeRequestsPage(): React.JSX.Element {
   const [sendingId, setSendingId] = useState<string | null>(null);
   const [range, setRange] = useState<AdminDateRange>(defaultAdminDateRange);
 
-  const load = async (): Promise<void> => {
+  const load = useCallback(async (): Promise<void> => {
     try {
       setItems(await getNameChangeRequests(range));
     } catch (error) {
       notify.error(error instanceof Error ? error.message : 'Could not load name change requests');
     }
-  };
-  useEffect(() => { if (range.preset !== 'custom' || (range.from && range.to)) void load(); }, [range]);
+  }, [range]);
+  useEffect(() => { if (range.preset !== 'custom' || (range.from && range.to)) void load(); }, [load, range]);
 
   const sendLink = async (requestId: string): Promise<void> => {
     setSendingId(requestId);

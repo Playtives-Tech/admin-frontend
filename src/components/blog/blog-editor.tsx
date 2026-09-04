@@ -1,4 +1,5 @@
 'use client';
+/* eslint-disable @next/next/no-img-element -- External admin-upload preview URLs are intentionally rendered without Next image optimization. */
 
 import { ArrowLeft, ImagePlus, PanelRight, Save, Send } from 'lucide-react';
 import Link from 'next/link';
