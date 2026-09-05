@@ -15,7 +15,11 @@ import { DateRangeFilter } from '@/components/ui/date-range-filter';
 import { defaultAdminDateRange, type AdminDateRange } from '@/lib/date-range';
 
 const money = (value: number) =>
-  new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN', maximumFractionDigits: 0 }).format(value / 100);
+  new Intl.NumberFormat('en-NG', {
+    style: 'currency',
+    currency: 'NGN',
+    maximumFractionDigits: 0,
+  }).format(value / 100);
 
 const statusClass: Record<AdminAcquisition['status'], string> = {
   ACTIVE: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300',
@@ -44,18 +48,24 @@ export default function AcquisitionsPage(): React.JSX.Element {
   const visible = memberId === 'all' ? items : items.filter((item) => item.userId._id === memberId);
   const totalInvested = visible.reduce((total, item) => total + item.amountMinorUnits, 0);
   const totalExpected = visible.reduce(
-    (total, item) => total + (hasVariableProjectedDistribution(item) ? 0 : projectedReturnForAcquisition(item)),
+    (total, item) =>
+      total + (hasVariableProjectedDistribution(item) ? 0 : projectedReturnForAcquisition(item)),
     0,
   );
 
   return (
-    <DashboardShell title="User ownerships" description="A concise ledger of member opportunity ownerships.">
+    <DashboardShell
+      title="User ownerships"
+      description="A concise ledger of member opportunity ownerships."
+    >
       <div className="mx-auto max-w-6xl space-y-5">
         <DateRangeFilter value={range} onChange={setRange} />
         <section className="app-surface flex flex-col gap-3 rounded-xl border p-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h2 className="text-sm font-semibold">Ownership ledger</h2>
-            <p className="mt-1 text-xs text-muted-foreground">Filter to review one member’s ownerships.</p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Filter to review one member’s ownerships.
+            </p>
           </div>
           <select
             value={memberId}
@@ -81,8 +91,20 @@ export default function AcquisitionsPage(): React.JSX.Element {
           <table className="w-full min-w-[900px] text-left text-xs">
             <thead className="border-b bg-muted/30 text-muted-foreground">
               <tr>
-                {['Member', 'Opportunity', 'Units', 'Amount invested', 'Projected distribution', 'Status', 'Created', 'Maturity'].map((label) => (
-                  <th key={label} className="px-4 py-3 font-medium">{label}</th>
+                {[
+                  'Member',
+                  'Opportunity',
+                  'Source',
+                  'Units',
+                  'Amount invested',
+                  'Projected distribution',
+                  'Status',
+                  'Created',
+                  'Maturity',
+                ].map((label) => (
+                  <th key={label} className="px-4 py-3 font-medium">
+                    {label}
+                  </th>
                 ))}
               </tr>
             </thead>
@@ -92,9 +114,23 @@ export default function AcquisitionsPage(): React.JSX.Element {
                   <tr key={item._id} className="hover:bg-muted/20">
                     <td className="px-4 py-3">
                       <p className="font-semibold text-foreground">{item.userId.name}</p>
-                      <p className="mt-0.5 text-[11px] text-muted-foreground">{item.userId.email}</p>
+                      <p className="mt-0.5 text-[11px] text-muted-foreground">
+                        {item.userId.email}
+                      </p>
                     </td>
                     <td className="px-4 py-3 font-medium">{item.opportunityId.title}</td>
+                    <td className="px-4 py-3">
+                      <p>
+                        {item.acquisitionSource === 'ADMIN_MANUAL'
+                          ? 'Admin assigned'
+                          : 'Wallet purchase'}
+                      </p>
+                      {item.assignmentReference ? (
+                        <p className="mt-0.5 text-[11px] text-muted-foreground">
+                          {item.assignmentReference}
+                        </p>
+                      ) : null}
+                    </td>
                     <td className="px-4 py-3">{item.units}</td>
                     <td className="px-4 py-3 font-medium">{money(item.amountMinorUnits)}</td>
                     <td className="px-4 py-3">
@@ -104,17 +140,29 @@ export default function AcquisitionsPage(): React.JSX.Element {
                       </p>
                     </td>
                     <td className="px-4 py-3">
-                      <span className={`rounded-full px-2 py-1 text-[10px] font-semibold ${statusClass[item.status]}`}>
+                      <span
+                        className={`rounded-full px-2 py-1 text-[10px] font-semibold ${statusClass[item.status]}`}
+                      >
                         {item.status.toLowerCase()}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-muted-foreground">{new Date(item.createdAt).toLocaleDateString('en-NG')}</td>
-                    <td className="px-4 py-3 text-muted-foreground">{item.maturityAt ? new Date(item.maturityAt).toLocaleDateString('en-NG') : '—'}</td>
+                    <td className="px-4 py-3 text-muted-foreground">
+                      {new Date(item.createdAt).toLocaleDateString('en-NG')}
+                    </td>
+                    <td className="px-4 py-3 text-muted-foreground">
+                      {item.maturityAt
+                        ? new Date(item.maturityAt).toLocaleDateString('en-NG')
+                        : '—'}
+                    </td>
                   </tr>
                 );
               })}
               {visible.length === 0 && (
-                <tr><td colSpan={8} className="px-4 py-10 text-center text-muted-foreground">No ownerships match this member.</td></tr>
+                <tr>
+                  <td colSpan={9} className="px-4 py-10 text-center text-muted-foreground">
+                    No ownerships match this member.
+                  </td>
+                </tr>
               )}
             </tbody>
           </table>
@@ -125,5 +173,10 @@ export default function AcquisitionsPage(): React.JSX.Element {
 }
 
 function Metric({ label, value }: { label: string; value: string }) {
-  return <article className="app-surface rounded-xl border p-4"><p className="text-xs text-muted-foreground">{label}</p><p className="mt-2 text-lg font-semibold">{value}</p></article>;
+  return (
+    <article className="app-surface rounded-xl border p-4">
+      <p className="text-xs text-muted-foreground">{label}</p>
+      <p className="mt-2 text-lg font-semibold">{value}</p>
+    </article>
+  );
 }

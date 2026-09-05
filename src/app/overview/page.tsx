@@ -1,6 +1,14 @@
 'use client';
 
-import { ArrowDownRight, ArrowUpRight, TrendingUp, UsersRound, WalletCards } from 'lucide-react';
+import {
+  ArrowDownRight,
+  ArrowUpRight,
+  CircleDollarSign,
+  Layers3,
+  TrendingUp,
+  UsersRound,
+  WalletCards,
+} from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { DashboardShell } from '@/components/dashboard/shell';
 import { getAdminOverview, type AdminOverview } from '@/lib/services/member-operations-service';
@@ -21,11 +29,27 @@ export default function OverviewPage(): React.JSX.Element {
 
   useEffect(() => {
     if (range.preset === 'custom' && (!range.from || !range.to)) return;
-    void getAdminOverview(range).then(setOverview).catch(() => notify.error('Could not load overview'));
+    void getAdminOverview(range)
+      .then(setOverview)
+      .catch(() => notify.error('Could not load overview'));
   }, [range]);
 
   const metrics = [
-    { label: 'Settled deposits', value: money(overview?.depositsMinorUnits ?? 0), icon: ArrowDownRight },
+    {
+      label: 'Settled deposits',
+      value: money(overview?.depositsMinorUnits ?? 0),
+      icon: ArrowDownRight,
+    },
+    {
+      label: 'Manual opportunity capital',
+      value: money(overview?.manualOpportunityCapitalMinorUnits ?? 0),
+      icon: CircleDollarSign,
+    },
+    {
+      label: 'Total recorded inflows',
+      value: money(overview?.trackedCapitalInflowsMinorUnits ?? 0),
+      icon: Layers3,
+    },
     {
       label: 'Completed withdrawals',
       value: money(overview?.withdrawalsMinorUnits ?? 0),
@@ -52,7 +76,7 @@ export default function OverviewPage(): React.JSX.Element {
     >
       <div className="mx-auto max-w-6xl space-y-5">
         <DateRangeFilter value={range} onChange={setRange} />
-        <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+        <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           {metrics.map(({ label, value, icon: Icon }) => (
             <article key={label} className="app-surface rounded-xl border p-4">
               <div className="flex items-center justify-between gap-3">
@@ -86,7 +110,9 @@ export default function OverviewPage(): React.JSX.Element {
                       title={`${point.label}: ${money(point.investedMinorUnits)}`}
                     />
                   </div>
-                  <p className="mt-2 text-center text-[11px] text-muted-foreground">{point.label}</p>
+                  <p className="mt-2 text-center text-[11px] text-muted-foreground">
+                    {point.label}
+                  </p>
                 </div>
               );
             })}
