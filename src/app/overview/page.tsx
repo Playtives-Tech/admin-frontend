@@ -41,6 +41,11 @@ export default function OverviewPage(): React.JSX.Element {
       icon: ArrowDownRight,
     },
     {
+      label: 'Admin-added deposits',
+      value: money(overview?.adminAddedDepositsMinorUnits ?? 0),
+      icon: CircleDollarSign,
+    },
+    {
       label: 'Manual opportunity capital',
       value: money(overview?.manualOpportunityCapitalMinorUnits ?? 0),
       icon: CircleDollarSign,
