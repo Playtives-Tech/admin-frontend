@@ -39,3 +39,12 @@ export async function api<T>(path: string, init?: RequestInit): Promise<T> {
   }
   return response.json() as Promise<T>;
 }
+
+export async function apiBlob(path: string): Promise<Blob> {
+  const token = getToken();
+  const response = await fetch(new URL(path, env.NEXT_PUBLIC_API_URL), {
+    headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+  });
+  if (!response.ok) throw new ApiError(response.status, 'Unable to open this document');
+  return response.blob();
+}

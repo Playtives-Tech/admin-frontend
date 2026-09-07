@@ -9,6 +9,7 @@ import {
   BadgeCheck,
   BookOpen,
   ClipboardList,
+  ShieldCheck,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
@@ -21,6 +22,7 @@ export interface NavItem {
 export const navItems: NavItem[] = [
   { href: '/overview', label: 'Overview', icon: PieChart },
   { href: '/members', label: 'Members', icon: UsersRound },
+  { href: '/kyc', label: 'KYC Reviews', icon: ShieldCheck },
   { href: '/opportunities', label: 'Opportunity Editor', icon: FilePenLine },
   { href: '/interest-registrations', label: 'Interest Registrations', icon: ClipboardList },
   { href: '/blog', label: 'Blog Center', icon: BookOpen },
