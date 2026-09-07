@@ -220,6 +220,11 @@ export default function MemberDetailPage(): React.JSX.Element {
                 </span>
                 <div>
                   <h1 className="text-lg font-semibold">{member.name}</h1>
+                  {member.memberCode ? (
+                    <p className="mt-1 font-mono text-xs font-semibold text-brand">
+                      {member.memberCode}
+                    </p>
+                  ) : null}
                   <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
                     <span className="inline-flex items-center gap-1">
                       <MdEmail />
