@@ -30,6 +30,7 @@ export type AdminMember = Readonly<{
   _id: string;
   name: string;
   email: string;
+  memberCode?: string | null;
   phone?: string | null;
   country?: string | null;
   status: 'active' | 'suspended';
@@ -238,6 +239,40 @@ export type AdminOverview = Readonly<{
     }>
   >;
 }>;
+
+export type MemberCode = Readonly<{
+  _id: string;
+  code: string;
+  sequence: number;
+  status: 'AVAILABLE' | 'RESERVED' | 'ASSIGNED';
+  userId: Readonly<{ _id: string; name: string; email: string }> | null;
+  reservedForEmail: string | null;
+  reservedUntil: string | null;
+  assignedAt: string | null;
+  createdAt: string;
+}>;
+
+export function getMemberCodes(input: {
+  page: number;
+  limit: number;
+  search?: string;
+  status?: string;
+}): Promise<{
+  items: MemberCode[];
+  pagination: { page: number; limit: number; totalItems: number; totalPages: number };
+}> {
+  const query = new URLSearchParams({ page: String(input.page), limit: String(input.limit) });
+  if (input.search) query.set('search', input.search);
+  if (input.status && input.status !== 'ALL') query.set('status', input.status);
+  return api(`/v1/admin/users/member-codes/list?${query}`);
+}
+
+export function generateMemberCodes(count: number): Promise<MemberCode[]> {
+  return api('/v1/admin/users/member-codes/generate', {
+    method: 'POST',
+    body: JSON.stringify({ count }),
+  });
+}
 
 export function getAdminOverview(range: AdminDateRange): Promise<AdminOverview> {
   return api<AdminOverview>(`/v1/admin/overview?${dateRangeSearchParams(range)}`, {
