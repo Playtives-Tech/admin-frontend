@@ -101,11 +101,11 @@ export function getMemberWallet(userId: string): Promise<AdminWalletSummary> {
   return api<AdminWalletSummary>(`/v1/admin/users/${encodeURIComponent(userId)}/wallet`);
 }
 
-export function creditMemberEarnings(
+export function creditMemberBalance(
   userId: string,
-  input: { amountMinorUnits: number; reference: string },
+  input: { amountMinorUnits: number; reference: string; reason: string },
 ): Promise<AdminWalletSummary> {
-  return api<AdminWalletSummary>(`/v1/admin/users/${encodeURIComponent(userId)}/earnings`, {
+  return api<AdminWalletSummary>(`/v1/admin/users/${encodeURIComponent(userId)}/balance-credits`, {
     method: 'POST',
     body: JSON.stringify(input),
   });
@@ -143,11 +143,31 @@ export type SettledPaystackDeposit = Readonly<{
   createdAt: string;
 }>;
 
+export type AdminAddedDeposit = Readonly<{
+  _id: string;
+  userId: RequestUser;
+  creditedByUserId?: RequestUser | null;
+  amountMinorUnits: number;
+  currency: 'NGN';
+  reference: string;
+  legacyReference?: string | null;
+  reason: string;
+  source: 'ADMIN_OFFLINE' | 'LEGACY_ADMIN_EARNINGS_CREDIT';
+  creditedAt: string | null;
+  createdAt: string;
+}>;
+
 export function getSettledPaystackDeposits(
   range: AdminDateRange,
 ): Promise<SettledPaystackDeposit[]> {
   return api<SettledPaystackDeposit[]>(
     `/v1/admin/wallet/deposits/settled?${dateRangeSearchParams(range)}`,
+  );
+}
+
+export function getAdminAddedDeposits(range: AdminDateRange): Promise<AdminAddedDeposit[]> {
+  return api<AdminAddedDeposit[]>(
+    `/v1/admin/wallet/deposits/admin-added?${dateRangeSearchParams(range)}`,
   );
 }
 
@@ -200,6 +220,9 @@ export function getAdminActivity(): Promise<ActivityLog[]> {
 
 export type AdminOverview = Readonly<{
   depositsMinorUnits: number;
+  approvedTransferDepositsMinorUnits: number;
+  paystackDepositsMinorUnits: number;
+  adminAddedDepositsMinorUnits: number;
   manualOpportunityCapitalMinorUnits: number;
   trackedCapitalInflowsMinorUnits: number;
   withdrawalsMinorUnits: number;

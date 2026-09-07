@@ -17,7 +17,7 @@ import { notify } from '@/lib/notify';
 import {
   getMember,
   getMemberWallet,
-  creditMemberEarnings,
+  creditMemberBalance,
   type AdminMember,
   type AdminWalletSummary,
   updateMemberStatus,
@@ -47,6 +47,7 @@ export default function MemberDetailPage(): React.JSX.Element {
   const [savingStatus, setSavingStatus] = useState(false);
   const [creditAmount, setCreditAmount] = useState('');
   const [creditReference, setCreditReference] = useState('');
+  const [creditReason, setCreditReason] = useState('');
   const [crediting, setCrediting] = useState(false);
   const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
   const [assignmentOpportunityId, setAssignmentOpportunityId] = useState('');
@@ -113,10 +114,21 @@ export default function MemberDetailPage(): React.JSX.Element {
     }
     setCrediting(true);
     try {
-      setWallet(await creditMemberEarnings(id, { amountMinorUnits, reference }));
+      if (creditReason.trim().length < 3) {
+        notify.error('Enter the reason or payment context for this credit');
+        return;
+      }
+      setWallet(
+        await creditMemberBalance(id, {
+          amountMinorUnits,
+          reference,
+          reason: creditReason.trim(),
+        }),
+      );
       setCreditAmount('');
       setCreditReference('');
-      notify.success('Member earnings balance credited');
+      setCreditReason('');
+      notify.success('Member wallet balance credited');
     } catch (error) {
       notify.error(error instanceof Error ? error.message : 'Could not credit the member balance');
     } finally {
@@ -255,12 +267,12 @@ export default function MemberDetailPage(): React.JSX.Element {
             <section className="app-surface rounded-xl border p-5">
               <h2 className="text-sm font-semibold">Credit member balance</h2>
               <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                Credits the member’s withdrawable earnings balance immediately. Use a unique
-                reference; the same reference cannot be applied twice.
+                Records an offline payment and credits the member’s wallet deposit balance
+                immediately. Use a unique reference; the same reference cannot be applied twice.
               </p>
               <form
                 onSubmit={(event) => void creditBalance(event)}
-                className="mt-4 grid gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1.5fr)_auto] sm:items-end"
+                className="mt-4 grid gap-3 sm:grid-cols-2"
               >
                 <label className="grid gap-1.5 text-xs font-semibold">
                   Amount (₦)
@@ -282,13 +294,24 @@ export default function MemberDetailPage(): React.JSX.Element {
                     maxLength={150}
                     value={creditReference}
                     onChange={(event) => setCreditReference(event.target.value)}
-                    placeholder="e.g. MANUAL-PAYOUT-20260904-001"
+                    placeholder="e.g. OFFLINE-DEPOSIT-20260904-001"
+                    className="h-10 rounded-lg border bg-background px-3 text-sm font-normal"
+                  />
+                </label>
+                <label className="grid gap-1.5 text-xs font-semibold sm:col-span-2">
+                  Payment context
+                  <input
+                    required
+                    maxLength={300}
+                    value={creditReason}
+                    onChange={(event) => setCreditReason(event.target.value)}
+                    placeholder="e.g. Bank transfer confirmed by Finance"
                     className="h-10 rounded-lg border bg-background px-3 text-sm font-normal"
                   />
                 </label>
                 <button
                   disabled={crediting}
-                  className="h-10 rounded-lg bg-brand px-4 text-sm font-semibold text-white transition hover:brightness-110 disabled:opacity-60"
+                  className="h-10 rounded-lg bg-brand px-4 text-sm font-semibold text-white transition hover:brightness-110 disabled:opacity-60 sm:col-span-2"
                 >
                   {crediting ? 'Crediting…' : 'Credit balance'}
                 </button>

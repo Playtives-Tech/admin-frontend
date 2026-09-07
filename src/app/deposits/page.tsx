@@ -14,9 +14,11 @@ import { DashboardShell } from '@/components/dashboard/shell';
 import { notify } from '@/lib/notify';
 import {
   getDepositRequests,
+  getAdminAddedDeposits,
   getSettledPaystackDeposits,
   reviewDepositRequest,
   type AdminDepositRequest,
+  type AdminAddedDeposit,
   type SettledPaystackDeposit,
 } from '@/lib/services/member-operations-service';
 import { DateRangeFilter } from '@/components/ui/date-range-filter';
@@ -32,18 +34,21 @@ const money = (value: number) =>
 export default function DepositsPage(): React.JSX.Element {
   const [items, setItems] = useState<AdminDepositRequest[]>([]);
   const [settledPaystack, setSettledPaystack] = useState<SettledPaystackDeposit[]>([]);
+  const [adminAdded, setAdminAdded] = useState<AdminAddedDeposit[]>([]);
   const [selected, setSelected] = useState<AdminDepositRequest | null>(null);
   const [reviewing, setReviewing] = useState<boolean>(false);
   const [receiptLoading, setReceiptLoading] = useState<boolean>(true);
   const [range, setRange] = useState<AdminDateRange>(defaultAdminDateRange);
 
   const load = useCallback(async () => {
-    const [requests, settled] = await Promise.all([
+    const [requests, settled, directCredits] = await Promise.all([
       getDepositRequests(range),
       getSettledPaystackDeposits(range),
+      getAdminAddedDeposits(range),
     ]);
     setItems(requests);
     setSettledPaystack(settled);
+    setAdminAdded(directCredits);
   }, [range]);
   useEffect(() => {
     if (range.preset !== 'custom' || (range.from && range.to))
@@ -69,18 +74,61 @@ export default function DepositsPage(): React.JSX.Element {
   return (
     <DashboardShell
       title="User deposits"
-      description="Review transfer receipts and track settled Paystack wallet inflows."
+      description="Review transfer receipts and reconcile every settled wallet deposit source."
     >
       <div className="mx-auto max-w-6xl space-y-5">
         <DateRangeFilter value={range} onChange={setRange} />
 
-        <section className="grid gap-3 sm:grid-cols-3">
+        <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           <Metric label="Requests" value={String(items.length)} />
           <Metric label="Awaiting review" value={String(pending.length)} />
           <Metric
             label="Paystack settled"
             value={money(settledPaystack.reduce((sum, item) => sum + item.amountMinorUnits, 0))}
           />
+          <Metric
+            label="Admin-added deposits"
+            value={money(adminAdded.reduce((sum, item) => sum + item.amountMinorUnits, 0))}
+          />
+          <Metric
+            label="All settled deposits"
+            value={money(
+              settledPaystack.reduce((sum, item) => sum + item.amountMinorUnits, 0) +
+                adminAdded.reduce((sum, item) => sum + item.amountMinorUnits, 0) +
+                items
+                  .filter((item) => item.status === 'approved')
+                  .reduce((sum, item) => sum + item.amountMinorUnits, 0),
+            )}
+          />
+        </section>
+
+        <section className="app-surface overflow-x-auto rounded-xl border">
+          <div className="flex items-center justify-between gap-3 border-b px-4 py-3">
+            <div>
+              <h2 className="text-sm font-semibold">Admin-added deposits</h2>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                Offline payments credited directly to member wallet deposit balances.
+              </p>
+            </div>
+            <span className="rounded-full bg-blue-500/10 px-2.5 py-1 text-[10px] font-semibold text-blue-700">
+              {adminAdded.length} settled
+            </span>
+          </div>
+          <table className="w-full min-w-[820px] text-left text-xs">
+            <thead className="border-b bg-muted/30 text-muted-foreground">
+              <tr>{['Member', 'Amount', 'Payment context', 'Reference', 'Credited'].map((label) => <th key={label} className="px-4 py-3 font-medium">{label}</th>)}</tr>
+            </thead>
+            <tbody className="divide-y">
+              {adminAdded.map((item) => <tr key={item._id} className="hover:bg-muted/20">
+                <td className="px-4 py-3"><p className="font-semibold text-foreground">{item.userId.name}</p><p className="mt-0.5 text-[11px] text-muted-foreground">{item.userId.email}</p></td>
+                <td className="px-4 py-3 font-medium text-emerald-700">{money(item.amountMinorUnits)}</td>
+                <td className="max-w-56 px-4 py-3 text-muted-foreground"><p className="line-clamp-2">{item.reason}</p></td>
+                <td className="max-w-44 truncate px-4 py-3 font-mono text-[11px] text-muted-foreground" title={item.legacyReference ?? item.reference}>{item.legacyReference ?? item.reference}</td>
+                <td className="px-4 py-3 text-muted-foreground">{new Date(item.creditedAt ?? item.createdAt).toLocaleString('en-NG')}</td>
+              </tr>)}
+              {adminAdded.length === 0 ? <tr><td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">No admin-added deposits in this period.</td></tr> : null}
+            </tbody>
+          </table>
         </section>
 
         <section className="app-surface overflow-x-auto rounded-xl border">
