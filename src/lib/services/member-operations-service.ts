@@ -153,6 +153,7 @@ export type AdminAddedDeposit = Readonly<{
   reference: string;
   legacyReference?: string | null;
   reason: string;
+  proposedName?: string | null;
   source: 'ADMIN_OFFLINE' | 'LEGACY_ADMIN_EARNINGS_CREDIT';
   creditedAt: string | null;
   createdAt: string;
@@ -284,10 +285,20 @@ export type AdminNameChangeRequest = Readonly<{
   id: string;
   user: Readonly<{ id: string; name: string; email: string }>;
   reason: string;
+  proposedName?: string | null;
   identityDocumentType?: string | null;
   identityDocumentNumber?: string | null;
   identityDocumentUrl?: string | null;
   identityDocumentFileName?: string | null;
+  identityVerificationStatus: 'NOT_CHECKED' | 'MATCHED' | 'MISMATCH' | 'FAILED';
+  verifiedIdentity?: Readonly<{
+    firstName: string;
+    lastName: string;
+    dateOfBirth: string | null;
+  }> | null;
+  proposedNameMatches: boolean;
+  currentNameMatches: boolean;
+  identityCheckedAt: string | null;
   status: 'PENDING' | 'LINK_SENT' | 'COMPLETED';
   createdAt: string;
   linkSentAt: string | null;
@@ -304,6 +315,13 @@ export function getNameChangeRequests(range: AdminDateRange): Promise<AdminNameC
 export function sendNameChangeLink(requestId: string): Promise<AdminNameChangeRequest> {
   return api<AdminNameChangeRequest>(
     `/v1/admin/name-change-requests/${encodeURIComponent(requestId)}/send-link`,
+    { method: 'POST' },
+  );
+}
+
+export function verifyNameChangeIdentity(requestId: string): Promise<AdminNameChangeRequest> {
+  return api<AdminNameChangeRequest>(
+    `/v1/admin/name-change-requests/${encodeURIComponent(requestId)}/verify-identity`,
     { method: 'POST' },
   );
 }
