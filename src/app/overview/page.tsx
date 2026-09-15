@@ -54,7 +54,7 @@ export default function OverviewPage(): React.JSX.Element {
   const inflowMetrics: Metric[] = [
     {
       title: 'Uninvested member balance',
-      value: money(data.uninvestedBalanceMinorUnits),
+      value: money(data.uninvestedBalanceMinorUnits ?? 0),
       description:
         'The current available deposit and earnings balances across all member wallets. This is money members have not yet invested or withdrawn.',
       icon: WalletCards,
