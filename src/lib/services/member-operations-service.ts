@@ -43,6 +43,12 @@ export type AdminMember = Readonly<{
   kycStatus: 'pending' | 'verified' | 'rejected';
   kycVerifiedAt: string | null;
   kycReviewNote: string | null;
+  bvnVerifiedAt: string | null;
+  ninVerifiedAt: string | null;
+  phoneVerifiedAt: string | null;
+  kycCompletedSteps: number;
+  kycTotalSteps: 3;
+  kycComplete: boolean;
   nextOfKin: Readonly<{
     fullName: string;
     relationship: string;
@@ -62,11 +68,13 @@ export function getMembers(input: {
   limit: number;
   search?: string;
   status?: 'all' | 'active' | 'pending' | 'suspended';
+  kyc?: 'all' | 'complete' | 'incomplete';
   range: AdminDateRange;
 }): Promise<MembersPage> {
   const query = new URLSearchParams({ page: String(input.page), limit: String(input.limit) });
   if (input.search) query.set('search', input.search);
   if (input.status && input.status !== 'all') query.set('status', input.status);
+  if (input.kyc && input.kyc !== 'all') query.set('kyc', input.kyc);
   new URLSearchParams(dateRangeSearchParams(input.range)).forEach((value, key) =>
     query.set(key, value),
   );
@@ -231,6 +239,7 @@ export type AdminOverview = Readonly<{
   users: number;
   investedMinorUnits: number;
   expectedReturnMinorUnits: number;
+  uninvestedBalanceMinorUnits: number;
   growth: ReadonlyArray<
     Readonly<{
       month: string;
