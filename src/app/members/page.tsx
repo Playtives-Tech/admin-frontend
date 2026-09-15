@@ -14,6 +14,8 @@ export default function MembersPage(): React.JSX.Element {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [kycFilter, setKycFilter] = useState('All KYC');
+  const [isKycFilterOpen, setIsKycFilterOpen] = useState(false);
   const [members, setMembers] = useState<AdminMember[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [page, setPage] = useState(1);
@@ -28,13 +30,19 @@ export default function MembersPage(): React.JSX.Element {
       const status =
         statusFilter === 'Active'
           ? 'active'
-          : statusFilter === 'Pending KYC'
+          : statusFilter === 'Email pending'
             ? 'pending'
             : statusFilter === 'Suspended'
               ? 'suspended'
               : 'all';
       if (range.preset === 'custom' && (!range.from || !range.to)) return;
-      void getMembers({ page, limit: pageSize, search: search.trim(), status, range })
+      const kyc =
+        kycFilter === 'KYC complete'
+          ? 'complete'
+          : kycFilter === 'KYC incomplete'
+            ? 'incomplete'
+            : 'all';
+      void getMembers({ page, limit: pageSize, search: search.trim(), status, kyc, range })
         .then(
           (response) => {
             setMembers(response.items);
@@ -47,7 +55,7 @@ export default function MembersPage(): React.JSX.Element {
         .finally(() => setIsLoading(false));
     }, 300);
     return () => window.clearTimeout(timer);
-  }, [page, range, search, statusFilter]);
+  }, [kycFilter, page, range, search, statusFilter]);
 
   return (
     <DashboardShell title="Members" description="Manage user accounts and portfolios">
@@ -67,20 +75,21 @@ export default function MembersPage(): React.JSX.Element {
               className="w-full rounded-xl border bg-background py-2 pl-9 pr-4 text-sm outline-none transition focus:border-brand focus:ring-1 focus:ring-brand"
             />
           </div>
+          <div className="flex flex-wrap gap-2">
           <div className="relative">
             <button
               onClick={() => setIsFilterOpen(!isFilterOpen)}
               className="flex w-max items-center gap-2 rounded-xl border bg-background px-4 py-2 text-sm font-medium transition hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
             >
               <MdTune className="size-4" />
-              Filter: {statusFilter}
+              Account: {statusFilter}
             </button>
             {isFilterOpen && (
               <div className="absolute right-0 top-full z-10 mt-2 w-48 rounded-xl border bg-surface p-2 shadow-xl">
                 <div className="px-3 py-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
                   Status
                 </div>
-                {['All', 'Active', 'Pending KYC', 'Suspended'].map((status) => (
+                {['All', 'Active', 'Email pending', 'Suspended'].map((status) => (
                   <button
                     key={status}
                     onClick={() => {
@@ -98,6 +107,41 @@ export default function MembersPage(): React.JSX.Element {
                 ))}
               </div>
             )}
+          </div>
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setIsKycFilterOpen(!isKycFilterOpen)}
+              className="flex w-max items-center gap-2 rounded-xl border bg-background px-4 py-2 text-sm font-medium transition hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+            >
+              <MdTune className="size-4" />
+              {kycFilter}
+            </button>
+            {isKycFilterOpen ? (
+              <div className="absolute right-0 top-full z-10 mt-2 w-48 rounded-xl border bg-surface p-2 shadow-xl">
+                <div className="px-3 py-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                  KYC progress
+                </div>
+                {['All KYC', 'KYC complete', 'KYC incomplete'].map((option) => (
+                  <button
+                    key={option}
+                    type="button"
+                    onClick={() => {
+                      setKycFilter(option);
+                      setPage(1);
+                      setIsKycFilterOpen(false);
+                    }}
+                    className={cn(
+                      'w-full rounded-lg px-3 py-2 text-left text-sm transition hover:bg-muted',
+                      kycFilter === option && 'bg-brand/10 font-medium text-brand',
+                    )}
+                  >
+                    {option}
+                  </button>
+                ))}
+              </div>
+            ) : null}
+          </div>
           </div>
         </div>
         <div className="mb-5"><DateRangeFilter value={range} onChange={(value) => { setRange(value); setPage(1); }} /></div>
@@ -118,6 +162,7 @@ export default function MembersPage(): React.JSX.Element {
                     Total Invested
                   </th>
                   <th className="px-6 py-4 font-semibold text-muted-foreground">Status</th>
+                  <th className="px-6 py-4 font-semibold text-muted-foreground">KYC</th>
                   <th className="px-6 py-4 text-right font-semibold text-muted-foreground">
                     Actions
                   </th>
@@ -170,7 +215,20 @@ export default function MembersPage(): React.JSX.Element {
                           ? 'Suspended'
                           : member.emailVerifiedAt
                             ? 'Active'
-                            : 'Pending KYC'}
+                            : 'Email pending'}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span
+                        className={cn(
+                          'inline-flex items-center rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider',
+                          member.kycComplete
+                            ? 'bg-emerald-500/10 text-emerald-600'
+                            : 'bg-amber-500/10 text-amber-600',
+                        )}
+                      >
+                        {member.kycCompletedSteps}/3
+                         {/* {member.kycComplete ? 'Complete' : 'Completed'} */}
                       </span>
                     </td>
                     <td className="px-6 py-4 text-right">
@@ -186,7 +244,7 @@ export default function MembersPage(): React.JSX.Element {
                 ))}
                 {!isLoading && members.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="px-6 py-10 text-center text-muted-foreground">
+                    <td colSpan={8} className="px-6 py-10 text-center text-muted-foreground">
                       No members match this view.
                     </td>
                   </tr>

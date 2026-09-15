@@ -11,6 +11,8 @@ import {
   MdPublic,
   MdLock,
   MdLockOpen,
+  MdCheckCircle,
+  MdRadioButtonUnchecked,
 } from 'react-icons/md';
 import { DashboardShell } from '@/components/dashboard/shell';
 import { notify } from '@/lib/notify';
@@ -257,6 +259,37 @@ export default function MemberDetailPage(): React.JSX.Element {
                 )}
                 {member.status === 'active' ? 'Suspend member' : 'Reactivate member'}
               </button>
+            </section>
+
+            <section className="app-surface rounded-xl border p-5">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <h2 className="text-sm font-semibold">KYC verification</h2>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    BVN, NIN, and Nigerian phone verification progress.
+                  </p>
+                </div>
+                <span
+                  className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                    member.kycComplete
+                      ? 'bg-emerald-500/10 text-emerald-600'
+                      : 'bg-amber-500/10 text-amber-600'
+                  }`}
+                >
+                  {member.kycCompletedSteps}/3 completed
+                </span>
+              </div>
+              <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-muted">
+                <div
+                  className="h-full rounded-full bg-brand transition-all"
+                  style={{ width: `${(member.kycCompletedSteps / 3) * 100}%` }}
+                />
+              </div>
+              <div className="mt-4 grid gap-2 sm:grid-cols-3">
+                <KycStep label="BVN verified" verifiedAt={member.bvnVerifiedAt} />
+                <KycStep label="NIN verified" verifiedAt={member.ninVerifiedAt} />
+                <KycStep label="Phone verified" verifiedAt={member.phoneVerifiedAt} />
+              </div>
             </section>
 
             <section className="grid gap-3 sm:grid-cols-4">
@@ -564,6 +597,28 @@ export default function MemberDetailPage(): React.JSX.Element {
         )}
       </div>
     </DashboardShell>
+  );
+}
+
+function KycStep({
+  label,
+  verifiedAt,
+}: Readonly<{ label: string; verifiedAt: string | null }>): React.JSX.Element {
+  const verified = Boolean(verifiedAt);
+  return (
+    <div className="flex items-center gap-2.5 rounded-lg bg-muted/40 p-3">
+      {verified ? (
+        <MdCheckCircle className="size-5 shrink-0 text-emerald-600" />
+      ) : (
+        <MdRadioButtonUnchecked className="size-5 shrink-0 text-muted-foreground" />
+      )}
+      <div>
+        <p className="text-xs font-semibold">{label}</p>
+        <p className="mt-0.5 text-[11px] text-muted-foreground">
+          {verified ? 'Completed' : 'Not completed'}
+        </p>
+      </div>
+    </div>
   );
 }
 

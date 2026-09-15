@@ -2,7 +2,12 @@ import { api } from '@/lib/api';
 import { type AdminDateRange, dateRangeSearchParams } from '@/lib/date-range';
 import { defaultAdminDateRange } from '@/lib/date-range';
 
-export type AcquisitionStatus = 'ACTIVE' | 'COMPLETED' | 'CANCELLED';
+export type AcquisitionStatus =
+  | 'ACTIVE'
+  | 'COMPLETED'
+  | 'CANCELLED'
+  | 'REVERSING'
+  | 'REVERSED';
 export type AcquisitionSource = 'MEMBER_WALLET' | 'ADMIN_MANUAL';
 export type AdminAcquisition = Readonly<{
   _id: string;
@@ -47,6 +52,11 @@ export type AdminAcquisition = Readonly<{
   createdAt: string;
   maturityAt: string | null;
   completedAt: string | null;
+  reversedAt?: string | null;
+  reversalReason?: string;
+  refundedMinorUnits?: number;
+  canReverse: boolean;
+  reversalBlockedReason?: string | null;
 }>;
 export type AcquisitionStats = Readonly<{
   totalAcquisitions: number;
@@ -77,6 +87,11 @@ export const acquisitionService = {
     api<AdminAcquisition>('/v1/admin/acquisitions/manual', {
       method: 'POST',
       body: JSON.stringify(input),
+    }),
+  reverse: (ownershipId: string, reason: string) =>
+    api<AdminAcquisition>(`/v1/admin/acquisitions/${ownershipId}/reverse`, {
+      method: 'POST',
+      body: JSON.stringify({ reason }),
     }),
 };
 

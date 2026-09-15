@@ -25,12 +25,18 @@ const statusClass: Record<AdminAcquisition['status'], string> = {
   ACTIVE: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300',
   COMPLETED: 'bg-sky-500/10 text-sky-700 dark:text-sky-300',
   CANCELLED: 'bg-red-500/10 text-red-700 dark:text-red-300',
+  REVERSING: 'bg-amber-500/10 text-amber-700 dark:text-amber-300',
+  REVERSED: 'bg-slate-500/10 text-slate-700 dark:text-slate-300',
 };
 
 export default function AcquisitionsPage(): React.JSX.Element {
   const [items, setItems] = useState<AdminAcquisition[]>([]);
   const [memberId, setMemberId] = useState('all');
+  const [status, setStatus] = useState<'all' | AdminAcquisition['status']>('all');
   const [range, setRange] = useState<AdminDateRange>(defaultAdminDateRange);
+  const [selected, setSelected] = useState<AdminAcquisition | null>(null);
+  const [reason, setReason] = useState('');
+  const [reversing, setReversing] = useState(false);
 
   useEffect(() => {
     void acquisitionService
@@ -45,13 +51,45 @@ export default function AcquisitionsPage(): React.JSX.Element {
     () => Array.from(new Map(items.map((item) => [item.userId._id, item.userId])).values()),
     [items],
   );
-  const visible = memberId === 'all' ? items : items.filter((item) => item.userId._id === memberId);
-  const totalInvested = visible.reduce((total, item) => total + item.amountMinorUnits, 0);
+  const visible = items.filter(
+    (item) =>
+      (memberId === 'all' || item.userId._id === memberId) &&
+      (status === 'all' || item.status === status),
+  );
   const totalExpected = visible.reduce(
     (total, item) =>
-      total + (hasVariableProjectedDistribution(item) ? 0 : projectedReturnForAcquisition(item)),
+      total +
+      (item.status === 'REVERSED' || item.status === 'REVERSING'
+        ? 0
+        : hasVariableProjectedDistribution(item)
+          ? 0
+          : projectedReturnForAcquisition(item)),
     0,
   );
+  const activeAmount = visible.reduce(
+    (total, item) =>
+      total + (item.status === 'REVERSED' || item.status === 'REVERSING' ? 0 : item.amountMinorUnits),
+    0,
+  );
+  const currentOwnershipCount = visible.filter(
+    (item) => item.status !== 'REVERSED' && item.status !== 'REVERSING',
+  ).length;
+
+  const reverseOwnership = async (): Promise<void> => {
+    if (!selected || reason.trim().length < 3) return;
+    setReversing(true);
+    try {
+      const updated = await acquisitionService.reverse(selected._id, reason.trim());
+      setItems((current) => current.map((item) => (item._id === updated._id ? updated : item)));
+      setSelected(null);
+      setReason('');
+      notify.success('Ownership reversed and available units restored');
+    } catch (error: unknown) {
+      notify.error(error instanceof Error ? error.message : 'Could not reverse ownership');
+    } finally {
+      setReversing(false);
+    }
+  };
 
   return (
     <DashboardShell
@@ -67,23 +105,39 @@ export default function AcquisitionsPage(): React.JSX.Element {
               Filter to review one member’s ownerships.
             </p>
           </div>
-          <select
-            value={memberId}
-            onChange={(event) => setMemberId(event.target.value)}
-            className="h-9 min-w-56 rounded-lg border bg-background px-3 text-xs outline-none focus:border-brand focus:ring-1 focus:ring-brand"
-          >
-            <option value="all">All members</option>
-            {members.map((member) => (
-              <option key={member._id} value={member._id}>
-                {member.name} · {member.email}
-              </option>
-            ))}
-          </select>
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <select
+              value={status}
+              onChange={(event) =>
+                setStatus(event.target.value as 'all' | AdminAcquisition['status'])
+              }
+              className="h-9 min-w-40 rounded-lg border bg-background px-3 text-xs outline-none focus:border-brand focus:ring-1 focus:ring-brand"
+            >
+              <option value="all">All statuses</option>
+              <option value="ACTIVE">Active</option>
+              <option value="COMPLETED">Completed</option>
+              <option value="CANCELLED">Cancelled</option>
+              <option value="REVERSING">Reversing</option>
+              <option value="REVERSED">Reversed</option>
+            </select>
+            <select
+              value={memberId}
+              onChange={(event) => setMemberId(event.target.value)}
+              className="h-9 min-w-56 rounded-lg border bg-background px-3 text-xs outline-none focus:border-brand focus:ring-1 focus:ring-brand"
+            >
+              <option value="all">All members</option>
+              {members.map((member) => (
+                <option key={member._id} value={member._id}>
+                  {member.name} · {member.email}
+                </option>
+              ))}
+            </select>
+          </div>
         </section>
 
         <section className="grid gap-3 sm:grid-cols-3">
-          <Metric label="Ownerships" value={String(visible.length)} />
-          <Metric label="Amount invested" value={money(totalInvested)} />
+          <Metric label="Ownerships" value={String(currentOwnershipCount)} />
+          <Metric label="Amount invested" value={money(activeAmount)} />
           <Metric label="Fixed projected returns" value={money(totalExpected)} />
         </section>
 
@@ -101,6 +155,7 @@ export default function AcquisitionsPage(): React.JSX.Element {
                   'Status',
                   'Created',
                   'Maturity',
+                  'Action',
                 ].map((label) => (
                   <th key={label} className="px-4 py-3 font-medium">
                     {label}
@@ -112,6 +167,11 @@ export default function AcquisitionsPage(): React.JSX.Element {
               {visible.map((item) => {
                 return (
                   <tr key={item._id} className="hover:bg-muted/20">
+                    <td className="px-4 py-3 text-muted-foreground">
+                      {item.maturityAt
+                        ? new Date(item.maturityAt).toLocaleDateString('en-NG')
+                        : '—'}
+                    </td>
                     <td className="px-4 py-3">
                       <p className="font-semibold text-foreground">{item.userId.name}</p>
                       <p className="mt-0.5 text-[11px] text-muted-foreground">
@@ -154,12 +214,35 @@ export default function AcquisitionsPage(): React.JSX.Element {
                         ? new Date(item.maturityAt).toLocaleDateString('en-NG')
                         : '—'}
                     </td>
+                    <td className="px-4 py-3">
+                      {item.status === 'ACTIVE' || item.status === 'COMPLETED' ? (
+                        <button
+                          type="button"
+                          disabled={!item.canReverse}
+                          title={item.reversalBlockedReason ?? 'Reverse this ownership'}
+                          onClick={() => {
+                            if (!item.canReverse) return;
+                            setSelected(item);
+                            setReason('');
+                          }}
+                          className="rounded-lg border border-red-200 px-3 py-2 font-semibold text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:border-muted disabled:bg-muted/40 disabled:text-muted-foreground dark:border-red-900 dark:text-red-300 dark:hover:bg-red-950/30"
+                        >
+                          {item.canReverse ? 'Reverse' : 'Processed'}
+                        </button>
+                      ) : item.status === 'REVERSED' ? (
+                        <span className="text-[11px] text-muted-foreground">
+                          {item.refundedMinorUnits ? `${money(item.refundedMinorUnits)} refunded` : 'Units restored'}
+                        </span>
+                      ) : (
+                        '—'
+                      )}
+                    </td>
                   </tr>
                 );
               })}
               {visible.length === 0 && (
                 <tr>
-                  <td colSpan={9} className="px-4 py-10 text-center text-muted-foreground">
+                  <td colSpan={10} className="px-4 py-10 text-center text-muted-foreground">
                     No ownerships match this member.
                   </td>
                 </tr>
@@ -167,6 +250,58 @@ export default function AcquisitionsPage(): React.JSX.Element {
             </tbody>
           </table>
         </section>
+        {selected ? (
+          <div className="fixed inset-0 z-50 grid place-items-center bg-black/50 p-4">
+            <section
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="reverse-title"
+              className="app-surface w-full max-w-lg rounded-2xl border p-5 shadow-2xl"
+            >
+              <h2 id="reverse-title" className="text-base font-semibold">
+                Reverse this ownership?
+              </h2>
+              <p className="mt-2 text-sm text-muted-foreground">
+                {selected.units} units in {selected.opportunityId.title} will be returned to
+                availability and {money(selected.amountMinorUnits)} will be restored to the
+                member’s available wallet balance. This applies to every acquisition source.
+              </p>
+              <label className="mt-5 block text-xs font-semibold" htmlFor="reversal-reason">
+                Reason for reversal
+              </label>
+              <textarea
+                id="reversal-reason"
+                value={reason}
+                onChange={(event) => setReason(event.target.value)}
+                maxLength={500}
+                rows={4}
+                placeholder="Explain why this ownership is being reversed."
+                className="mt-2 w-full resize-none rounded-xl border bg-background p-3 text-sm outline-none focus:border-brand focus:ring-1 focus:ring-brand"
+              />
+              <p className="mt-2 text-xs text-amber-700 dark:text-amber-300">
+                Reversal is blocked if returns or a maturity payout have already been processed.
+              </p>
+              <div className="mt-5 flex justify-end gap-2">
+                <button
+                  type="button"
+                  disabled={reversing}
+                  onClick={() => setSelected(null)}
+                  className="rounded-lg border px-4 py-2 text-sm font-semibold"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  disabled={reversing || reason.trim().length < 3}
+                  onClick={() => void reverseOwnership()}
+                  className="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {reversing ? 'Reversing…' : 'Confirm reversal'}
+                </button>
+              </div>
+            </section>
+          </div>
+        ) : null}
       </div>
     </DashboardShell>
   );
