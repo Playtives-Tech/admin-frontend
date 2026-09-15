@@ -93,6 +93,12 @@ export default function MemberDetailPage(): React.JSX.Element {
     () => opportunities.find((item) => item._id === assignmentOpportunityId) ?? null,
     [assignmentOpportunityId, opportunities],
   );
+  const kycCompletedSteps = member
+    ? Number.isInteger(member.kycCompletedSteps)
+      ? member.kycCompletedSteps
+      : [member.bvnVerifiedAt, member.ninVerifiedAt, member.phoneVerifiedAt].filter(Boolean).length
+    : 0;
+  const kycComplete = kycCompletedSteps === 3;
   const changeStatus = async () => {
     if (!member) return;
     const status = member.status === 'active' ? 'suspended' : 'active';
@@ -271,18 +277,18 @@ export default function MemberDetailPage(): React.JSX.Element {
                 </div>
                 <span
                   className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                    member.kycComplete
+                    kycComplete
                       ? 'bg-emerald-500/10 text-emerald-600'
                       : 'bg-amber-500/10 text-amber-600'
                   }`}
                 >
-                  {member.kycCompletedSteps}/3 completed
+                  {kycCompletedSteps}/3 completed
                 </span>
               </div>
               <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-muted">
                 <div
                   className="h-full rounded-full bg-brand transition-all"
-                  style={{ width: `${(member.kycCompletedSteps / 3) * 100}%` }}
+                  style={{ width: `${(kycCompletedSteps / 3) * 100}%` }}
                 />
               </div>
               <div className="mt-4 grid gap-2 sm:grid-cols-3">

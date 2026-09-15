@@ -222,13 +222,12 @@ export default function MembersPage(): React.JSX.Element {
                       <span
                         className={cn(
                           'inline-flex items-center rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider',
-                          member.kycComplete
+                          getMemberKycProgress(member).complete
                             ? 'bg-emerald-500/10 text-emerald-600'
                             : 'bg-amber-500/10 text-amber-600',
                         )}
                       >
-                        {member.kycCompletedSteps}/3
-                         {/* {member.kycComplete ? 'Complete' : 'Completed'} */}
+                        {getMemberKycProgress(member).completed}/3
                       </span>
                     </td>
                     <td className="px-6 py-4 text-right">
@@ -286,4 +285,14 @@ export default function MembersPage(): React.JSX.Element {
       </div>
     </DashboardShell>
   );
+}
+
+function getMemberKycProgress(member: AdminMember): Readonly<{
+  completed: number;
+  complete: boolean;
+}> {
+  const completed = Number.isInteger(member.kycCompletedSteps)
+    ? member.kycCompletedSteps
+    : [member.bvnVerifiedAt, member.ninVerifiedAt, member.phoneVerifiedAt].filter(Boolean).length;
+  return { completed, complete: completed === 3 };
 }
