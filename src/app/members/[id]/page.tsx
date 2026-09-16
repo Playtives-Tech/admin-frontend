@@ -20,6 +20,7 @@ import {
   getMember,
   getMemberWallet,
   creditMemberBalance,
+  debitMemberBalance,
   type AdminMember,
   type AdminWalletSummary,
   updateMemberStatus,
@@ -51,6 +52,11 @@ export default function MemberDetailPage(): React.JSX.Element {
   const [creditReference, setCreditReference] = useState('');
   const [creditReason, setCreditReason] = useState('');
   const [crediting, setCrediting] = useState(false);
+  const [debitAmount, setDebitAmount] = useState('');
+  const [debitReference, setDebitReference] = useState('');
+  const [debitReason, setDebitReason] = useState('');
+  const [debitConfirmed, setDebitConfirmed] = useState(false);
+  const [debiting, setDebiting] = useState(false);
   const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
   const [assignmentOpportunityId, setAssignmentOpportunityId] = useState('');
   const [assignmentUnits, setAssignmentUnits] = useState('1');
@@ -141,6 +147,41 @@ export default function MemberDetailPage(): React.JSX.Element {
       notify.error(error instanceof Error ? error.message : 'Could not credit the member balance');
     } finally {
       setCrediting(false);
+    }
+  };
+  const debitBalance = async (event: FormEvent<HTMLFormElement>): Promise<void> => {
+    event.preventDefault();
+    const amountMinorUnits = Math.round(Number(debitAmount) * 100);
+    const reference = debitReference.trim();
+    const reason = debitReason.trim();
+    if (!Number.isSafeInteger(amountMinorUnits) || amountMinorUnits < 1 || !reference) {
+      notify.error('Enter a valid debit amount and a unique reference');
+      return;
+    }
+    if (reason.length < 3) {
+      notify.error('Enter a clear reason for this wallet debit');
+      return;
+    }
+    if (amountMinorUnits > (wallet?.totalAvailableBalanceMinorUnits ?? 0)) {
+      notify.error('The debit amount exceeds the member’s available wallet balance');
+      return;
+    }
+    if (!debitConfirmed) {
+      notify.error('Confirm that you have reviewed this wallet debit');
+      return;
+    }
+    setDebiting(true);
+    try {
+      setWallet(await debitMemberBalance(id, { amountMinorUnits, reference, reason }));
+      setDebitAmount('');
+      setDebitReference('');
+      setDebitReason('');
+      setDebitConfirmed(false);
+      notify.success('Member wallet balance debited');
+    } catch (error) {
+      notify.error(error instanceof Error ? error.message : 'Could not debit the member balance');
+    } finally {
+      setDebiting(false);
     }
   };
   const chooseAssignmentOpportunity = (opportunityId: string): void => {
@@ -306,6 +347,80 @@ export default function MemberDetailPage(): React.JSX.Element {
               <Metric label="Ownerships" value={String(ownerships.length)} />
               <Metric label="Amount invested" value={money(totals.invested)} />
               <Metric label="Fixed projected returns" value={money(totals.expected)} />
+            </section>
+
+            <section className="app-surface rounded-xl border border-red-500/25 p-5">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <h2 className="text-sm font-semibold">Debit member balance</h2>
+                  <p className="mt-1 max-w-2xl text-xs leading-5 text-muted-foreground">
+                    Removes funds from the member’s available wallet balance. The adjustment is
+                    permanently recorded with the administrator, reference, reason, and amount.
+                  </p>
+                </div>
+                <span className="rounded-full bg-red-500/10 px-3 py-1 text-xs font-semibold text-red-600">
+                  Available: {money(wallet?.totalAvailableBalanceMinorUnits ?? 0)}
+                </span>
+              </div>
+              <form
+                onSubmit={(event) => void debitBalance(event)}
+                className="mt-4 grid gap-3 sm:grid-cols-2"
+              >
+                <label className="grid gap-1.5 text-xs font-semibold">
+                  Amount (₦)
+                  <input
+                    required
+                    min="0.01"
+                    step="0.01"
+                    type="number"
+                    value={debitAmount}
+                    onChange={(event) => setDebitAmount(event.target.value)}
+                    placeholder="0.00"
+                    className="h-10 rounded-lg border bg-background px-3 text-sm font-normal"
+                  />
+                </label>
+                <label className="grid gap-1.5 text-xs font-semibold">
+                  Unique reference
+                  <input
+                    required
+                    maxLength={150}
+                    value={debitReference}
+                    onChange={(event) => setDebitReference(event.target.value)}
+                    placeholder="e.g. WALLET-ADJUSTMENT-20260916-001"
+                    className="h-10 rounded-lg border bg-background px-3 text-sm font-normal"
+                  />
+                </label>
+                <label className="grid gap-1.5 text-xs font-semibold sm:col-span-2">
+                  Reason for debit
+                  <textarea
+                    required
+                    minLength={3}
+                    maxLength={300}
+                    value={debitReason}
+                    onChange={(event) => setDebitReason(event.target.value)}
+                    placeholder="Explain why funds are being removed from this wallet."
+                    className="min-h-20 rounded-lg border bg-background px-3 py-2.5 text-sm font-normal"
+                  />
+                </label>
+                <label className="flex items-start gap-2 rounded-lg bg-red-500/5 p-3 text-xs leading-5 sm:col-span-2">
+                  <input
+                    type="checkbox"
+                    checked={debitConfirmed}
+                    onChange={(event) => setDebitConfirmed(event.target.checked)}
+                    className="mt-0.5 size-4 accent-red-600"
+                  />
+                  <span>
+                    I have reviewed the member, amount, and reason. I understand this will reduce
+                    the member’s available wallet balance immediately.
+                  </span>
+                </label>
+                <button
+                  disabled={debiting || !debitConfirmed}
+                  className="h-10 rounded-lg bg-red-600 px-4 text-sm font-semibold text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50 sm:col-span-2"
+                >
+                  {debiting ? 'Debiting…' : 'Debit member balance'}
+                </button>
+              </form>
             </section>
 
             <section className="app-surface rounded-xl border p-5">
