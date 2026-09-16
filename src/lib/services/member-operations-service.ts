@@ -120,6 +120,16 @@ export function creditMemberBalance(
   });
 }
 
+export function debitMemberBalance(
+  userId: string,
+  input: { amountMinorUnits: number; reference: string; reason: string },
+): Promise<AdminWalletSummary> {
+  return api<AdminWalletSummary>(`/v1/admin/users/${encodeURIComponent(userId)}/balance-debits`, {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
+}
+
 export function getMemberActivity(userId: string): Promise<ActivityLog[]> {
   return api<ActivityLog[]>(`/v1/admin/users/${encodeURIComponent(userId)}/activity-logs`);
 }
