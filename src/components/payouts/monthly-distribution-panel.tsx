@@ -95,13 +95,19 @@ export function MonthlyDistributionPanel({ range }: { range: AdminDateRange }): 
                   </span>
                 </td>
                 <td className="px-4 py-4">
-                  <button
-                    onClick={() => void open(item._id)}
-                    disabled={loading}
-                    className="inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold hover:bg-muted"
-                  >
-                    <MdVisibility /> Review
-                  </button>
+                  {item.status === 'APPROVED' ? (
+                    <span className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-500/10 px-3 py-1.5 text-xs font-semibold text-emerald-700">
+                      Processed
+                    </span>
+                  ) : (
+                    <button
+                      onClick={() => void open(item._id)}
+                      disabled={loading}
+                      className="inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold hover:bg-muted"
+                    >
+                      <MdVisibility /> {item.status === 'REJECTED' ? 'View' : 'Review'}
+                    </button>
+                  )}
                 </td>
               </tr>
             ))}
