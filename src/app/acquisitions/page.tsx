@@ -31,7 +31,8 @@ const statusClass: Record<AdminAcquisition['status'], string> = {
 
 export default function AcquisitionsPage(): React.JSX.Element {
   const [items, setItems] = useState<AdminAcquisition[]>([]);
-  const [memberId, setMemberId] = useState('all');
+  const [memberSearch, setMemberSearch] = useState('');
+  const [opportunityId, setOpportunityId] = useState('all');
   const [status, setStatus] = useState<'all' | AdminAcquisition['status']>('all');
   const [range, setRange] = useState<AdminDateRange>(defaultAdminDateRange);
   const [selected, setSelected] = useState<AdminAcquisition | null>(null);
@@ -47,14 +48,23 @@ export default function AcquisitionsPage(): React.JSX.Element {
       );
   }, [range]);
 
-  const members = useMemo(
-    () => Array.from(new Map(items.map((item) => [item.userId._id, item.userId])).values()),
+  const opportunities = useMemo(
+    () => Array.from(new Map(items.map((item) => [item.opportunityId._id, item.opportunityId])).values()),
     [items],
   );
   const visible = items.filter(
-    (item) =>
-      (memberId === 'all' || item.userId._id === memberId) &&
-      (status === 'all' || item.status === status),
+    (item) => {
+      const search = memberSearch.trim().toLowerCase();
+      const matchesMember =
+        !search ||
+        item.userId.name.toLowerCase().includes(search) ||
+        item.userId.email.toLowerCase().includes(search);
+      return (
+        matchesMember &&
+        (opportunityId === 'all' || item.opportunityId._id === opportunityId) &&
+        (status === 'all' || item.status === status)
+      );
+    },
   );
   const totalExpected = visible.reduce(
     (total, item) =>
@@ -106,6 +116,26 @@ export default function AcquisitionsPage(): React.JSX.Element {
             </p>
           </div>
           <div className="flex flex-col gap-2 sm:flex-row">
+            <input
+              value={memberSearch}
+              onChange={(event) => setMemberSearch(event.target.value)}
+              placeholder="Search member name or email"
+              aria-label="Search member name or email"
+              className="h-9 min-w-56 rounded-lg border bg-background px-3 text-xs outline-none placeholder:text-muted-foreground focus:border-brand focus:ring-1 focus:ring-brand"
+            />
+            <select
+              value={opportunityId}
+              onChange={(event) => setOpportunityId(event.target.value)}
+              aria-label="Filter by opportunity"
+              className="h-9 min-w-52 rounded-lg border bg-background px-3 text-xs outline-none focus:border-brand focus:ring-1 focus:ring-brand"
+            >
+              <option value="all">All opportunities</option>
+              {opportunities.map((opportunity) => (
+                <option key={opportunity._id} value={opportunity._id}>
+                  {opportunity.title}
+                </option>
+              ))}
+            </select>
             <select
               value={status}
               onChange={(event) =>
@@ -119,18 +149,6 @@ export default function AcquisitionsPage(): React.JSX.Element {
               <option value="CANCELLED">Cancelled</option>
               <option value="REVERSING">Reversing</option>
               <option value="REVERSED">Reversed</option>
-            </select>
-            <select
-              value={memberId}
-              onChange={(event) => setMemberId(event.target.value)}
-              className="h-9 min-w-56 rounded-lg border bg-background px-3 text-xs outline-none focus:border-brand focus:ring-1 focus:ring-brand"
-            >
-              <option value="all">All members</option>
-              {members.map((member) => (
-                <option key={member._id} value={member._id}>
-                  {member.name} · {member.email}
-                </option>
-              ))}
             </select>
           </div>
         </section>
@@ -167,11 +185,6 @@ export default function AcquisitionsPage(): React.JSX.Element {
               {visible.map((item) => {
                 return (
                   <tr key={item._id} className="hover:bg-muted/20">
-                    <td className="px-4 py-3 text-muted-foreground">
-                      {item.maturityAt
-                        ? new Date(item.maturityAt).toLocaleDateString('en-NG')
-                        : '—'}
-                    </td>
                     <td className="px-4 py-3">
                       <p className="font-semibold text-foreground">{item.userId.name}</p>
                       <p className="mt-0.5 text-[11px] text-muted-foreground">

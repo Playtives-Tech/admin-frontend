@@ -19,6 +19,7 @@ import { getAdminOverview, type AdminOverview } from '@/lib/services/member-oper
 import { notify } from '@/lib/notify';
 import { DateRangeFilter } from '@/components/ui/date-range-filter';
 import { defaultAdminDateRange, dateRangeLabel, type AdminDateRange } from '@/lib/date-range';
+import { platformSettingsService, type MaintenanceStatus } from '@/lib/services/platform-settings-service';
 
 const money = (value: number) =>
   new Intl.NumberFormat('en-NG', {
@@ -38,6 +39,8 @@ type Metric = Readonly<{
 export default function OverviewPage(): React.JSX.Element {
   const [overview, setOverview] = useState<AdminOverview | null>(null);
   const [range, setRange] = useState<AdminDateRange>(defaultAdminDateRange);
+  const [maintenance, setMaintenance] = useState<MaintenanceStatus | null>(null);
+  const [maintenanceBusy, setMaintenanceBusy] = useState(false);
 
   useEffect(() => {
     if (range.preset === 'custom' && (!range.from || !range.to)) return;
@@ -45,6 +48,28 @@ export default function OverviewPage(): React.JSX.Element {
       .then(setOverview)
       .catch(() => notify.error('Could not load overview'));
   }, [range]);
+
+  useEffect(() => {
+    void platformSettingsService
+      .getMaintenance()
+      .then(setMaintenance)
+      .catch(() => notify.error('Could not load maintenance status'));
+  }, []);
+
+  const toggleMaintenance = async (): Promise<void> => {
+    if (!maintenance) return;
+    const enabled = !maintenance.enabled;
+    setMaintenanceBusy(true);
+    try {
+      const updated = await platformSettingsService.setMaintenance(enabled);
+      setMaintenance(updated);
+      notify.success(enabled ? 'Maintenance mode enabled' : 'Maintenance mode disabled');
+    } catch (error) {
+      notify.error(error instanceof Error ? error.message : 'Could not update maintenance mode');
+    } finally {
+      setMaintenanceBusy(false);
+    }
+  };
 
   const data = overview ?? emptyOverview;
   const projectedOwnershipValue = data.investedMinorUnits + data.expectedReturnMinorUnits;
@@ -167,6 +192,26 @@ export default function OverviewPage(): React.JSX.Element {
           <div className="mt-4 sm:mt-0">
             <DateRangeFilter value={range} onChange={setRange} />
           </div>
+        </section>
+
+        <section className="app-surface flex flex-col gap-4 rounded-2xl border border-amber-500/30 p-5 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-amber-700">
+              Emergency control
+            </p>
+            <h2 className="mt-1 text-base font-semibold">Maintenance mode</h2>
+            <p className="mt-1 max-w-2xl text-xs leading-5 text-muted-foreground">
+              Temporarily prevents members from submitting operations while administrators retain access.
+            </p>
+          </div>
+          <button
+            type="button"
+            disabled={!maintenance || maintenanceBusy}
+            onClick={() => void toggleMaintenance()}
+            className={`inline-flex h-10 shrink-0 items-center justify-center rounded-xl px-4 text-sm font-semibold transition disabled:opacity-50 ${maintenance?.enabled ? 'bg-red-600 text-white hover:bg-red-700' : 'bg-brand text-brand-foreground hover:brightness-110'}`}
+          >
+            {maintenanceBusy ? 'Updating…' : maintenance?.enabled ? 'Disable maintenance' : 'Enable maintenance'}
+          </button>
         </section>
 
         <MetricSection
