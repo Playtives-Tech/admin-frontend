@@ -54,8 +54,8 @@ export function MonthlyDistributionPanel({ range }: { range: AdminDateRange }): 
         <p className="text-xs font-bold uppercase tracking-wider text-brand">Monthly earnings</p>
         <h2 className="mt-1 font-sans text-xl font-semibold">Actual distribution review</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          Enter the actual monthly amount, review member allocations, then approve each member&apos;s
-          selected wallet payout or contribution rollover.
+          Enter the actual monthly amount, review member allocations, then approve each
+          member&apos;s selected wallet payout or contribution rollover.
         </p>
       </div>
       <div className="app-surface overflow-x-auto rounded-2xl border">

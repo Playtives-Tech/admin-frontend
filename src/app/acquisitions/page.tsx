@@ -49,23 +49,24 @@ export default function AcquisitionsPage(): React.JSX.Element {
   }, [range]);
 
   const opportunities = useMemo(
-    () => Array.from(new Map(items.map((item) => [item.opportunityId._id, item.opportunityId])).values()),
+    () =>
+      Array.from(
+        new Map(items.map((item) => [item.opportunityId._id, item.opportunityId])).values(),
+      ),
     [items],
   );
-  const visible = items.filter(
-    (item) => {
-      const search = memberSearch.trim().toLowerCase();
-      const matchesMember =
-        !search ||
-        item.userId.name.toLowerCase().includes(search) ||
-        item.userId.email.toLowerCase().includes(search);
-      return (
-        matchesMember &&
-        (opportunityId === 'all' || item.opportunityId._id === opportunityId) &&
-        (status === 'all' || item.status === status)
-      );
-    },
-  );
+  const visible = items.filter((item) => {
+    const search = memberSearch.trim().toLowerCase();
+    const matchesMember =
+      !search ||
+      item.userId.name.toLowerCase().includes(search) ||
+      item.userId.email.toLowerCase().includes(search);
+    return (
+      matchesMember &&
+      (opportunityId === 'all' || item.opportunityId._id === opportunityId) &&
+      (status === 'all' || item.status === status)
+    );
+  });
   const totalExpected = visible.reduce(
     (total, item) =>
       total +
@@ -78,7 +79,8 @@ export default function AcquisitionsPage(): React.JSX.Element {
   );
   const activeAmount = visible.reduce(
     (total, item) =>
-      total + (item.status === 'REVERSED' || item.status === 'REVERSING' ? 0 : item.amountMinorUnits),
+      total +
+      (item.status === 'REVERSED' || item.status === 'REVERSING' ? 0 : item.amountMinorUnits),
     0,
   );
   const currentOwnershipCount = visible.filter(
@@ -244,7 +246,9 @@ export default function AcquisitionsPage(): React.JSX.Element {
                         </button>
                       ) : item.status === 'REVERSED' ? (
                         <span className="text-[11px] text-muted-foreground">
-                          {item.refundedMinorUnits ? `${money(item.refundedMinorUnits)} refunded` : 'Units restored'}
+                          {item.refundedMinorUnits
+                            ? `${money(item.refundedMinorUnits)} refunded`
+                            : 'Units restored'}
                         </span>
                       ) : (
                         '—'
@@ -276,8 +280,8 @@ export default function AcquisitionsPage(): React.JSX.Element {
               </h2>
               <p className="mt-2 text-sm text-muted-foreground">
                 {selected.units} units in {selected.opportunityId.title} will be returned to
-                availability and {money(selected.amountMinorUnits)} will be restored to the
-                member’s available wallet balance. This applies to every acquisition source.
+                availability and {money(selected.amountMinorUnits)} will be restored to the member’s
+                available wallet balance. This applies to every acquisition source.
               </p>
               <label className="mt-5 block text-xs font-semibold" htmlFor="reversal-reason">
                 Reason for reversal

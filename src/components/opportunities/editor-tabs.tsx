@@ -22,7 +22,7 @@ interface EditorTabsProps {
 
 export function EditorTabs({ activeTab, onChange }: EditorTabsProps): React.JSX.Element {
   return (
-    <div className="flex w-full items-center gap-6 overflow-x-auto border-b px-2 pb-[-1px] scrollbar-hide">
+    <div className="scrollbar-hide flex w-full items-center gap-6 overflow-x-auto border-b px-2 pb-[-1px]">
       {tabs.map((tab) => {
         const isActive = activeTab === tab.id;
         return (
@@ -33,18 +33,12 @@ export function EditorTabs({ activeTab, onChange }: EditorTabsProps): React.JSX.
             className={cn(
               'relative flex items-center gap-1.5 whitespace-nowrap pb-3 text-sm font-semibold transition-colors',
               'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2',
-              isActive
-                ? 'text-foreground'
-                : 'text-muted-foreground hover:text-foreground',
+              isActive ? 'text-foreground' : 'text-muted-foreground hover:text-foreground',
             )}
           >
             {tab.label}
-            {tab.hasError && (
-              <MdErrorOutline className="size-3.5" />
-            )}
-            {isActive && (
-              <span className="absolute inset-x-0 bottom-0 h-0.5 bg-foreground" />
-            )}
+            {tab.hasError && <MdErrorOutline className="size-3.5" />}
+            {isActive && <span className="absolute inset-x-0 bottom-0 h-0.5 bg-foreground" />}
           </button>
         );
       })}

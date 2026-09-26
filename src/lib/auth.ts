@@ -34,10 +34,13 @@ function scheduleExpiry(token: string): void {
   if (expiryTimer) clearTimeout(expiryTimer);
   const exp = decodeToken(token)?.exp;
   if (typeof exp !== 'number') return;
-  expiryTimer = setTimeout(() => {
-    clearToken();
-    if (window.location.pathname !== '/login') window.location.replace('/login');
-  }, Math.max(0, exp * 1000 - Date.now()));
+  expiryTimer = setTimeout(
+    () => {
+      clearToken();
+      if (window.location.pathname !== '/login') window.location.replace('/login');
+    },
+    Math.max(0, exp * 1000 - Date.now()),
+  );
 }
 
 /** Decode a JWT payload without verification (client-side only). */

@@ -45,9 +45,7 @@ export default function LoginPage(): React.JSX.Element {
         {/* Logo / wordmark */}
         <div className="mb-10 text-center">
           <span className="inline-flex items-center gap-2">
-            <span className="font-sans text-2xl font-semibold tracking-tight">
-              Playtives Admin
-            </span>
+            <span className="font-sans text-2xl font-semibold tracking-tight">Playtives Admin</span>
           </span>
           <p className="text-sm text-muted-foreground">Sign in to your admin workspace</p>
         </div>

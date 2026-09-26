@@ -337,9 +337,7 @@ export default function WithdrawalsPage(): React.JSX.Element {
                       <MdAccountBalance className="size-5" />
                     </div>
                     <div>
-                      <p className="text-base font-semibold">
-                        {selectedWithdrawal.bankName}
-                      </p>
+                      <p className="text-base font-semibold">{selectedWithdrawal.bankName}</p>
                       <p className="text-sm font-medium">
                         {selectedWithdrawal.accountNumber} · {selectedWithdrawal.accountName}
                       </p>

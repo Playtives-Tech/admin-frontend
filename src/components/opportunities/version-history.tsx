@@ -45,7 +45,7 @@ export function VersionHistory(): React.JSX.Element {
       </h3>
       <div className="relative pl-14">
         {/* Vertical line */}
-        <div className="absolute left-[3.35rem] top-2 bottom-4 w-px bg-border" />
+        <div className="absolute bottom-4 left-[3.35rem] top-2 w-px bg-border" />
 
         <div className="grid gap-6">
           {historyData.map((item) => (
@@ -53,7 +53,7 @@ export function VersionHistory(): React.JSX.Element {
               <div className="absolute -left-14 top-0 w-10 text-right text-xs font-medium text-muted-foreground">
                 {item.time}
               </div>
-              <div className="relative z-10 flex size-4 shrink-0 items-center justify-center rounded-full bg-background mt-0.5">
+              <div className="relative z-10 mt-0.5 flex size-4 shrink-0 items-center justify-center rounded-full bg-background">
                 {item.isLatest ? (
                   <MdCheckCircle className="size-4 text-emerald-500" />
                 ) : (
@@ -61,7 +61,12 @@ export function VersionHistory(): React.JSX.Element {
                 )}
               </div>
               <div className="-mt-1 grid gap-0.5">
-                <p className={cn("text-sm font-semibold", item.isLatest ? 'text-foreground' : 'text-muted-foreground')}>
+                <p
+                  className={cn(
+                    'text-sm font-semibold',
+                    item.isLatest ? 'text-foreground' : 'text-muted-foreground',
+                  )}
+                >
                   {item.action}
                 </p>
                 <p className="text-xs text-muted-foreground">

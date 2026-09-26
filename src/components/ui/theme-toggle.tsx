@@ -17,7 +17,12 @@ export function ThemeToggle(): React.JSX.Element {
       aria-label={mounted && isDark ? 'Switch to light theme' : 'Switch to dark theme'}
       title={mounted && isDark ? 'Light theme' : 'Dark theme'}
     >
-      {mounted && (isDark ? <Sun className="size-5" fill="currentColor" fillOpacity={0.2} /> : <Moon className="size-5" fill="currentColor" fillOpacity={0.2} />)}
+      {mounted &&
+        (isDark ? (
+          <Sun className="size-5" fill="currentColor" fillOpacity={0.2} />
+        ) : (
+          <Moon className="size-5" fill="currentColor" fillOpacity={0.2} />
+        ))}
     </button>
   );
 }

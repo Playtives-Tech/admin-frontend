@@ -10,6 +10,7 @@ import {
   BookOpen,
   ClipboardList,
   TicketCheck,
+  UserCheck,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
@@ -22,6 +23,7 @@ export interface NavItem {
 export const navItems: NavItem[] = [
   { href: '/overview', label: 'Overview', icon: PieChart },
   { href: '/members', label: 'Members', icon: UsersRound },
+  { href: '/participation-requests', label: 'Participation Requests', icon: UserCheck },
   { href: '/member-codes', label: 'Member Codes', icon: TicketCheck },
   // KYC review navigation is temporarily paused.
   // { href: '/kyc', label: 'KYC Reviews', icon: ShieldCheck },

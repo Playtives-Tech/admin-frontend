@@ -8,11 +8,7 @@ import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { navItems } from './nav-items';
 import { cn } from '@/lib/utils';
 
-function NavLink({
-  href,
-  label,
-  icon: Icon,
-}: (typeof navItems)[number]): React.JSX.Element {
+function NavLink({ href, label, icon: Icon }: (typeof navItems)[number]): React.JSX.Element {
   const pathname = usePathname();
   const active = pathname === href || pathname.startsWith(href + '/');
   return (

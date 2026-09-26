@@ -7,7 +7,8 @@ export type MaintenanceStatus = Readonly<{
 }>;
 
 export const platformSettingsService = {
-  getMaintenance: () => api<MaintenanceStatus>('/v1/admin/platform/maintenance', { cache: 'no-store' }),
+  getMaintenance: () =>
+    api<MaintenanceStatus>('/v1/admin/platform/maintenance', { cache: 'no-store' }),
   setMaintenance: (enabled: boolean, message?: string) =>
     api<MaintenanceStatus>('/v1/admin/platform/maintenance', {
       method: 'PATCH',

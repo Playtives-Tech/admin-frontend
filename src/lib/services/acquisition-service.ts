@@ -2,12 +2,7 @@ import { api } from '@/lib/api';
 import { type AdminDateRange, dateRangeSearchParams } from '@/lib/date-range';
 import { defaultAdminDateRange } from '@/lib/date-range';
 
-export type AcquisitionStatus =
-  | 'ACTIVE'
-  | 'COMPLETED'
-  | 'CANCELLED'
-  | 'REVERSING'
-  | 'REVERSED';
+export type AcquisitionStatus = 'ACTIVE' | 'COMPLETED' | 'CANCELLED' | 'REVERSING' | 'REVERSED';
 export type AcquisitionSource = 'MEMBER_WALLET' | 'ADMIN_MANUAL';
 export type AdminAcquisition = Readonly<{
   _id: string;

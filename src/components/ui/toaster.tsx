@@ -11,10 +11,8 @@ export function Toaster(): React.JSX.Element {
         classNames: {
           toast: '!rounded-2xl !border-brand !bg-brand !text-brand-foreground !shadow-xl',
           description: '!text-brand-foreground/80',
-          actionButton:
-            '!bg-background !text-brand hover:!bg-muted focus-visible:!ring-brand',
-          cancelButton:
-            '!bg-transparent !text-brand-foreground hover:!bg-brand-foreground/10',
+          actionButton: '!bg-background !text-brand hover:!bg-muted focus-visible:!ring-brand',
+          cancelButton: '!bg-transparent !text-brand-foreground hover:!bg-brand-foreground/10',
         },
       }}
     />

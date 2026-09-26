@@ -49,7 +49,9 @@
         transparent 1px,
         transparent 24px
       );
-    background-size: 26px 26px, auto;
+    background-size:
+      26px 26px,
+      auto;
   }
 
   .app-surface {

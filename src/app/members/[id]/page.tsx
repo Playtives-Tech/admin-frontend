@@ -21,8 +21,11 @@ import {
   getMemberWallet,
   creditMemberBalance,
   debitMemberBalance,
+  getMemberTransactionHistory,
   type AdminMember,
   type AdminWalletSummary,
+  type MemberTransactionHistoryItem,
+  updateMembershipStatus,
   updateMemberStatus,
 } from '@/lib/services/member-operations-service';
 import {
@@ -47,7 +50,16 @@ export default function MemberDetailPage(): React.JSX.Element {
   const [member, setMember] = useState<AdminMember | null>(null);
   const [wallet, setWallet] = useState<AdminWalletSummary | null>(null);
   const [ownerships, setOwnerships] = useState<AdminAcquisition[]>([]);
+  const [transactionHistory, setTransactionHistory] = useState<MemberTransactionHistoryItem[]>([]);
+  const [historyFilter, setHistoryFilter] = useState<
+    'ALL' | MemberTransactionHistoryItem['category']
+  >('ALL');
   const [savingStatus, setSavingStatus] = useState(false);
+  const [selectedMemberStatus, setSelectedMemberStatus] = useState<
+    AdminMember['memberStatus'] | ''
+  >('');
+  const [memberStatusReason, setMemberStatusReason] = useState('');
+  const [savingMemberStatus, setSavingMemberStatus] = useState(false);
   const [creditAmount, setCreditAmount] = useState('');
   const [creditReference, setCreditReference] = useState('');
   const [creditReason, setCreditReason] = useState('');
@@ -73,12 +85,15 @@ export default function MemberDetailPage(): React.JSX.Element {
       getMemberWallet(id),
       acquisitionService.list(),
       opportunityService.list(),
+      getMemberTransactionHistory(id),
     ])
-      .then(([memberResult, walletResult, allOwnerships, opportunityResults]) => {
+      .then(([memberResult, walletResult, allOwnerships, opportunityResults, history]) => {
         setMember(memberResult);
+        setSelectedMemberStatus(memberResult.memberStatus);
         setWallet(walletResult);
         setOwnerships(allOwnerships.filter((item) => item.userId._id === id));
         setOpportunities(opportunityResults.filter(isManuallyAssignable));
+        setTransactionHistory(history);
       })
       .catch(() => notify.error('Could not load this member'));
   }, [id]);
@@ -105,17 +120,59 @@ export default function MemberDetailPage(): React.JSX.Element {
       : [member.bvnVerifiedAt, member.ninVerifiedAt, member.phoneVerifiedAt].filter(Boolean).length
     : 0;
   const kycComplete = kycCompletedSteps === 3;
+  const visibleHistory = useMemo(
+    () =>
+      historyFilter === 'ALL'
+        ? transactionHistory
+        : transactionHistory.filter((item) => item.category === historyFilter),
+    [historyFilter, transactionHistory],
+  );
+  const refreshTransactionHistory = async (): Promise<void> => {
+    setTransactionHistory(await getMemberTransactionHistory(id));
+  };
   const changeStatus = async () => {
     if (!member) return;
     const status = member.status === 'active' ? 'suspended' : 'active';
     setSavingStatus(true);
     try {
-      setMember(await updateMemberStatus(member._id, status));
+      const updated = await updateMemberStatus(member._id, status);
+      setMember((current) => (current ? { ...current, ...updated } : updated));
       notify.success(status === 'active' ? 'Member reactivated' : 'Member suspended');
     } catch (error) {
       notify.error(error instanceof Error ? error.message : 'Could not update member status');
     } finally {
       setSavingStatus(false);
+    }
+  };
+  const changeMembershipStatus = async (event: FormEvent<HTMLFormElement>): Promise<void> => {
+    event.preventDefault();
+    if (!member || !selectedMemberStatus || selectedMemberStatus === member.memberStatus) return;
+    const reason = memberStatusReason.trim();
+    if (reason.length < 3) {
+      notify.error('Enter a short reason for changing the membership status');
+      return;
+    }
+    if (
+      !window.confirm(
+        `Change ${member.name} from ${member.memberStatus} to ${selectedMemberStatus}?`,
+      )
+    )
+      return;
+    setSavingMemberStatus(true);
+    try {
+      const updated = await updateMembershipStatus(member._id, {
+        memberStatus: selectedMemberStatus,
+        reason,
+      });
+      setMember(updated);
+      setSelectedMemberStatus(updated.memberStatus);
+      setMemberStatusReason('');
+      await refreshTransactionHistory();
+      notify.success(`Membership status changed to ${updated.memberStatus}`);
+    } catch (error) {
+      notify.error(error instanceof Error ? error.message : 'Could not update membership status');
+    } finally {
+      setSavingMemberStatus(false);
     }
   };
   const creditBalance = async (event: FormEvent<HTMLFormElement>): Promise<void> => {
@@ -142,6 +199,7 @@ export default function MemberDetailPage(): React.JSX.Element {
       setCreditAmount('');
       setCreditReference('');
       setCreditReason('');
+      await refreshTransactionHistory();
       notify.success('Member wallet balance credited');
     } catch (error) {
       notify.error(error instanceof Error ? error.message : 'Could not credit the member balance');
@@ -177,6 +235,7 @@ export default function MemberDetailPage(): React.JSX.Element {
       setDebitReference('');
       setDebitReason('');
       setDebitConfirmed(false);
+      await refreshTransactionHistory();
       notify.success('Member wallet balance debited');
     } catch (error) {
       notify.error(error instanceof Error ? error.message : 'Could not debit the member balance');
@@ -241,6 +300,7 @@ export default function MemberDetailPage(): React.JSX.Element {
       setAssignmentNote('');
       setAssignmentRollover('PAYOUT');
       setAssignmentConfirmed(false);
+      await refreshTransactionHistory();
       notify.success('Ownership assigned without debiting the member wallet');
     } catch (error) {
       notify.error(error instanceof Error ? error.message : 'Could not assign this ownership');
@@ -274,6 +334,23 @@ export default function MemberDetailPage(): React.JSX.Element {
                       {member.memberCode}
                     </p>
                   ) : null}
+                  <span
+                    className={`mt-2 inline-flex rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider ${
+                      member.memberStatus === 'active'
+                        ? 'bg-brand/10 text-brand'
+                        : member.memberStatus === 'pending'
+                          ? 'bg-amber-500/10 text-amber-700'
+                          : 'bg-sky-500/10 text-sky-600'
+                    }`}
+                  >
+                    {member.memberStatus === 'active'
+                      ? 'Active member'
+                      : member.memberStatus === 'pending'
+                        ? member.participationAccessApproved
+                          ? 'Pending · participation approved'
+                          : 'Pending · participation locked'
+                        : 'Community member'}
+                  </span>
                   <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
                     <span className="inline-flex items-center gap-1">
                       <MdEmail />
@@ -306,6 +383,60 @@ export default function MemberDetailPage(): React.JSX.Element {
                 )}
                 {member.status === 'active' ? 'Suspend member' : 'Reactivate member'}
               </button>
+            </section>
+
+            <section className="app-surface rounded-xl border p-5">
+              <div>
+                <h2 className="text-sm font-semibold">Membership access</h2>
+                <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                  Community members cannot enter the dashboard, pending members have restricted
+                  access, and active members have full member access.
+                </p>
+              </div>
+              <form
+                className="mt-4 grid gap-3 lg:grid-cols-[minmax(0,14rem)_minmax(0,1fr)_auto] lg:items-end"
+                onSubmit={(event) => void changeMembershipStatus(event)}
+              >
+                <label className="grid gap-1.5 text-xs font-semibold">
+                  Member status
+                  <select
+                    value={selectedMemberStatus}
+                    onChange={(event) =>
+                      setSelectedMemberStatus(event.target.value as AdminMember['memberStatus'])
+                    }
+                    className="h-10 rounded-lg border bg-background px-3 text-sm font-medium outline-none focus:border-brand"
+                  >
+                    <option value="community">Community</option>
+                    <option value="pending">Pending</option>
+                    <option value="active">Active</option>
+                  </select>
+                </label>
+                <label className="grid gap-1.5 text-xs font-semibold">
+                  Reason for change
+                  <input
+                    value={memberStatusReason}
+                    onChange={(event) => setMemberStatusReason(event.target.value)}
+                    placeholder="Why is this status being changed?"
+                    maxLength={500}
+                    className="h-10 rounded-lg border bg-background px-3 text-sm font-normal outline-none placeholder:text-muted-foreground focus:border-brand"
+                  />
+                </label>
+                <button
+                  type="submit"
+                  disabled={
+                    savingMemberStatus ||
+                    !selectedMemberStatus ||
+                    selectedMemberStatus === member.memberStatus
+                  }
+                  className="inline-flex h-10 items-center justify-center rounded-lg bg-brand px-4 text-xs font-semibold text-white transition hover:bg-brand/90 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {savingMemberStatus ? 'Updating…' : 'Update status'}
+                </button>
+              </form>
+              <p className="mt-3 text-[11px] leading-5 text-muted-foreground">
+                Members with active or completed ownerships cannot be moved back to community or
+                pending status.
+              </p>
             </section>
 
             <section className="app-surface rounded-xl border p-5">
@@ -347,6 +478,94 @@ export default function MemberDetailPage(): React.JSX.Element {
               <Metric label="Ownerships" value={String(ownerships.length)} />
               <Metric label="Amount invested" value={money(totals.invested)} />
               <Metric label="Fixed projected returns" value={money(totals.expected)} />
+            </section>
+
+            <section className="app-surface overflow-hidden rounded-xl border">
+              <div className="flex flex-col gap-3 border-b px-4 py-4 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <h2 className="text-sm font-semibold">Transaction history</h2>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Deposits, wallet adjustments, ownership activity, payouts, and account actions.
+                  </p>
+                </div>
+                <select
+                  value={historyFilter}
+                  onChange={(event) =>
+                    setHistoryFilter(
+                      event.target.value as 'ALL' | MemberTransactionHistoryItem['category'],
+                    )
+                  }
+                  className="h-9 rounded-lg border bg-background px-3 text-xs font-medium"
+                  aria-label="Filter transaction history"
+                >
+                  <option value="ALL">All activity</option>
+                  <option value="DEPOSIT">Deposits</option>
+                  <option value="WITHDRAWAL">Withdrawals</option>
+                  <option value="OWNERSHIP">Ownerships</option>
+                  <option value="PAYOUT">Payouts</option>
+                  <option value="WALLET">Wallet changes</option>
+                  <option value="ACCOUNT">Account activity</option>
+                </select>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[720px] table-fixed text-left text-xs">
+                  <colgroup>
+                    <col className="w-[52%]" />
+                    <col className="w-[15%]" />
+                    <col className="w-[17%]" />
+                    <col className="w-[16%]" />
+                  </colgroup>
+                  <thead className="border-b bg-muted/30 text-muted-foreground">
+                    <tr>
+                      {['Activity', 'Status', 'Amount', 'Date'].map((label) => (
+                        <th key={label} className="px-4 py-3 font-medium">
+                          {label}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y">
+                    {visibleHistory.map((item) => (
+                      <tr key={item.id}>
+                        <td className="px-4 py-3">
+                          <p className="font-semibold text-foreground">{item.title}</p>
+                          <p className="mt-0.5 text-muted-foreground">
+                            {item.description ?? item.category}
+                            {item.units != null
+                              ? ` · ${item.units} unit${item.units === 1 ? '' : 's'}`
+                              : ''}
+                          </p>
+                        </td>
+                        <td className="px-4 py-3">
+                          {item.status ? (
+                            <HistoryStatus status={item.status} />
+                          ) : (
+                            <span className="text-muted-foreground">—</span>
+                          )}
+                        </td>
+                        <td
+                          className={`px-4 py-3 font-semibold ${item.amountMinorUnits != null && item.amountMinorUnits < 0 ? 'text-red-600' : item.amountMinorUnits != null ? 'text-emerald-600' : ''}`}
+                        >
+                          {item.amountMinorUnits == null ? '—' : money(item.amountMinorUnits)}
+                        </td>
+                        <td className="px-4 py-3 text-muted-foreground">
+                          {new Date(item.createdAt).toLocaleString('en-NG', {
+                            dateStyle: 'medium',
+                            timeStyle: 'short',
+                          })}
+                        </td>
+                      </tr>
+                    ))}
+                    {visibleHistory.length === 0 ? (
+                      <tr>
+                        <td colSpan={4} className="px-4 py-10 text-center text-muted-foreground">
+                          No matching activity yet.
+                        </td>
+                      </tr>
+                    ) : null}
+                  </tbody>
+                </table>
+              </div>
             </section>
 
             <section className="app-surface rounded-xl border border-red-500/25 p-5">
@@ -749,6 +968,18 @@ function Metric({ label, value }: { label: string; value: string }) {
       <p className="text-xs text-muted-foreground">{label}</p>
       <p className="mt-2 text-base font-semibold">{value}</p>
     </article>
+  );
+}
+
+function HistoryStatus({ status }: Readonly<{ status: string }>): React.JSX.Element {
+  const positive = ['APPROVED', 'COMPLETED', 'SETTLED', 'ACTIVE'].includes(status);
+  const negative = ['REJECTED', 'REVERSED'].includes(status);
+  return (
+    <span
+      className={`rounded-full px-2 py-1 text-[10px] font-semibold ${positive ? 'bg-emerald-500/10 text-emerald-700' : negative ? 'bg-red-500/10 text-red-700' : 'bg-amber-500/10 text-amber-700'}`}
+    >
+      {status.toLowerCase().replaceAll('_', ' ')}
+    </span>
   );
 }
 
