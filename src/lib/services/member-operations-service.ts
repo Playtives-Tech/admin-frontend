@@ -34,6 +34,10 @@ export type AdminMember = Readonly<{
   phone?: string | null;
   country?: string | null;
   status: 'active' | 'suspended';
+  memberStatus: 'community' | 'pending' | 'active';
+  memberIntent?: 'LEARN_FIRST' | 'READY_TO_PARTICIPATE' | 'ALREADY_COMMITTED_OR_PAID' | null;
+  participationAccessApproved?: boolean;
+  participationAccessApprovedAt?: string | null;
   emailVerifiedAt: string | null;
   createdAt: string;
   walletId: string | null;
@@ -69,12 +73,15 @@ export function getMembers(input: {
   search?: string;
   status?: 'all' | 'active' | 'pending' | 'suspended';
   kyc?: 'all' | 'complete' | 'incomplete';
+  memberStatus?: 'all' | 'community' | 'pending' | 'active';
   range: AdminDateRange;
 }): Promise<MembersPage> {
   const query = new URLSearchParams({ page: String(input.page), limit: String(input.limit) });
   if (input.search) query.set('search', input.search);
   if (input.status && input.status !== 'all') query.set('status', input.status);
   if (input.kyc && input.kyc !== 'all') query.set('kyc', input.kyc);
+  if (input.memberStatus && input.memberStatus !== 'all')
+    query.set('memberStatus', input.memberStatus);
   new URLSearchParams(dateRangeSearchParams(input.range)).forEach((value, key) =>
     query.set(key, value),
   );
@@ -92,6 +99,51 @@ export function updateMemberStatus(
   return api<AdminMember>(`/v1/admin/users/${encodeURIComponent(userId)}/status`, {
     method: 'PATCH',
     body: JSON.stringify({ status }),
+  });
+}
+
+export function updateMembershipStatus(
+  userId: string,
+  input: { memberStatus: AdminMember['memberStatus']; reason: string },
+): Promise<AdminMember> {
+  return api<AdminMember>(`/v1/admin/users/${encodeURIComponent(userId)}/member-status`, {
+    method: 'PATCH',
+    body: JSON.stringify(input),
+  });
+}
+
+export type ParticipationAccessRequest = Readonly<{
+  _id: string;
+  userId: Readonly<{
+    _id: string;
+    name: string;
+    email: string;
+    phone: string | null;
+    memberCode: string | null;
+    memberStatus: 'community' | 'pending' | 'active';
+  }>;
+  status: 'PENDING' | 'APPROVED' | 'REJECTED';
+  message: string;
+  reviewNote: string | null;
+  reviewedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}>;
+
+export function getParticipationAccessRequests(
+  status: 'ALL' | ParticipationAccessRequest['status'] = 'ALL',
+): Promise<ParticipationAccessRequest[]> {
+  const query = status === 'ALL' ? '' : `?status=${status}`;
+  return api(`/v1/admin/users/participation-access/requests${query}`);
+}
+
+export function reviewParticipationAccessRequest(
+  requestId: string,
+  input: { decision: 'APPROVED' | 'REJECTED'; note?: string },
+): Promise<ParticipationAccessRequest> {
+  return api(`/v1/admin/users/participation-access/requests/${encodeURIComponent(requestId)}`, {
+    method: 'PATCH',
+    body: JSON.stringify(input),
   });
 }
 
@@ -132,6 +184,27 @@ export function debitMemberBalance(
 
 export function getMemberActivity(userId: string): Promise<ActivityLog[]> {
   return api<ActivityLog[]>(`/v1/admin/users/${encodeURIComponent(userId)}/activity-logs`);
+}
+
+export type MemberTransactionHistoryItem = Readonly<{
+  id: string;
+  category: 'DEPOSIT' | 'WITHDRAWAL' | 'OWNERSHIP' | 'PAYOUT' | 'WALLET' | 'ACCOUNT';
+  action: string;
+  title: string;
+  description: string | null;
+  status: string | null;
+  amountMinorUnits: number | null;
+  reference: string | null;
+  units: number | null;
+  createdAt: string;
+}>;
+
+export function getMemberTransactionHistory(
+  userId: string,
+): Promise<MemberTransactionHistoryItem[]> {
+  return api<MemberTransactionHistoryItem[]>(
+    `/v1/admin/users/${encodeURIComponent(userId)}/transaction-history`,
+  );
 }
 
 type RequestUser = Readonly<{ _id: string; name: string; email: string }>;

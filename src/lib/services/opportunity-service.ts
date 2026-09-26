@@ -1,7 +1,18 @@
 import { api } from '@/lib/api';
 import { env } from '@/lib/env';
 
-export type OpportunityStatus = 'DRAFT' | 'PUBLISHED' | 'INTEREST_OPEN' | 'INTEREST_CLOSED' | 'FUNDING_OPEN' | 'FULLY_SUBSCRIBED' | 'ACTIVE' | 'COMPLETED' | 'PAUSED' | 'CANCELLED' | 'DELETING';
+export type OpportunityStatus =
+  | 'DRAFT'
+  | 'PUBLISHED'
+  | 'INTEREST_OPEN'
+  | 'INTEREST_CLOSED'
+  | 'FUNDING_OPEN'
+  | 'FULLY_SUBSCRIBED'
+  | 'ACTIVE'
+  | 'COMPLETED'
+  | 'PAUSED'
+  | 'CANCELLED'
+  | 'DELETING';
 export type ReturnSchedule = 'MONTHLY' | 'YEARLY' | 'AT_MATURITY';
 export type OpportunityStructure = 'CO_OWNERSHIP' | 'CO_FUNDING' | 'FULL_OWNERSHIP';
 export type ReturnModel =
@@ -96,7 +107,19 @@ export interface Opportunity {
   revision: number;
 }
 
-export type OpportunityInterestRegistration = { _id: string; openingCapital: number; recurringAmount: number | null; recurringFrequency: 'monthly' | null; capitalReadiness: 'available_now' | 'within_7_days' | 'not_sure'; status: string; acknowledgementVersion: string; createdAt: string; updatedAt: string; userId: { _id: string; name: string; email: string; phone?: string | null }; opportunityId: { _id: string; title: string; slug: string } };
+export type OpportunityInterestRegistration = {
+  _id: string;
+  openingCapital: number;
+  recurringAmount: number | null;
+  recurringFrequency: 'monthly' | null;
+  capitalReadiness: 'available_now' | 'within_7_days' | 'not_sure';
+  status: string;
+  acknowledgementVersion: string;
+  createdAt: string;
+  updatedAt: string;
+  userId: { _id: string; name: string; email: string; phone?: string | null };
+  opportunityId: { _id: string; title: string; slug: string };
+};
 
 export type OpportunityPayload = Partial<
   Omit<
@@ -133,7 +156,10 @@ function idempotencyKey(scope: string, payload: unknown): string {
 export const opportunityService = {
   list: () => api<Opportunity[]>('/v1/admin/opportunities'),
   get: (id: string) => api<Opportunity>(`/v1/admin/opportunities/${id}`),
-  interests: (opportunityId?: string) => api<OpportunityInterestRegistration[]>(`/v1/admin/opportunities/interests${opportunityId ? `?opportunityId=${encodeURIComponent(opportunityId)}` : ''}`),
+  interests: (opportunityId?: string) =>
+    api<OpportunityInterestRegistration[]>(
+      `/v1/admin/opportunities/interests${opportunityId ? `?opportunityId=${encodeURIComponent(opportunityId)}` : ''}`,
+    ),
   create: (payload: OpportunityPayload) =>
     api<Opportunity>('/v1/admin/opportunities', {
       method: 'POST',

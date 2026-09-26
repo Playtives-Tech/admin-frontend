@@ -8,11 +8,7 @@ import { DashboardSidebar } from './sidebar';
 import { navItems } from './nav-items';
 import { cn } from '@/lib/utils';
 
-function MobileNavLink({
-  href,
-  label,
-  icon: Icon,
-}: (typeof navItems)[number]): React.JSX.Element {
+function MobileNavLink({ href, label, icon: Icon }: (typeof navItems)[number]): React.JSX.Element {
   const pathname = usePathname();
   const active = pathname === href || pathname.startsWith(href + '/');
   return (
@@ -21,9 +17,7 @@ function MobileNavLink({
       className={cn(
         'flex flex-col items-center gap-1 rounded-xl px-2 py-2 text-[11px] font-medium transition-colors',
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand',
-        active
-          ? 'text-brand'
-          : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+        active ? 'text-brand' : 'text-muted-foreground hover:bg-muted hover:text-foreground',
       )}
       aria-current={active ? 'page' : undefined}
     >
@@ -63,9 +57,7 @@ export function DashboardShell({
         <header className="app-surface sticky top-0 z-10 flex h-16 items-center border-b px-5 backdrop-blur lg:px-10">
           <div>
             <h1 className="font-sans text-base font-semibold">{title}</h1>
-            {description && (
-              <p className="text-xs text-muted-foreground">{description}</p>
-            )}
+            {description && <p className="text-xs text-muted-foreground">{description}</p>}
           </div>
         </header>
 

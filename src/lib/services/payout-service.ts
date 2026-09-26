@@ -80,9 +80,12 @@ export type PayoutPage = Readonly<{
 const keys = new Map<string, string>();
 export const payoutService = {
   list: (status: MaturityPayoutStatus | undefined, range: AdminDateRange, page = 1, limit = 20) =>
-    api<PayoutPage>(`/v1/admin/payouts?${new URLSearchParams({ ...(status ? { status } : {}), page: String(page), limit: String(limit), ...Object.fromEntries(new URLSearchParams(dateRangeSearchParams(range))) }).toString()}`, {
-      cache: 'no-store',
-    }),
+    api<PayoutPage>(
+      `/v1/admin/payouts?${new URLSearchParams({ ...(status ? { status } : {}), page: String(page), limit: String(limit), ...Object.fromEntries(new URLSearchParams(dateRangeSearchParams(range))) }).toString()}`,
+      {
+        cache: 'no-store',
+      },
+    ),
   get: (id: string) => api<PayoutDetail>(`/v1/admin/payouts/${id}`, { cache: 'no-store' }),
   setActualAmount: (payout: MaturityPayout, amountNaira: number) => {
     const fingerprint = `${payout._id}:${payout.revision}:amount:${amountNaira}`;

@@ -16,6 +16,8 @@ export default function MembersPage(): React.JSX.Element {
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [kycFilter, setKycFilter] = useState('All KYC');
   const [isKycFilterOpen, setIsKycFilterOpen] = useState(false);
+  const [membershipFilter, setMembershipFilter] = useState('All membership');
+  const [isMembershipFilterOpen, setIsMembershipFilterOpen] = useState(false);
   const [members, setMembers] = useState<AdminMember[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [page, setPage] = useState(1);
@@ -42,7 +44,23 @@ export default function MembersPage(): React.JSX.Element {
           : kycFilter === 'KYC incomplete'
             ? 'incomplete'
             : 'all';
-      void getMembers({ page, limit: pageSize, search: search.trim(), status, kyc, range })
+      const memberStatus =
+        membershipFilter === 'Active members'
+          ? 'active'
+          : membershipFilter === 'Pending members'
+            ? 'pending'
+          : membershipFilter === 'Community members'
+            ? 'community'
+            : 'all';
+      void getMembers({
+        page,
+        limit: pageSize,
+        search: search.trim(),
+        status,
+        kyc,
+        memberStatus,
+        range,
+      })
         .then(
           (response) => {
             setMembers(response.items);
@@ -55,7 +73,7 @@ export default function MembersPage(): React.JSX.Element {
         .finally(() => setIsLoading(false));
     }, 300);
     return () => window.clearTimeout(timer);
-  }, [kycFilter, page, range, search, statusFilter]);
+  }, [kycFilter, membershipFilter, page, range, search, statusFilter]);
 
   return (
     <DashboardShell title="Members" description="Manage user accounts and portfolios">
@@ -76,75 +94,122 @@ export default function MembersPage(): React.JSX.Element {
             />
           </div>
           <div className="flex flex-wrap gap-2">
-          <div className="relative">
-            <button
-              onClick={() => setIsFilterOpen(!isFilterOpen)}
-              className="flex w-max items-center gap-2 rounded-xl border bg-background px-4 py-2 text-sm font-medium transition hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
-            >
-              <MdTune className="size-4" />
-              Account: {statusFilter}
-            </button>
-            {isFilterOpen && (
-              <div className="absolute right-0 top-full z-10 mt-2 w-48 rounded-xl border bg-surface p-2 shadow-xl">
-                <div className="px-3 py-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                  Status
+            <div className="relative">
+              <button
+                onClick={() => setIsFilterOpen(!isFilterOpen)}
+                className="flex w-max items-center gap-2 rounded-xl border bg-background px-4 py-2 text-sm font-medium transition hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+              >
+                <MdTune className="size-4" />
+                Account: {statusFilter}
+              </button>
+              {isFilterOpen && (
+                <div className="absolute right-0 top-full z-10 mt-2 w-48 rounded-xl border bg-surface p-2 shadow-xl">
+                  <div className="px-3 py-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                    Status
+                  </div>
+                  {['All', 'Active', 'Email pending', 'Suspended'].map((status) => (
+                    <button
+                      key={status}
+                      onClick={() => {
+                        setStatusFilter(status);
+                        setPage(1);
+                        setIsFilterOpen(false);
+                      }}
+                      className={cn(
+                        'w-full rounded-lg px-3 py-2 text-left text-sm transition hover:bg-muted',
+                        statusFilter === status && 'bg-brand/10 font-medium text-brand',
+                      )}
+                    >
+                      {status}
+                    </button>
+                  ))}
                 </div>
-                {['All', 'Active', 'Email pending', 'Suspended'].map((status) => (
-                  <button
-                    key={status}
-                    onClick={() => {
-                      setStatusFilter(status);
-                      setPage(1);
-                      setIsFilterOpen(false);
-                    }}
-                    className={cn(
-                      'w-full rounded-lg px-3 py-2 text-left text-sm transition hover:bg-muted',
-                      statusFilter === status && 'bg-brand/10 font-medium text-brand',
-                    )}
-                  >
-                    {status}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-          <div className="relative">
-            <button
-              type="button"
-              onClick={() => setIsKycFilterOpen(!isKycFilterOpen)}
-              className="flex w-max items-center gap-2 rounded-xl border bg-background px-4 py-2 text-sm font-medium transition hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
-            >
-              <MdTune className="size-4" />
-              {kycFilter}
-            </button>
-            {isKycFilterOpen ? (
-              <div className="absolute right-0 top-full z-10 mt-2 w-48 rounded-xl border bg-surface p-2 shadow-xl">
-                <div className="px-3 py-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                  KYC progress
+              )}
+            </div>
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setIsKycFilterOpen(!isKycFilterOpen)}
+                className="flex w-max items-center gap-2 rounded-xl border bg-background px-4 py-2 text-sm font-medium transition hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+              >
+                <MdTune className="size-4" />
+                {kycFilter}
+              </button>
+              {isKycFilterOpen ? (
+                <div className="absolute right-0 top-full z-10 mt-2 w-48 rounded-xl border bg-surface p-2 shadow-xl">
+                  <div className="px-3 py-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                    KYC progress
+                  </div>
+                  {['All KYC', 'KYC complete', 'KYC incomplete'].map((option) => (
+                    <button
+                      key={option}
+                      type="button"
+                      onClick={() => {
+                        setKycFilter(option);
+                        setPage(1);
+                        setIsKycFilterOpen(false);
+                      }}
+                      className={cn(
+                        'w-full rounded-lg px-3 py-2 text-left text-sm transition hover:bg-muted',
+                        kycFilter === option && 'bg-brand/10 font-medium text-brand',
+                      )}
+                    >
+                      {option}
+                    </button>
+                  ))}
                 </div>
-                {['All KYC', 'KYC complete', 'KYC incomplete'].map((option) => (
-                  <button
-                    key={option}
-                    type="button"
-                    onClick={() => {
-                      setKycFilter(option);
-                      setPage(1);
-                      setIsKycFilterOpen(false);
-                    }}
-                    className={cn(
-                      'w-full rounded-lg px-3 py-2 text-left text-sm transition hover:bg-muted',
-                      kycFilter === option && 'bg-brand/10 font-medium text-brand',
-                    )}
-                  >
-                    {option}
-                  </button>
-                ))}
-              </div>
-            ) : null}
-          </div>
+              ) : null}
+            </div>
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setIsMembershipFilterOpen(!isMembershipFilterOpen)}
+                className="flex w-max items-center gap-2 rounded-xl border bg-background px-4 py-2 text-sm font-medium transition hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+              >
+                <MdTune className="size-4" />
+                {membershipFilter}
+              </button>
+              {isMembershipFilterOpen ? (
+                <div className="absolute right-0 top-full z-10 mt-2 w-52 rounded-xl border bg-surface p-2 shadow-xl">
+                  <div className="px-3 py-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                    Membership
+                  </div>
+                  {[
+                    'All membership',
+                    'Community members',
+                    'Pending members',
+                    'Active members',
+                  ].map((option) => (
+                    <button
+                      key={option}
+                      type="button"
+                      onClick={() => {
+                        setMembershipFilter(option);
+                        setPage(1);
+                        setIsMembershipFilterOpen(false);
+                      }}
+                      className={cn(
+                        'w-full rounded-lg px-3 py-2 text-left text-sm transition hover:bg-muted',
+                        membershipFilter === option && 'bg-brand/10 font-medium text-brand',
+                      )}
+                    >
+                      {option}
+                    </button>
+                  ))}
+                </div>
+              ) : null}
+            </div>
           </div>
         </div>
-        <div className="mb-5"><DateRangeFilter value={range} onChange={(value) => { setRange(value); setPage(1); }} /></div>
+        <div className="mb-5">
+          <DateRangeFilter
+            value={range}
+            onChange={(value) => {
+              setRange(value);
+              setPage(1);
+            }}
+          />
+        </div>
 
         {/* Data Table */}
         <div className="app-surface overflow-hidden rounded-2xl border shadow-sm">
@@ -162,6 +227,7 @@ export default function MembersPage(): React.JSX.Element {
                     Total Invested
                   </th>
                   <th className="px-6 py-4 font-semibold text-muted-foreground">Status</th>
+                  <th className="px-6 py-4 font-semibold text-muted-foreground">Membership</th>
                   <th className="px-6 py-4 font-semibold text-muted-foreground">KYC</th>
                   <th className="px-6 py-4 text-right font-semibold text-muted-foreground">
                     Actions
@@ -184,6 +250,24 @@ export default function MembersPage(): React.JSX.Element {
                     </td>
                     <td className="px-6 py-4 text-muted-foreground">
                       {new Date(member.createdAt).toLocaleDateString('en-NG')}
+                    </td>
+                    <td className="px-6 py-4">
+                      <span
+                        className={cn(
+                          'inline-flex rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider',
+                          member.memberStatus === 'active'
+                            ? 'bg-brand/10 text-brand'
+                            : member.memberStatus === 'pending'
+                              ? 'bg-amber-500/10 text-amber-700'
+                              : 'bg-sky-500/10 text-sky-600',
+                        )}
+                      >
+                        {member.memberStatus === 'active'
+                          ? 'Active member'
+                          : member.memberStatus === 'pending'
+                            ? 'Pending member'
+                            : 'Community'}
+                      </span>
                     </td>
                     <td className="px-6 py-4">
                       <span className="rounded-full bg-brand/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-brand">

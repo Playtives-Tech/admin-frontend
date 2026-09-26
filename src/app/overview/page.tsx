@@ -19,7 +19,10 @@ import { getAdminOverview, type AdminOverview } from '@/lib/services/member-oper
 import { notify } from '@/lib/notify';
 import { DateRangeFilter } from '@/components/ui/date-range-filter';
 import { defaultAdminDateRange, dateRangeLabel, type AdminDateRange } from '@/lib/date-range';
-import { platformSettingsService, type MaintenanceStatus } from '@/lib/services/platform-settings-service';
+import {
+  platformSettingsService,
+  type MaintenanceStatus,
+} from '@/lib/services/platform-settings-service';
 
 const money = (value: number) =>
   new Intl.NumberFormat('en-NG', {
@@ -87,15 +90,13 @@ export default function OverviewPage(): React.JSX.Element {
     {
       title: 'Total recorded inflows',
       value: money(data.trackedCapitalInflowsMinorUnits),
-      description:
-        'Settled wallet deposits plus externally paid ownerships.',
+      description: 'Settled wallet deposits plus externally paid ownerships.',
       icon: Layers3,
     },
     {
       title: 'Settled wallet deposits',
       value: money(data.depositsMinorUnits),
-      description:
-        'Money added through transfers, Paystack, or admin credits.',
+      description: 'Money added through transfers, Paystack, or admin credits.',
       icon: ArrowDownRight,
       tone: 'blue',
     },
@@ -121,8 +122,7 @@ export default function OverviewPage(): React.JSX.Element {
     {
       title: 'Externally paid ownership capital',
       value: money(data.manualOpportunityCapitalMinorUnits),
-      description:
-        'Ownership payments made outside the member wallet.',
+      description: 'Ownership payments made outside the member wallet.',
       icon: Banknote,
       tone: 'amber',
     },
@@ -132,23 +132,20 @@ export default function OverviewPage(): React.JSX.Element {
     {
       title: 'Capital invested',
       value: money(data.investedMinorUnits),
-      description:
-        'Value of current ownerships. Reversed records are excluded.',
+      description: 'Value of current ownerships. Reversed records are excluded.',
       icon: WalletCards,
     },
     {
       title: 'Projected returns',
       value: money(data.expectedReturnMinorUnits),
-      description:
-        'Estimated returns—not settled or guaranteed earnings.',
+      description: 'Estimated returns—not settled or guaranteed earnings.',
       icon: TrendingUp,
       tone: 'blue',
     },
     {
       title: 'Projected ownership value',
       value: money(projectedOwnershipValue),
-      description:
-        'Capital invested plus projected returns.',
+      description: 'Capital invested plus projected returns.',
       icon: Layers3,
       tone: 'amber',
     },
@@ -165,8 +162,7 @@ export default function OverviewPage(): React.JSX.Element {
     {
       title: 'Net settled wallet flow',
       value: money(netSettledWalletFlow),
-      description:
-        'Settled deposits minus completed withdrawals.',
+      description: 'Settled deposits minus completed withdrawals.',
       icon: Banknote,
       tone: netSettledWalletFlow < 0 ? 'red' : 'brand',
     },
@@ -201,7 +197,8 @@ export default function OverviewPage(): React.JSX.Element {
             </p>
             <h2 className="mt-1 text-base font-semibold">Maintenance mode</h2>
             <p className="mt-1 max-w-2xl text-xs leading-5 text-muted-foreground">
-              Temporarily prevents members from submitting operations while administrators retain access.
+              Temporarily prevents members from submitting operations while administrators retain
+              access.
             </p>
           </div>
           <button
@@ -210,7 +207,11 @@ export default function OverviewPage(): React.JSX.Element {
             onClick={() => void toggleMaintenance()}
             className={`inline-flex h-10 shrink-0 items-center justify-center rounded-xl px-4 text-sm font-semibold transition disabled:opacity-50 ${maintenance?.enabled ? 'bg-red-600 text-white hover:bg-red-700' : 'bg-brand text-brand-foreground hover:brightness-110'}`}
           >
-            {maintenanceBusy ? 'Updating…' : maintenance?.enabled ? 'Disable maintenance' : 'Enable maintenance'}
+            {maintenanceBusy
+              ? 'Updating…'
+              : maintenance?.enabled
+                ? 'Disable maintenance'
+                : 'Enable maintenance'}
           </button>
         </section>
 
@@ -278,7 +279,6 @@ export default function OverviewPage(): React.JSX.Element {
             </div>
           </div>
         </section>
-
       </div>
     </DashboardShell>
   );
