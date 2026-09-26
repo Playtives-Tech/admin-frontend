@@ -67,7 +67,7 @@ export default function NameChangeRequestsPage(): React.JSX.Element {
   return (
     <DashboardShell
       title="Name change requests"
-      description="Review support requests before sending a one-time update link."
+      description="Review support requests before sending a one-time update link"
     >
       <div className="mx-auto max-w-6xl space-y-5">
         <DateRangeFilter value={range} onChange={setRange} />
