@@ -2,10 +2,11 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { LogOut } from 'lucide-react';
+import { ChevronDown, LogOut } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { useAuth } from '@/components/providers/auth-provider';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
-import { navItems } from './nav-items';
+import { navGroups, navItems } from './nav-items';
 import { cn } from '@/lib/utils';
 
 function NavLink({ href, label, icon: Icon }: (typeof navItems)[number]): React.JSX.Element {
@@ -15,7 +16,7 @@ function NavLink({ href, label, icon: Icon }: (typeof navItems)[number]): React.
     <Link
       href={href}
       className={cn(
-        'group flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium transition-colors',
+        'group flex items-center gap-3 rounded-xl px-3 py-3 text-[13px] font-medium transition-colors',
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand',
         active
           ? 'bg-brand text-brand-foreground shadow-sm'
@@ -32,6 +33,17 @@ function NavLink({ href, label, icon: Icon }: (typeof navItems)[number]): React.
 export function DashboardSidebar(): React.JSX.Element {
   const { user, logout } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() =>
+    Object.fromEntries(navGroups.map((group) => [group.label, true])),
+  );
+
+  useEffect(() => {
+    const activeGroup = navGroups.find((group) =>
+      group.items.some((item) => pathname === item.href || pathname.startsWith(`${item.href}/`)),
+    );
+    if (activeGroup) setOpenGroups((current) => ({ ...current, [activeGroup.label]: true }));
+  }, [pathname]);
 
   function handleLogout(): void {
     logout();
@@ -39,7 +51,7 @@ export function DashboardSidebar(): React.JSX.Element {
   }
 
   return (
-    <aside className="app-surface fixed inset-y-0 left-0 z-20 hidden w-72 flex-col border-r px-5 py-6 lg:flex">
+    <aside className="app-surface fixed inset-y-0 left-0 z-20 hidden w-72 flex-col overflow-y-auto border-r px-5 py-6 lg:flex">
       {/* Wordmark */}
       <Link
         href="/overview"
@@ -50,19 +62,39 @@ export function DashboardSidebar(): React.JSX.Element {
       </Link>
 
       {/* Section label */}
-      <p className="px-2 pt-12 text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+      <p className="px-2 pt-10 text-base font-bold uppercase tracking-[0.14em] text-foreground">
         Management
       </p>
 
       {/* Nav */}
-      <nav className="mt-3 grid gap-1" aria-label="Dashboard navigation">
-        {navItems.map((item) => (
-          <NavLink key={item.href} {...item} />
+      <nav className="mt-3 grid gap-3" aria-label="Dashboard navigation">
+        {navGroups.map((group) => (
+          <details
+            className="group/nav"
+            key={group.label}
+            open={Boolean(openGroups[group.label])}
+            onToggle={(event) => {
+              const open = event.currentTarget.open;
+              setOpenGroups((current) =>
+                current[group.label] === open ? current : { ...current, [group.label]: open },
+              );
+            }}
+          >
+            <summary className="flex cursor-pointer list-none items-center justify-between rounded-lg px-2 py-2 text-[15px] font-semibold text-muted-foreground hover:text-foreground [&::-webkit-details-marker]:hidden">
+              {group.label}
+              <ChevronDown className="size-4 transition-transform group-open/nav:rotate-180" />
+            </summary>
+            <div className="mt-1 grid gap-1 pl-1">
+              {group.items.map((item) => (
+                <NavLink key={item.href} {...item} />
+              ))}
+            </div>
+          </details>
         ))}
       </nav>
 
       {/* Spacer */}
-      <div className="flex-1" />
+      <div className="min-h-6 flex-1" />
 
       {/* Bottom actions — theme toggle + email + sign out */}
       <div className="grid gap-2 border-t pt-6">
