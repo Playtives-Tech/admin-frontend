@@ -11,6 +11,7 @@ import {
   ClipboardList,
   TicketCheck,
   UserCheck,
+  Layers3,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
@@ -28,6 +29,7 @@ export const navItems: NavItem[] = [
   // KYC review navigation is temporarily paused.
   // { href: '/kyc', label: 'KYC Reviews', icon: ShieldCheck },
   { href: '/opportunities', label: 'Opportunity Editor', icon: FilePenLine },
+  { href: '/wealth-collectives', label: 'Wealth Collectives', icon: Layers3 },
   { href: '/interest-registrations', label: 'Interest Registrations', icon: ClipboardList },
   { href: '/blog', label: 'Blog Center', icon: BookOpen },
   { href: '/payouts', label: 'User Payouts', icon: Banknote },
@@ -36,4 +38,32 @@ export const navItems: NavItem[] = [
   { href: '/withdrawals', label: 'Withdrawal Requests', icon: ArrowUpCircle },
   { href: '/name-change-requests', label: 'Name Change Requests', icon: BadgeCheck },
   // { href: '/activity', label: 'Wallet Activity', icon: ScrollText },
+];
+
+export const navGroups: ReadonlyArray<{ label: string; items: NavItem[] }> = [
+  {
+    label: 'Member management',
+    items: navItems.filter((item) =>
+      ['/overview', '/members', '/participation-requests', '/member-codes'].includes(item.href),
+    ),
+  },
+  {
+    label: 'Collectives & opportunities',
+    items: navItems.filter((item) =>
+      [
+        '/opportunities',
+        '/wealth-collectives',
+        '/interest-registrations',
+        '/acquisitions',
+      ].includes(item.href),
+    ),
+  },
+  {
+    label: 'Payments',
+    items: navItems.filter((item) => ['/payouts', '/deposits', '/withdrawals'].includes(item.href)),
+  },
+  {
+    label: 'Content & profile',
+    items: navItems.filter((item) => ['/blog', '/name-change-requests'].includes(item.href)),
+  },
 ];
