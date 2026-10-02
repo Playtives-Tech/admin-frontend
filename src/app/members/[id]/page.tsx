@@ -12,6 +12,7 @@ import {
   MdLock,
   MdLockOpen,
   MdCheckCircle,
+  MdCloudUpload,
   MdRadioButtonUnchecked,
 } from 'react-icons/md';
 import { DashboardShell } from '@/components/dashboard/shell';
@@ -63,6 +64,7 @@ export default function MemberDetailPage(): React.JSX.Element {
   const [creditAmount, setCreditAmount] = useState('');
   const [creditReference, setCreditReference] = useState('');
   const [creditReason, setCreditReason] = useState('');
+  const [creditReceipt, setCreditReceipt] = useState<File | null>(null);
   const [crediting, setCrediting] = useState(false);
   const [debitAmount, setDebitAmount] = useState('');
   const [debitReference, setDebitReference] = useState('');
@@ -177,10 +179,15 @@ export default function MemberDetailPage(): React.JSX.Element {
   };
   const creditBalance = async (event: FormEvent<HTMLFormElement>): Promise<void> => {
     event.preventDefault();
+    const form = event.currentTarget;
     const amountMinorUnits = Math.round(Number(creditAmount) * 100);
     const reference = creditReference.trim();
     if (!Number.isSafeInteger(amountMinorUnits) || amountMinorUnits < 1 || !reference) {
       notify.error('Enter a valid credit amount and a unique reference');
+      return;
+    }
+    if (!creditReceipt) {
+      notify.error('Attach the payment confirmation screenshot or receipt');
       return;
     }
     setCrediting(true);
@@ -194,11 +201,14 @@ export default function MemberDetailPage(): React.JSX.Element {
           amountMinorUnits,
           reference,
           reason: creditReason.trim(),
+          receipt: creditReceipt,
         }),
       );
       setCreditAmount('');
       setCreditReference('');
       setCreditReason('');
+      setCreditReceipt(null);
+      form.reset();
       await refreshTransactionHistory();
       notify.success('Member wallet balance credited');
     } catch (error) {
@@ -273,6 +283,10 @@ export default function MemberDetailPage(): React.JSX.Element {
       !assignmentConfirmed
     ) {
       notify.error('Review the opportunity, available units, amount, and unique reference');
+      return;
+    }
+    if (amountMinorUnits > (wallet?.totalAvailableBalanceMinorUnits ?? 0)) {
+      notify.error('The member does not have enough available wallet balance for this ownership');
       return;
     }
     setAssigning(true);
@@ -687,8 +701,31 @@ export default function MemberDetailPage(): React.JSX.Element {
                     className="h-10 rounded-lg border bg-background px-3 text-sm font-normal"
                   />
                 </label>
+                <label className="grid gap-1.5 text-xs font-semibold sm:col-span-2">
+                  Payment confirmation
+                  <span className="flex min-h-20 cursor-pointer items-center gap-3 rounded-lg border border-dashed bg-background px-4 py-3 font-normal transition hover:border-brand/60 hover:bg-brand/[0.03]">
+                    <span className="grid size-10 shrink-0 place-items-center rounded-lg bg-brand/10 text-brand">
+                      <MdCloudUpload className="size-5" />
+                    </span>
+                    <span className="min-w-0">
+                      <span className="block truncate text-sm font-medium text-foreground">
+                        {creditReceipt?.name ?? 'Upload payment screenshot or receipt'}
+                      </span>
+                      <span className="mt-0.5 block text-[11px] text-muted-foreground">
+                        JPEG, PNG, WebP, or PDF · maximum 8 MB
+                      </span>
+                    </span>
+                    <input
+                      required
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp,application/pdf"
+                      onChange={(event) => setCreditReceipt(event.target.files?.[0] ?? null)}
+                      className="sr-only"
+                    />
+                  </span>
+                </label>
                 <button
-                  disabled={crediting}
+                  disabled={crediting || !creditReceipt}
                   className="h-10 rounded-lg bg-brand px-4 text-sm font-semibold text-white transition hover:brightness-110 disabled:opacity-60 sm:col-span-2"
                 >
                   {crediting ? 'Crediting…' : 'Credit balance'}
@@ -705,7 +742,8 @@ export default function MemberDetailPage(): React.JSX.Element {
                   <h2 className="text-sm font-semibold">Assign existing ownership</h2>
                   <p className="mt-1 text-xs leading-5 text-muted-foreground">
                     Use this for ownership purchased before the platform. Available units are
-                    deducted immediately, but the member’s wallet is not charged.
+                    deducted immediately. The member must have enough available wallet balance for
+                    the recorded amount, but this legacy assignment does not debit it.
                   </p>
                 </div>
               </div>
@@ -798,7 +836,10 @@ export default function MemberDetailPage(): React.JSX.Element {
                     <span className="font-semibold text-foreground">Assignment summary:</span>{' '}
                     {assignmentUnits || 0} of {selectedOpportunity.availableUnits} available units.
                     Listed unit price is {money(selectedOpportunity.pricePerUnitMinorUnits)}. This
-                    action does not alter the wallet balance.
+                    action requires at least{' '}
+                    {money(Math.round(Number(assignmentAmount) * 100) || 0)} in available wallet
+                    balance and does not debit it. Current available balance:{' '}
+                    {money(wallet?.totalAvailableBalanceMinorUnits ?? 0)}.
                   </div>
                 ) : null}
                 <label className="flex items-start gap-2 text-xs leading-5 text-muted-foreground sm:col-span-2">
@@ -815,7 +856,13 @@ export default function MemberDetailPage(): React.JSX.Element {
                 </label>
                 <div className="flex justify-end sm:col-span-2">
                   <button
-                    disabled={assigning || !selectedOpportunity || !assignmentConfirmed}
+                    disabled={
+                      assigning ||
+                      !selectedOpportunity ||
+                      !assignmentConfirmed ||
+                      Math.round(Number(assignmentAmount) * 100) >
+                        (wallet?.totalAvailableBalanceMinorUnits ?? 0)
+                    }
                     className="h-10 rounded-lg bg-brand px-5 text-sm font-semibold text-white transition hover:brightness-110 disabled:opacity-60"
                   >
                     {assigning ? 'Assigning…' : 'Assign ownership'}

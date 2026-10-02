@@ -164,11 +164,16 @@ export function getMemberWallet(userId: string): Promise<AdminWalletSummary> {
 
 export function creditMemberBalance(
   userId: string,
-  input: { amountMinorUnits: number; reference: string; reason: string },
+  input: { amountMinorUnits: number; reference: string; reason: string; receipt: File },
 ): Promise<AdminWalletSummary> {
+  const body = new FormData();
+  body.set('amountMinorUnits', String(input.amountMinorUnits));
+  body.set('reference', input.reference);
+  body.set('reason', input.reason);
+  body.set('receipt', input.receipt);
   return api<AdminWalletSummary>(`/v1/admin/users/${encodeURIComponent(userId)}/balance-credits`, {
     method: 'POST',
-    body: JSON.stringify(input),
+    body,
   });
 }
 
@@ -244,6 +249,7 @@ export type AdminAddedDeposit = Readonly<{
   reference: string;
   legacyReference?: string | null;
   reason: string;
+  receiptImageUrl?: string | null;
   proposedName?: string | null;
   source: 'ADMIN_OFFLINE' | 'LEGACY_ADMIN_EARNINGS_CREDIT';
   creditedAt: string | null;

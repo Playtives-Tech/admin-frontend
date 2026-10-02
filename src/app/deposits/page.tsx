@@ -117,11 +117,13 @@ export default function DepositsPage(): React.JSX.Element {
           <table className="w-full min-w-[820px] text-left text-xs">
             <thead className="border-b bg-muted/30 text-muted-foreground">
               <tr>
-                {['Member', 'Amount', 'Payment context', 'Reference', 'Credited'].map((label) => (
-                  <th key={label} className="px-4 py-3 font-medium">
-                    {label}
-                  </th>
-                ))}
+                {['Member', 'Amount', 'Payment context', 'Reference', 'Proof', 'Credited'].map(
+                  (label) => (
+                    <th key={label} className="px-4 py-3 font-medium">
+                      {label}
+                    </th>
+                  ),
+                )}
               </tr>
             </thead>
             <tbody className="divide-y">
@@ -143,6 +145,20 @@ export default function DepositsPage(): React.JSX.Element {
                   >
                     {item.legacyReference ?? item.reference}
                   </td>
+                  <td className="px-4 py-3">
+                    {item.receiptImageUrl ? (
+                      <a
+                        href={item.receiptImageUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1.5 font-semibold text-brand hover:underline"
+                      >
+                        <MdOpenInNew className="size-4" /> View proof
+                      </a>
+                    ) : (
+                      <span className="text-muted-foreground">Legacy record</span>
+                    )}
+                  </td>
                   <td className="px-4 py-3 text-muted-foreground">
                     {new Date(item.creditedAt ?? item.createdAt).toLocaleString('en-NG')}
                   </td>
@@ -150,7 +166,7 @@ export default function DepositsPage(): React.JSX.Element {
               ))}
               {adminAdded.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">
+                  <td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">
                     No admin-added deposits in this period.
                   </td>
                 </tr>
