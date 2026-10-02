@@ -2,7 +2,7 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { MdChevronRight, MdDeleteOutline, MdFileUpload } from 'react-icons/md';
 import { DashboardShell } from '@/components/dashboard/shell';
@@ -108,12 +108,16 @@ const money = (minor: number) =>
 const numberOrUndefined = (value: string) => (value === '' ? undefined : Number(value));
 const draftStoragePrefix = 'playtives-admin:opportunity-editor-draft:';
 
-function readDraft(key: string): FormState | null {
+type StoredDraft = { form: FormState; baseRevision?: number };
+
+function readDraft(key: string): StoredDraft | null {
   try {
     const stored = window.localStorage.getItem(key);
     if (!stored) return null;
-    const parsed = JSON.parse(stored) as { form?: FormState };
-    return parsed.form && typeof parsed.form === 'object' ? { ...emptyForm, ...parsed.form } : null;
+    const parsed = JSON.parse(stored) as { form?: FormState; baseRevision?: number };
+    return parsed.form && typeof parsed.form === 'object'
+      ? { form: { ...emptyForm, ...parsed.form }, baseRevision: parsed.baseRevision }
+      : null;
   } catch {
     return null;
   }
@@ -197,13 +201,14 @@ export function OpportunityEditor({
   >('DRAFT');
   const [draftReady, setDraftReady] = useState(false);
   const [isDirty, setIsDirty] = useState(false);
+  const suppressDraftPersistence = useRef(false);
   const draftKey = `${draftStoragePrefix}${opportunityId ?? 'new'}`;
 
   useEffect(() => {
     const draft = readDraft(draftKey);
     if (!opportunityId) {
       if (draft) {
-        setForm(draft);
+        setForm(draft.form);
         setIsDirty(true);
         notify.info('Restored your local opportunity draft.');
       }
@@ -220,11 +225,12 @@ export function OpportunityEditor({
             ? (value.status as 'PUBLISHED' | 'INTEREST_OPEN' | 'INTEREST_CLOSED')
             : 'DRAFT',
         );
-        if (draft) {
-          setForm(draft);
+        if (draft?.baseRevision === value.revision) {
+          setForm(draft.form);
           setIsDirty(true);
           notify.info('Restored your local opportunity draft.');
         } else {
+          if (draft) window.localStorage.removeItem(draftKey);
           setForm(toForm(value));
         }
       })
@@ -238,12 +244,16 @@ export function OpportunityEditor({
   }, [draftKey, opportunityId]);
 
   useEffect(() => {
-    if (!draftReady || !isDirty) return;
+    if (!draftReady || !isDirty || suppressDraftPersistence.current) return;
     window.localStorage.setItem(
       draftKey,
-      JSON.stringify({ form, savedAt: new Date().toISOString() }),
+      JSON.stringify({
+        form,
+        baseRevision: opportunityId ? revision : undefined,
+        savedAt: new Date().toISOString(),
+      }),
     );
-  }, [draftKey, draftReady, form, isDirty]);
+  }, [draftKey, draftReady, form, isDirty, opportunityId, revision]);
 
   const projection = useMemo(() => {
     const principal = Math.round((Number(form.price) || 0) * 100);
@@ -345,6 +355,9 @@ export function OpportunityEditor({
     try {
       if (opportunityId) await opportunityService.update(opportunityId, revision, payload(status));
       else await opportunityService.create(payload(status));
+      // Prevent a queued persistence effect from recreating the just-saved draft
+      // before navigation completes (more visible on slower production networks).
+      suppressDraftPersistence.current = true;
       window.localStorage.removeItem(draftKey);
       setIsDirty(false);
       notify.success(
@@ -378,11 +391,13 @@ export function OpportunityEditor({
   }
 
   const set = <K extends keyof FormState>(key: K, value: FormState[K]) => {
+    suppressDraftPersistence.current = false;
     setIsDirty(true);
     setForm((current) => ({ ...current, [key]: value }));
   };
 
   const discardLocalDraft = (): void => {
+    suppressDraftPersistence.current = true;
     window.localStorage.removeItem(draftKey);
     setIsDirty(false);
     window.location.reload();
