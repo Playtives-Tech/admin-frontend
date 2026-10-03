@@ -116,7 +116,6 @@ function ProgrammeSetup({
         name: String(values.get('name')),
         startsAt: new Date(`${String(values.get('startsAt'))}:00+01:00`).toISOString(),
         projectedTargetRateBps: Math.round(Number(values.get('projectedTargetPercent')) * 100),
-        settlementTimeframe: String(values.get('settlementTimeframe')).trim(),
       })
       .then(async () => {
         notify.success('Wealth Collective programme created.');
@@ -136,7 +135,8 @@ function ProgrammeSetup({
         <div>
           <h2 className="text-xl font-semibold">Create the first Wealth Collective</h2>
           <p className="mt-1 text-sm leading-6 text-muted-foreground">
-            This creates twelve Collective months from your chosen date. Each month has one start-day deployment; its halfway window can be enabled later.
+            This creates twelve Collective months from your chosen date. Each month has one
+            start-day deployment; its halfway window can be enabled later.
           </p>
         </div>
       </div>
@@ -169,7 +169,8 @@ function ProgrammeSetup({
           Enter Lagos local time. The programme lasts 12 Collective months from this date.
         </div>
         <div className="rounded-lg border border-brand/20 bg-brand/5 p-3 text-xs leading-5 text-muted-foreground sm:col-span-2">
-          The start-day window remains open through 11:59 PM Africa/Lagos time. Later funds await the next enabled deployment unless an admin deploys them during the month.
+          The start-day window remains open through 11:59 PM Africa/Lagos time. Later funds await
+          the next enabled deployment unless an admin deploys them during the month.
         </div>
         <label className="text-sm font-medium sm:col-span-2">
           Projected monthly target (%)
@@ -187,18 +188,11 @@ function ProgrammeSetup({
           This is a projection, not a guaranteed return. Actual monthly results are entered after
           reconciliation.
         </p>
-        <label className="text-sm font-medium sm:col-span-2">
-          Early Exit settlement timeframe
-          <input
-            className="mt-1 h-11 w-full rounded-lg border bg-background px-3"
-            maxLength={160}
-            name="settlementTimeframe"
-            placeholder="Enter approved business/legal timeframe"
-          />
-          <span className="mt-1 block text-xs text-muted-foreground">
-            Early Exit requests remain unavailable until this is configured.
-          </span>
-        </label>
+        <div className="rounded-lg border border-brand/20 bg-brand/5 p-3 text-xs leading-5 text-muted-foreground sm:col-span-2">
+          Early Exit is fixed at month end. A member forfeits all profit and accrued returns when
+          requesting an exit; only personally contributed capital becomes eligible for settlement at
+          the end of that Collective month.
+        </div>
         <button
           className="h-11 rounded-lg bg-brand px-4 text-sm font-semibold text-brand-foreground disabled:opacity-50 sm:col-span-2"
           disabled={busy}
@@ -410,8 +404,8 @@ function ProgrammeOverview({
           </section>
           <h2 className="text-lg font-semibold">Current programme position</h2>
           <p className="text-xs text-muted-foreground">
-            Live capital and reservations exclude members who exited. Payouts and recorded
-            movements remain available for audit.
+            Live capital and reservations exclude members who exited. Payouts and recorded movements
+            remain available for audit.
           </p>
           <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
             <Metric
@@ -474,7 +468,7 @@ function ProgrammeOverview({
       {section === 'members' && <MembersPanel cycles={overview.cycles} />}
       {section === 'exits' && (
         <div className="space-y-4">
-          <SettlementSettings timeframe={programme.settlementTimeframe ?? ''} refresh={refresh} />
+          <SettlementSettings />
           <EarlyExitsPanel />
         </div>
       )}
@@ -486,53 +480,18 @@ function ProgrammeOverview({
   );
 }
 
-function SettlementSettings({
-  timeframe,
-  refresh,
-}: Readonly<{ timeframe: string; refresh: () => Promise<void> }>): React.JSX.Element {
-  const [value, setValue] = useState(timeframe);
-  const [busy, setBusy] = useState(false);
+function SettlementSettings(): React.JSX.Element {
   return (
-    <section className="bg-card rounded-2xl border p-5 sm:p-6">
+    <section className="rounded-2xl border border-brand/20 bg-brand/5 p-5 sm:p-6">
       <h2 className="text-lg font-semibold">Early Exit settlement</h2>
-      <p className="mt-1 text-sm text-muted-foreground">
-        Configure the timeframe members see before requesting Early Exit. Settlements return their
-        personally contributed capital to the Playtives Wallet; all attributed profit is forfeited.
+      <p className="mt-1 text-sm leading-6 text-muted-foreground">
+        Settlement timing is fixed. The member’s position stops participating immediately, all
+        profit and accrued returns are permanently forfeited, and only personally contributed
+        capital can be settled at the end of the current Collective month.
       </p>
-      <form
-        className="mt-4 flex flex-wrap gap-3"
-        onSubmit={(event) => {
-          event.preventDefault();
-          setBusy(true);
-          void wealthCollectiveService
-            .updateSettlementTimeframe(value.trim())
-            .then(async () => {
-              notify.success('Settlement timeframe saved.');
-              await refresh();
-            })
-            .catch((cause: unknown) =>
-              notify.error(cause instanceof Error ? cause.message : 'Unable to save timeframe.'),
-            )
-            .finally(() => setBusy(false));
-        }}
-      >
-        <input
-          aria-label="Early Exit settlement timeframe"
-          className="h-11 min-w-[16rem] flex-1 rounded-lg border bg-background px-3 text-sm"
-          maxLength={160}
-          onChange={(event) => setValue(event.target.value)}
-          placeholder="Approved settlement timeframe"
-          required
-          value={value}
-        />
-        <button
-          className="h-11 rounded-lg bg-brand px-5 text-sm font-semibold text-white disabled:opacity-50"
-          disabled={busy || !value.trim()}
-          type="submit"
-        >
-          {busy ? 'Saving…' : 'Save timeframe'}
-        </button>
-      </form>
+      <p className="mt-3 text-sm font-semibold text-brand">
+        Policy: End of the current Collective month
+      </p>
     </section>
   );
 }
@@ -559,10 +518,10 @@ function EarlyExitsPanel(): React.JSX.Element {
       .finally(() => setBusy(false));
   }, [page]);
   useEffect(load, [load]);
-  const settle = (requestId: string): void => {
+  const settle = (requestId: string, eligibleSettlementAt: string | null): void => {
     if (
       !window.confirm(
-        'Confirm this Early Exit settlement? The member’s full contributed capital will be credited to their Playtives Wallet.',
+        `Confirm this Early Exit settlement${eligibleSettlementAt ? `, eligible since ${dateTime(eligibleSettlementAt)}` : ''}? Only the member’s personally contributed capital will be credited. All profit and accrued returns remain permanently forfeited.`,
       )
     )
       return;
@@ -582,8 +541,8 @@ function EarlyExitsPanel(): React.JSX.Element {
     <section className="bg-card rounded-2xl border p-5 sm:p-6">
       <h2 className="text-xl font-semibold">Early Exit requests</h2>
       <p className="mt-1 text-sm text-muted-foreground">
-        Review each member’s historical contributed capital and forfeited profit before completing
-        settlement. Completion is idempotent.
+        Review contributed capital and forfeited returns. Settlement remains locked until the
+        member’s current Collective month ends, and completion is idempotent.
       </p>
       {error && <p className="mt-4 text-sm text-red-600">{error}</p>}
       <div className="mt-5 overflow-x-auto rounded-xl border">
@@ -591,9 +550,9 @@ function EarlyExitsPanel(): React.JSX.Element {
           <thead className="bg-muted/50 text-muted-foreground">
             <tr>
               <th className="px-4 py-3 font-medium">Member</th>
-              <th className="px-4 py-3 font-medium">Requested</th>
+              <th className="px-4 py-3 font-medium">Requested / eligible</th>
               <th className="px-4 py-3 text-right font-medium">Capital due</th>
-              <th className="px-4 py-3 text-right font-medium">Profit forfeited</th>
+              <th className="px-4 py-3 text-right font-medium">Returns forfeited</th>
               <th className="px-4 py-3 font-medium">Status</th>
               <th className="px-4 py-3 font-medium">Action</th>
             </tr>
@@ -607,7 +566,12 @@ function EarlyExitsPanel(): React.JSX.Element {
                 </td>
                 <td className="px-4 py-3">
                   {dateTime(request.requestedAt)}
-                  <p className="text-xs text-muted-foreground">{request.settlementTimeframe}</p>
+                  <p className="text-xs text-muted-foreground">
+                    Eligible{' '}
+                    {request.eligibleSettlementAt
+                      ? dateTime(request.eligibleSettlementAt)
+                      : 'after migration'}
+                  </p>
                 </td>
                 <td className="px-4 py-3 text-right font-semibold">
                   {money(request.capitalMinorUnits)}
@@ -620,11 +584,20 @@ function EarlyExitsPanel(): React.JSX.Element {
                   {request.status === 'REQUESTED' && (
                     <button
                       className="rounded-lg border border-brand px-3 py-2 font-semibold text-brand disabled:opacity-50"
-                      disabled={settlingId !== null}
-                      onClick={() => settle(request._id)}
+                      disabled={settlingId !== null || !request.canSettle}
+                      title={
+                        request.canSettle
+                          ? 'Complete settlement'
+                          : 'Available at the end of the current Collective month'
+                      }
+                      onClick={() => settle(request._id, request.eligibleSettlementAt)}
                       type="button"
                     >
-                      {settlingId === request._id ? 'Settling…' : 'Complete settlement'}
+                      {settlingId === request._id
+                        ? 'Settling…'
+                        : request.canSettle
+                          ? 'Complete settlement'
+                          : 'Locked until month end'}
                     </button>
                   )}
                 </td>
@@ -720,7 +693,7 @@ function MembersPanel({
         </label>
       </div>
       <div className="mt-5 overflow-x-auto rounded-xl border">
-        <table className="w-full min-w-[900px] text-left text-sm">
+        <table className="w-full min-w-[1080px] text-left text-sm">
           <thead className="bg-muted/50 text-muted-foreground">
             <tr>
               <th className="px-4 py-3 font-medium">Member</th>
@@ -728,6 +701,7 @@ function MembersPanel({
               <th className="px-4 py-3 text-right font-medium">Added</th>
               <th className="px-4 py-3 text-right font-medium">Position</th>
               <th className="px-4 py-3 text-right font-medium">Reserved</th>
+              <th className="px-4 py-3 font-medium">Monthly plan</th>
               <th className="px-4 py-3 font-medium">Agreement</th>
             </tr>
           </thead>
@@ -744,6 +718,36 @@ function MembersPanel({
                   {money(member.amountMinorUnits)}
                 </td>
                 <td className="px-4 py-3 text-right">{money(member.scheduledAmountMinorUnits)}</td>
+                <td className="px-4 py-3">
+                  {member.monthlyContributionPlan ? (
+                    <>
+                      <p className="font-medium">
+                        {money(member.monthlyContributionPlan.amountMinorUnits)} ·{' '}
+                        {member.monthlyContributionPlan.method === 'AUTOMATIC'
+                          ? 'Automatic'
+                          : 'Manual'}
+                      </p>
+                      {member.monthlyContributionPlan.method === 'AUTOMATIC' && (
+                        <p className="text-xs text-muted-foreground">
+                          {member.monthlyContributionPlan.nextDebitAt
+                            ? `Next ${dateTime(member.monthlyContributionPlan.nextDebitAt)}`
+                            : 'No next debit'}
+                          {member.monthlyContributionPlan.lastStatus === 'INSUFFICIENT_FUNDS'
+                            ? ' · Insufficient balance last attempt'
+                            : ''}
+                        </p>
+                      )}
+                      {member.monthlyContributionPlan.method === 'MANUAL' &&
+                        member.monthlyContributionPlan.nextReminderAt && (
+                          <p className="text-xs text-muted-foreground">
+                            Next reminder {dateTime(member.monthlyContributionPlan.nextReminderAt)}
+                          </p>
+                        )}
+                    </>
+                  ) : (
+                    <span className="text-muted-foreground">Not set</span>
+                  )}
+                </td>
                 <td className="px-4 py-3">
                   {member.agreementAccepted ? (
                     <>
@@ -974,11 +978,9 @@ function CycleRow({
   const [deploymentBusy, setDeploymentBusy] = useState(false);
   const now = Date.now();
   const halfwayCanChange =
-    Boolean(cycle.halfwayCandidateAt) &&
-    now < new Date(cycle.halfwayCandidateAt!).getTime();
+    Boolean(cycle.halfwayCandidateAt) && now < new Date(cycle.halfwayCandidateAt!).getTime();
   const monthActive =
-    now >= new Date(cycle.startsAt).getTime() &&
-    now < new Date(cycle.endsAt).getTime();
+    now >= new Date(cycle.startsAt).getTime() && now < new Date(cycle.endsAt).getTime();
   const toggleHalfway = (): void => {
     setWindowBusy(true);
     void wealthCollectiveService
@@ -1004,7 +1006,9 @@ function CycleRow({
     void wealthCollectiveService
       .deployPending(cycle._id)
       .then(async (result) => {
-        notify.success(`${result.count} contribution(s) deployed · ${money(result.amountMinorUnits)}.`);
+        notify.success(
+          `${result.count} contribution(s) deployed · ${money(result.amountMinorUnits)}.`,
+        );
         await refresh();
       })
       .catch((error: unknown) => {
@@ -1066,19 +1070,31 @@ function CycleRow({
               onClick={toggleHalfway}
               type="button"
             >
-              {windowBusy ? 'Saving…' : cycle.secondWindowEnabled ? 'Disable halfway window' : 'Enable halfway window'}
+              {windowBusy
+                ? 'Saving…'
+                : cycle.secondWindowEnabled
+                  ? 'Disable halfway window'
+                  : 'Enable halfway window'}
             </button>
             <button
               className="rounded-lg bg-brand px-3 py-2 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
-              disabled={deploymentBusy || !monthActive || cycle.status === 'RECONCILED' || !stats?.manualEligibleCount}
+              disabled={
+                deploymentBusy ||
+                !monthActive ||
+                cycle.status === 'RECONCILED' ||
+                !stats?.manualEligibleCount
+              }
               onClick={deployPending}
               type="button"
             >
-              {deploymentBusy ? 'Deploying…' : `Deploy pending now · ${stats?.manualEligibleCount ?? 0}`}
+              {deploymentBusy
+                ? 'Deploying…'
+                : `Deploy pending now · ${stats?.manualEligibleCount ?? 0}`}
             </button>
           </div>
           <p className="mt-2 text-xs text-muted-foreground">
-            Eligible awaiting deployment: {money(stats?.manualEligibleMinorUnits ?? 0)}. Manual deployment uses today as each contribution’s earning start date.
+            Eligible awaiting deployment: {money(stats?.manualEligibleMinorUnits ?? 0)}. Manual
+            deployment uses today as each contribution’s earning start date.
           </p>
           <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-xs text-muted-foreground">
             <span>

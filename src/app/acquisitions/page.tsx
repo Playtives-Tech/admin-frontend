@@ -37,6 +37,7 @@ export default function AcquisitionsPage(): React.JSX.Element {
   const [range, setRange] = useState<AdminDateRange>(defaultAdminDateRange);
   const [selected, setSelected] = useState<AdminAcquisition | null>(null);
   const [reason, setReason] = useState('');
+  const [walletAction, setWalletAction] = useState<'CREDIT_WALLET' | 'DO_NOT_CREDIT' | null>(null);
   const [reversing, setReversing] = useState(false);
 
   useEffect(() => {
@@ -88,14 +89,19 @@ export default function AcquisitionsPage(): React.JSX.Element {
   ).length;
 
   const reverseOwnership = async (): Promise<void> => {
-    if (!selected || reason.trim().length < 3) return;
+    if (!selected || reason.trim().length < 3 || !walletAction) return;
     setReversing(true);
     try {
-      const updated = await acquisitionService.reverse(selected._id, reason.trim());
+      const updated = await acquisitionService.reverse(selected._id, reason.trim(), walletAction);
       setItems((current) => current.map((item) => (item._id === updated._id ? updated : item)));
       setSelected(null);
       setReason('');
-      notify.success('Ownership reversed and available units restored');
+      setWalletAction(null);
+      notify.success(
+        walletAction === 'CREDIT_WALLET'
+          ? 'Ownership reversed, units restored, and member wallet credited'
+          : 'Ownership reversed and units restored without a wallet credit',
+      );
     } catch (error: unknown) {
       notify.error(error instanceof Error ? error.message : 'Could not reverse ownership');
     } finally {
@@ -239,6 +245,7 @@ export default function AcquisitionsPage(): React.JSX.Element {
                             if (!item.canReverse) return;
                             setSelected(item);
                             setReason('');
+                            setWalletAction(null);
                           }}
                           className="rounded-lg border border-red-200 px-3 py-2 font-semibold text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:border-muted disabled:bg-muted/40 disabled:text-muted-foreground dark:border-red-900 dark:text-red-300 dark:hover:bg-red-950/30"
                         >
@@ -248,7 +255,9 @@ export default function AcquisitionsPage(): React.JSX.Element {
                         <span className="text-[11px] text-muted-foreground">
                           {item.refundedMinorUnits
                             ? `${money(item.refundedMinorUnits)} refunded`
-                            : 'Units restored'}
+                            : item.reversalWalletAction === 'DO_NOT_CREDIT'
+                              ? 'Units restored · no wallet credit'
+                              : 'Units restored'}
                         </span>
                       ) : (
                         '—'
@@ -280,9 +289,53 @@ export default function AcquisitionsPage(): React.JSX.Element {
               </h2>
               <p className="mt-2 text-sm text-muted-foreground">
                 {selected.units} units in {selected.opportunityId.title} will be returned to
-                availability and {money(selected.amountMinorUnits)} will be restored to the member’s
-                available wallet balance. This applies to every acquisition source.
+                availability. Choose whether {money(selected.amountMinorUnits)} should also be
+                returned to the member’s available wallet balance.
               </p>
+              <fieldset className="mt-5">
+                <legend className="text-xs font-semibold">Wallet settlement</legend>
+                <div className="mt-2 grid gap-3">
+                  <label
+                    className={`cursor-pointer rounded-xl border p-4 ${walletAction === 'CREDIT_WALLET' ? 'border-brand bg-brand/5 ring-1 ring-brand' : ''}`}
+                  >
+                    <span className="flex items-start gap-3">
+                      <input
+                        checked={walletAction === 'CREDIT_WALLET'}
+                        className="mt-1"
+                        name="reversal-wallet-action"
+                        onChange={() => setWalletAction('CREDIT_WALLET')}
+                        type="radio"
+                      />
+                      <span>
+                        <strong className="block text-sm">Reverse and return money</strong>
+                        <span className="mt-1 block text-xs leading-5 text-muted-foreground">
+                          Restore the units and credit {money(selected.amountMinorUnits)} to the
+                          member’s Playtives Wallet.
+                        </span>
+                      </span>
+                    </span>
+                  </label>
+                  <label
+                    className={`cursor-pointer rounded-xl border p-4 ${walletAction === 'DO_NOT_CREDIT' ? 'border-red-300 bg-red-50 dark:border-red-900 dark:bg-red-950/20' : ''}`}
+                  >
+                    <span className="flex items-start gap-3">
+                      <input
+                        checked={walletAction === 'DO_NOT_CREDIT'}
+                        className="mt-1"
+                        name="reversal-wallet-action"
+                        onChange={() => setWalletAction('DO_NOT_CREDIT')}
+                        type="radio"
+                      />
+                      <span>
+                        <strong className="block text-sm">Reverse without wallet credit</strong>
+                        <span className="mt-1 block text-xs leading-5 text-muted-foreground">
+                          Restore the units, but do not credit money to the member’s account.
+                        </span>
+                      </span>
+                    </span>
+                  </label>
+                </div>
+              </fieldset>
               <label className="mt-5 block text-xs font-semibold" htmlFor="reversal-reason">
                 Reason for reversal
               </label>
@@ -302,14 +355,17 @@ export default function AcquisitionsPage(): React.JSX.Element {
                 <button
                   type="button"
                   disabled={reversing}
-                  onClick={() => setSelected(null)}
+                  onClick={() => {
+                    setSelected(null);
+                    setWalletAction(null);
+                  }}
                   className="rounded-lg border px-4 py-2 text-sm font-semibold"
                 >
                   Cancel
                 </button>
                 <button
                   type="button"
-                  disabled={reversing || reason.trim().length < 3}
+                  disabled={reversing || reason.trim().length < 3 || !walletAction}
                   onClick={() => void reverseOwnership()}
                   className="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
                 >

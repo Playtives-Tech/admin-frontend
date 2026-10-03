@@ -93,6 +93,16 @@ export type WealthCollectiveMember = Readonly<{
   agreementAccepted: boolean;
   agreementAcceptedAt: string | null;
   agreementSignatureName: string | null;
+  monthlyContributionPlan: Readonly<{
+    amountMinorUnits: number;
+    method: 'MANUAL' | 'AUTOMATIC';
+    preferredDebitDay: number | null;
+    nextDebitAt: string | null;
+    lastAttemptAt: string | null;
+    lastStatus: 'PROCESSING' | 'SUCCESSFUL' | 'INSUFFICIENT_FUNDS' | 'FAILED' | null;
+    reminderDay: number | null;
+    nextReminderAt: string | null;
+  }> | null;
 }>;
 
 export type WealthCollectiveMemberPage = Readonly<{
@@ -108,6 +118,8 @@ export type WealthCollectiveExitPage = Readonly<{
     capitalMinorUnits: number;
     forfeitedProfitMinorUnits: number;
     settlementTimeframe: string;
+    eligibleSettlementAt: string | null;
+    canSettle: boolean;
     status: 'REQUESTED' | 'COMPLETED';
     requestedAt: string;
     completedAt: string | null;
@@ -141,11 +153,6 @@ export const wealthCollectiveService = {
     api<WealthCollectiveProgramme>('/v1/admin/collectives/programme/start-date', {
       method: 'PATCH',
       body: JSON.stringify({ startsAt }),
-    }),
-  updateSettlementTimeframe: (settlementTimeframe: string) =>
-    api<WealthCollectiveProgramme>('/v1/admin/collectives/programme/settlement', {
-      method: 'PATCH',
-      body: JSON.stringify({ settlementTimeframe }),
     }),
   earlyExits: (page = 1, limit = 20) =>
     api<WealthCollectiveExitPage>(`/v1/admin/collectives/early-exits?page=${page}&limit=${limit}`, {
