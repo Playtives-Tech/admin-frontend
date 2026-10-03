@@ -49,6 +49,7 @@ export type AdminAcquisition = Readonly<{
   completedAt: string | null;
   reversedAt?: string | null;
   reversalReason?: string;
+  reversalWalletAction?: 'CREDIT_WALLET' | 'DO_NOT_CREDIT' | null;
   refundedMinorUnits?: number;
   canReverse: boolean;
   reversalBlockedReason?: string | null;
@@ -83,10 +84,10 @@ export const acquisitionService = {
       method: 'POST',
       body: JSON.stringify(input),
     }),
-  reverse: (ownershipId: string, reason: string) =>
+  reverse: (ownershipId: string, reason: string, walletAction: 'CREDIT_WALLET' | 'DO_NOT_CREDIT') =>
     api<AdminAcquisition>(`/v1/admin/acquisitions/${ownershipId}/reverse`, {
       method: 'POST',
-      body: JSON.stringify({ reason }),
+      body: JSON.stringify({ reason, walletAction }),
     }),
 };
 
