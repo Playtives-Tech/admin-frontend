@@ -52,7 +52,7 @@ export function DashboardShell({
     <div className="app-background min-h-dvh">
       <DashboardSidebar />
 
-      <div className="lg:ml-72">
+      <div className="lg:ml-64">
         {/* Top header */}
         <header className="app-surface sticky top-0 z-10 flex h-16 items-center border-b px-5 backdrop-blur lg:px-10">
           <div>

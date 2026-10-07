@@ -1,5 +1,6 @@
 'use client';
 
+import { MdDownload } from 'react-icons/md';
 import { useEffect, useMemo, useState } from 'react';
 import { DashboardShell } from '@/components/dashboard/shell';
 import {
@@ -39,6 +40,7 @@ export default function AcquisitionsPage(): React.JSX.Element {
   const [reason, setReason] = useState('');
   const [walletAction, setWalletAction] = useState<'CREDIT_WALLET' | 'DO_NOT_CREDIT' | null>(null);
   const [reversing, setReversing] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
 
   useEffect(() => {
     void acquisitionService
@@ -114,8 +116,34 @@ export default function AcquisitionsPage(): React.JSX.Element {
       title="User ownerships"
       description="A concise ledger of member opportunity ownerships."
     >
-      <div className="mx-auto max-w-6xl space-y-5">
-        <DateRangeFilter value={range} onChange={setRange} />
+      <div className="mx-auto max-w-[92rem] space-y-5">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <DateRangeFilter value={range} onChange={setRange} />
+          <button
+            className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border bg-background px-4 text-sm font-semibold transition hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand disabled:cursor-not-allowed disabled:opacity-60"
+            disabled={isExporting}
+            onClick={() => {
+              if (range.preset === 'custom' && (!range.from || !range.to)) {
+                notify.error('Choose both dates before exporting a custom range.');
+                return;
+              }
+              setIsExporting(true);
+              void acquisitionService
+                .exportCsv({ range, search: memberSearch, opportunityId, status })
+                .then(() => notify.success('Ownership CSV download started.'))
+                .catch((error: unknown) =>
+                  notify.error(
+                    error instanceof Error ? error.message : 'Could not export ownerships',
+                  ),
+                )
+                .finally(() => setIsExporting(false));
+            }}
+            type="button"
+          >
+            <MdDownload className="size-4" />
+            {isExporting ? 'Preparing CSV…' : 'Download CSV'}
+          </button>
+        </div>
         <section className="app-surface flex flex-col gap-3 rounded-xl border p-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h2 className="text-sm font-semibold">Ownership ledger</h2>
@@ -168,7 +196,7 @@ export default function AcquisitionsPage(): React.JSX.Element {
         </section>
 
         <section className="app-surface overflow-x-auto rounded-xl border">
-          <table className="w-full min-w-[900px] text-left text-xs">
+          <table className="w-full min-w-[1120px] text-left text-xs">
             <thead className="border-b bg-muted/30 text-muted-foreground">
               <tr>
                 {[
@@ -183,7 +211,10 @@ export default function AcquisitionsPage(): React.JSX.Element {
                   'Maturity',
                   'Action',
                 ].map((label) => (
-                  <th key={label} className="px-4 py-3 font-medium">
+                  <th
+                    key={label}
+                    className={`px-4 py-3 font-medium ${label === 'Opportunity' ? 'min-w-72' : ''}`}
+                  >
                     {label}
                   </th>
                 ))}
@@ -199,7 +230,9 @@ export default function AcquisitionsPage(): React.JSX.Element {
                         {item.userId.email}
                       </p>
                     </td>
-                    <td className="px-4 py-3 font-medium">{item.opportunityId.title}</td>
+                    <td className="min-w-72 px-4 py-3 font-medium leading-5">
+                      {item.opportunityId.title}
+                    </td>
                     <td className="px-4 py-3">
                       <p>
                         {item.acquisitionSource === 'ADMIN_MANUAL'

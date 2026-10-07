@@ -1,4 +1,4 @@
-import { api } from '@/lib/api';
+import { api, downloadApiFile } from '@/lib/api';
 import { type AdminDateRange, dateRangeSearchParams } from '@/lib/date-range';
 
 export type AdminWalletSummary = Readonly<{
@@ -76,7 +76,34 @@ export function getMembers(input: {
   memberStatus?: 'all' | 'community' | 'pending' | 'active';
   range: AdminDateRange;
 }): Promise<MembersPage> {
-  const query = new URLSearchParams({ page: String(input.page), limit: String(input.limit) });
+  return api<MembersPage>(`/v1/admin/users?${memberListQuery(input).toString()}`);
+}
+
+export function exportMembersCsv(input: {
+  search?: string;
+  status?: 'all' | 'active' | 'pending' | 'suspended';
+  kyc?: 'all' | 'complete' | 'incomplete';
+  memberStatus?: 'all' | 'community' | 'pending' | 'active';
+  range: AdminDateRange;
+}): Promise<void> {
+  return downloadApiFile(
+    `/v1/admin/users/export.csv?${memberListQuery(input).toString()}`,
+    'playtives-members.csv',
+  );
+}
+
+function memberListQuery(input: {
+  page?: number;
+  limit?: number;
+  search?: string;
+  status?: 'all' | 'active' | 'pending' | 'suspended';
+  kyc?: 'all' | 'complete' | 'incomplete';
+  memberStatus?: 'all' | 'community' | 'pending' | 'active';
+  range: AdminDateRange;
+}): URLSearchParams {
+  const query = new URLSearchParams();
+  if (input.page != null) query.set('page', String(input.page));
+  if (input.limit != null) query.set('limit', String(input.limit));
   if (input.search) query.set('search', input.search);
   if (input.status && input.status !== 'all') query.set('status', input.status);
   if (input.kyc && input.kyc !== 'all') query.set('kyc', input.kyc);
@@ -85,7 +112,7 @@ export function getMembers(input: {
   new URLSearchParams(dateRangeSearchParams(input.range)).forEach((value, key) =>
     query.set(key, value),
   );
-  return api<MembersPage>(`/v1/admin/users?${query.toString()}`);
+  return query;
 }
 
 export function getMember(userId: string): Promise<AdminMember> {

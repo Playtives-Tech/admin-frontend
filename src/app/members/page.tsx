@@ -2,10 +2,21 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { MdSearch, MdTune, MdChevronLeft, MdChevronRight, MdVisibility } from 'react-icons/md';
+import {
+  MdSearch,
+  MdTune,
+  MdChevronLeft,
+  MdChevronRight,
+  MdVisibility,
+  MdDownload,
+} from 'react-icons/md';
 import { DashboardShell } from '@/components/dashboard/shell';
 import { cn } from '@/lib/utils';
-import { getMembers, type AdminMember } from '@/lib/services/member-operations-service';
+import {
+  exportMembersCsv,
+  getMembers,
+  type AdminMember,
+} from '@/lib/services/member-operations-service';
 import { notify } from '@/lib/notify';
 import { DateRangeFilter } from '@/components/ui/date-range-filter';
 import { defaultAdminDateRange, type AdminDateRange } from '@/lib/date-range';
@@ -24,6 +35,7 @@ export default function MembersPage(): React.JSX.Element {
   const [totalItems, setTotalItems] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
   const [range, setRange] = useState<AdminDateRange>(defaultAdminDateRange);
+  const [isExporting, setIsExporting] = useState(false);
   const pageSize = 20;
 
   useEffect(() => {
@@ -49,9 +61,9 @@ export default function MembersPage(): React.JSX.Element {
           ? 'active'
           : membershipFilter === 'Pending members'
             ? 'pending'
-          : membershipFilter === 'Community members'
-            ? 'community'
-            : 'all';
+            : membershipFilter === 'Community members'
+              ? 'community'
+              : 'all';
       void getMembers({
         page,
         limit: pageSize,
@@ -174,34 +186,31 @@ export default function MembersPage(): React.JSX.Element {
                   <div className="px-3 py-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
                     Membership
                   </div>
-                  {[
-                    'All membership',
-                    'Community members',
-                    'Pending members',
-                    'Active members',
-                  ].map((option) => (
-                    <button
-                      key={option}
-                      type="button"
-                      onClick={() => {
-                        setMembershipFilter(option);
-                        setPage(1);
-                        setIsMembershipFilterOpen(false);
-                      }}
-                      className={cn(
-                        'w-full rounded-lg px-3 py-2 text-left text-sm transition hover:bg-muted',
-                        membershipFilter === option && 'bg-brand/10 font-medium text-brand',
-                      )}
-                    >
-                      {option}
-                    </button>
-                  ))}
+                  {['All membership', 'Community members', 'Pending members', 'Active members'].map(
+                    (option) => (
+                      <button
+                        key={option}
+                        type="button"
+                        onClick={() => {
+                          setMembershipFilter(option);
+                          setPage(1);
+                          setIsMembershipFilterOpen(false);
+                        }}
+                        className={cn(
+                          'w-full rounded-lg px-3 py-2 text-left text-sm transition hover:bg-muted',
+                          membershipFilter === option && 'bg-brand/10 font-medium text-brand',
+                        )}
+                      >
+                        {option}
+                      </button>
+                    ),
+                  )}
                 </div>
               ) : null}
             </div>
           </div>
         </div>
-        <div className="mb-5">
+        <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <DateRangeFilter
             value={range}
             onChange={(value) => {
@@ -209,6 +218,52 @@ export default function MembersPage(): React.JSX.Element {
               setPage(1);
             }}
           />
+          <button
+            className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border bg-background px-4 text-sm font-semibold transition hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand disabled:cursor-not-allowed disabled:opacity-60"
+            disabled={isExporting}
+            onClick={() => {
+              if (range.preset === 'custom' && (!range.from || !range.to)) {
+                notify.error('Choose both dates before exporting a custom range.');
+                return;
+              }
+              setIsExporting(true);
+              void exportMembersCsv({
+                search: search.trim(),
+                status:
+                  statusFilter === 'Active'
+                    ? 'active'
+                    : statusFilter === 'Email pending'
+                      ? 'pending'
+                      : statusFilter === 'Suspended'
+                        ? 'suspended'
+                        : 'all',
+                kyc:
+                  kycFilter === 'KYC complete'
+                    ? 'complete'
+                    : kycFilter === 'KYC incomplete'
+                      ? 'incomplete'
+                      : 'all',
+                memberStatus:
+                  membershipFilter === 'Active members'
+                    ? 'active'
+                    : membershipFilter === 'Pending members'
+                      ? 'pending'
+                      : membershipFilter === 'Community members'
+                        ? 'community'
+                        : 'all',
+                range,
+              })
+                .then(() => notify.success('Member CSV download started.'))
+                .catch((error: unknown) =>
+                  notify.error(error instanceof Error ? error.message : 'Could not export members'),
+                )
+                .finally(() => setIsExporting(false));
+            }}
+            type="button"
+          >
+            <MdDownload className="size-4" />
+            {isExporting ? 'Preparing CSV…' : 'Download CSV'}
+          </button>
         </div>
 
         {/* Data Table */}

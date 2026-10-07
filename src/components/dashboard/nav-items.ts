@@ -12,6 +12,7 @@ import {
   TicketCheck,
   UserCheck,
   Layers3,
+  BellRing,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
@@ -37,6 +38,7 @@ export const navItems: NavItem[] = [
   { href: '/deposits', label: 'Deposit Requests', icon: ArrowDownCircle },
   { href: '/withdrawals', label: 'Withdrawal Requests', icon: ArrowUpCircle },
   { href: '/name-change-requests', label: 'Name Change Requests', icon: BadgeCheck },
+  { href: '/notifications', label: 'Notifications', icon: BellRing },
   // { href: '/activity', label: 'Wallet Activity', icon: ScrollText },
 ];
 
@@ -64,6 +66,8 @@ export const navGroups: ReadonlyArray<{ label: string; items: NavItem[] }> = [
   },
   {
     label: 'Content & profile',
-    items: navItems.filter((item) => ['/blog', '/name-change-requests'].includes(item.href)),
+    items: navItems.filter((item) =>
+      ['/blog', '/name-change-requests', '/notifications'].includes(item.href),
+    ),
   },
 ];

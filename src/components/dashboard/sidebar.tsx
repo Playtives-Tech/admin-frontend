@@ -16,7 +16,7 @@ function NavLink({ href, label, icon: Icon }: (typeof navItems)[number]): React.
     <Link
       href={href}
       className={cn(
-        'group flex items-center gap-3 rounded-xl px-3 py-3 text-[13px] font-medium transition-colors',
+        'group flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-xs font-medium transition-colors',
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand',
         active
           ? 'bg-brand text-brand-foreground shadow-sm'
@@ -24,7 +24,7 @@ function NavLink({ href, label, icon: Icon }: (typeof navItems)[number]): React.
       )}
       aria-current={active ? 'page' : undefined}
     >
-      <Icon className="size-6 shrink-0" strokeWidth={active ? 2.5 : 2} />
+      <Icon className="size-5 shrink-0" strokeWidth={active ? 2.5 : 2} />
       <span>{label}</span>
     </Link>
   );
@@ -51,23 +51,23 @@ export function DashboardSidebar(): React.JSX.Element {
   }
 
   return (
-    <aside className="app-surface fixed inset-y-0 left-0 z-20 hidden w-72 flex-col overflow-y-auto border-r px-5 py-6 lg:flex">
+    <aside className="app-surface fixed inset-y-0 left-0 z-20 hidden w-64 flex-col overflow-y-auto border-r px-4 py-5 lg:flex">
       {/* Wordmark */}
       <Link
         href="/overview"
-        className="flex items-center gap-3 px-2 font-sans text-xl font-semibold"
+        className="flex items-center gap-2.5 px-2 font-sans text-lg font-semibold"
       >
-        <span className="size-7 rounded-lg bg-brand" aria-hidden="true" />
+        <span className="size-6 rounded-md bg-brand" aria-hidden="true" />
         Playtives
       </Link>
 
       {/* Section label */}
-      <p className="px-2 pt-10 text-base font-bold uppercase tracking-[0.14em] text-foreground">
+      <p className="px-2 pt-8 text-sm font-bold uppercase tracking-[0.14em] text-foreground">
         Management
       </p>
 
       {/* Nav */}
-      <nav className="mt-3 grid gap-3" aria-label="Dashboard navigation">
+      <nav className="mt-2 grid gap-2" aria-label="Dashboard navigation">
         {navGroups.map((group) => (
           <details
             className="group/nav"
@@ -80,11 +80,11 @@ export function DashboardSidebar(): React.JSX.Element {
               );
             }}
           >
-            <summary className="flex cursor-pointer list-none items-center justify-between rounded-lg px-2 py-2 text-[15px] font-semibold text-muted-foreground hover:text-foreground [&::-webkit-details-marker]:hidden">
+            <summary className="flex cursor-pointer list-none items-center justify-between rounded-lg px-2 py-1.5 text-[13px] font-semibold text-muted-foreground hover:text-foreground [&::-webkit-details-marker]:hidden">
               {group.label}
               <ChevronDown className="size-4 transition-transform group-open/nav:rotate-180" />
             </summary>
-            <div className="mt-1 grid gap-1 pl-1">
+            <div className="mt-1 grid gap-0.5 pl-1">
               {group.items.map((item) => (
                 <NavLink key={item.href} {...item} />
               ))}
@@ -97,7 +97,7 @@ export function DashboardSidebar(): React.JSX.Element {
       <div className="min-h-6 flex-1" />
 
       {/* Bottom actions — theme toggle + email + sign out */}
-      <div className="grid gap-2 border-t pt-6">
+      <div className="grid gap-2 border-t pt-5">
         {/* User info row */}
         <div className="flex items-center justify-between px-2">
           <div className="min-w-0">
