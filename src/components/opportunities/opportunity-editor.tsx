@@ -453,20 +453,32 @@ export function OpportunityEditor({
                     <MdDeleteOutline /> Delete
                   </Link>
                 )}
-                <button
-                  disabled={saving}
-                  onClick={() => save(opportunityId ? currentStatus : 'DRAFT')}
-                  className="rounded-xl border px-4 py-2 text-sm font-semibold"
-                >
-                  {opportunityId ? 'Save changes' : 'Save draft'}
-                </button>
-                <button
-                  disabled={saving}
-                  onClick={() => save(opportunityId ? currentStatus : 'PUBLISHED')}
-                  className="rounded-xl bg-brand px-4 py-2 text-sm font-semibold text-brand-foreground"
-                >
-                  {opportunityId ? 'Update opportunity' : 'Publish'}
-                </button>
+                {opportunityId ? (
+                  <button
+                    disabled={saving}
+                    onClick={() => save(currentStatus)}
+                    className="rounded-xl bg-brand px-4 py-2 text-sm font-semibold text-brand-foreground disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {saving ? 'Saving opportunity…' : 'Save opportunity'}
+                  </button>
+                ) : (
+                  <>
+                    <button
+                      disabled={saving}
+                      onClick={() => save('DRAFT')}
+                      className="rounded-xl border px-4 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {saving ? 'Saving draft…' : 'Save draft'}
+                    </button>
+                    <button
+                      disabled={saving}
+                      onClick={() => save('PUBLISHED')}
+                      className="rounded-xl bg-brand px-4 py-2 text-sm font-semibold text-brand-foreground disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {saving ? 'Publishing…' : 'Publish'}
+                    </button>
+                  </>
+                )}
                 {form.interestModeEnabled ? (
                   <button
                     disabled={saving}

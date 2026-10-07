@@ -1,4 +1,4 @@
-import { api } from '@/lib/api';
+import { api, downloadApiFile } from '@/lib/api';
 
 export type WealthCollectiveCycle = Readonly<{
   _id: string;
@@ -136,6 +136,11 @@ export const wealthCollectiveService = {
     api<WealthCollectiveMemberPage>(
       `/v1/admin/collectives/cycles/${cycleId}/members?page=${page}&limit=${limit}`,
       { cache: 'no-store' },
+    ),
+  exportCycleMembers: (cycleId: string, cycleNumber: number) =>
+    downloadApiFile(
+      `/v1/admin/collectives/cycles/${cycleId}/members/export.csv`,
+      `wealth-collective-month-${cycleNumber}-members.csv`,
     ),
   publishUpdate: (input: { title: string; body: string }) =>
     api('/v1/admin/collectives/updates', { method: 'POST', body: JSON.stringify(input) }),

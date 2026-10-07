@@ -5,6 +5,7 @@ import {
   ChartNoAxesCombined,
   ChevronLeft,
   ChevronRight,
+  Download,
   Landmark,
   Layers3,
   Pencil,
@@ -650,6 +651,7 @@ function MembersPanel({
     ReturnType<typeof wealthCollectiveService.cycleMembers>
   > | null>(null);
   const [busy, setBusy] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   useEffect(() => {
     if (!cycleId) return;
@@ -674,23 +676,46 @@ function MembersPanel({
             Compare each member’s deployed amount, position, and reserved contribution.
           </p>
         </div>
-        <label className="text-sm font-medium">
-          Month
-          <select
-            className="ml-2 h-10 rounded-lg border bg-background px-3"
-            onChange={(event) => {
-              setCycleId(event.target.value);
-              setPage(1);
+        <div className="flex flex-wrap items-end gap-2">
+          <label className="text-sm font-medium">
+            Month
+            <select
+              className="ml-2 h-10 rounded-lg border bg-background px-3"
+              onChange={(event) => {
+                setCycleId(event.target.value);
+                setPage(1);
+              }}
+              value={cycleId}
+            >
+              {cycles.map((cycle) => (
+                <option key={cycle._id} value={cycle._id}>
+                  Month {cycle.number}
+                </option>
+              ))}
+            </select>
+          </label>
+          <button
+            className="inline-flex h-10 items-center gap-2 rounded-lg border border-brand/25 bg-brand/5 px-3.5 text-sm font-semibold text-brand transition hover:bg-brand/10 disabled:opacity-50"
+            disabled={!cycleId || exporting}
+            onClick={() => {
+              const cycle = cycles.find((item) => item._id === cycleId);
+              if (!cycle) return;
+              setExporting(true);
+              void wealthCollectiveService
+                .exportCycleMembers(cycleId, cycle.number)
+                .catch((cause: unknown) =>
+                  notify.error(
+                    cause instanceof Error ? cause.message : 'Unable to export members.',
+                  ),
+                )
+                .finally(() => setExporting(false));
             }}
-            value={cycleId}
+            type="button"
           >
-            {cycles.map((cycle) => (
-              <option key={cycle._id} value={cycle._id}>
-                Month {cycle.number}
-              </option>
-            ))}
-          </select>
-        </label>
+            <Download className="size-4" />
+            {exporting ? 'Exporting…' : 'Download CSV'}
+          </button>
+        </div>
       </div>
       <div className="mt-5 overflow-x-auto rounded-xl border">
         <table className="w-full min-w-[1080px] text-left text-sm">

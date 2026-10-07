@@ -1,4 +1,4 @@
-import { api } from '@/lib/api';
+import { api, downloadApiFile } from '@/lib/api';
 import { type AdminDateRange, dateRangeSearchParams } from '@/lib/date-range';
 import { defaultAdminDateRange } from '@/lib/date-range';
 
@@ -70,6 +70,22 @@ export const acquisitionService = {
     api<AcquisitionStats>(`/v1/admin/acquisitions/stats?${dateRangeSearchParams(range)}`, {
       cache: 'no-store',
     }),
+  exportCsv: (input: {
+    range: AdminDateRange;
+    search?: string;
+    opportunityId?: string;
+    status?: 'all' | AcquisitionStatus;
+  }) => {
+    const query = new URLSearchParams(dateRangeSearchParams(input.range));
+    if (input.search?.trim()) query.set('search', input.search.trim());
+    if (input.opportunityId && input.opportunityId !== 'all')
+      query.set('opportunityId', input.opportunityId);
+    if (input.status && input.status !== 'all') query.set('status', input.status);
+    return downloadApiFile(
+      `/v1/admin/acquisitions/export.csv?${query.toString()}`,
+      'playtives-user-ownerships.csv',
+    );
+  },
   assignManual: (input: {
     userId: string;
     opportunityId: string;
