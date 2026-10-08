@@ -32,6 +32,27 @@ export type ProjectionType =
 export type TermType = 'FIXED_TERM' | 'LIFE_OF_ASSET';
 export type DurationUnit = 'DAYS' | 'MONTHS' | 'YEARS';
 export type AgreementStatus = 'DRAFT' | 'ACTIVE' | 'RETIRED';
+export type OpportunityExecutionStage =
+  | 'OFFER_CLOSED'
+  | 'SOURCING_SELECTION'
+  | 'PURCHASE_IN_PROGRESS'
+  | 'AGREEMENT_DOCUMENTATION'
+  | 'PREPARING_FOR_DEPLOYMENT'
+  | 'DEAL_ACTIVE';
+export type OpportunityExecutionProgress = {
+  stage: OpportunityExecutionStage;
+  label: string;
+  note: string;
+  expectedAt: string | null;
+  updatedAt: string | null;
+  commencementDate: string | null;
+  isDerived: boolean;
+  steps: Array<{
+    stage: OpportunityExecutionStage;
+    label: string;
+    status: 'COMPLETED' | 'CURRENT' | 'UPCOMING';
+  }>;
+};
 
 export interface Opportunity {
   _id: string;
@@ -105,7 +126,24 @@ export interface Opportunity {
   status: OpportunityStatus;
   publishedAt?: string | null;
   revision: number;
+  executionStage: OpportunityExecutionStage | null;
+  executionStageNote: string;
+  executionStageExpectedAt: string | null;
+  executionStageUpdatedAt: string | null;
+  executionProgress: OpportunityExecutionProgress | null;
 }
+
+export type OpportunityExecutionStageHistory = {
+  _id: string;
+  previousStage: OpportunityExecutionStage | null;
+  newStage: OpportunityExecutionStage;
+  publicNote: string;
+  expectedAt: string | null;
+  regressionReason: string;
+  notificationChannels: string[];
+  changedBy: { name: string; email: string };
+  createdAt: string;
+};
 
 export type OpportunityInterestRegistration = {
   _id: string;
@@ -171,6 +209,30 @@ export const opportunityService = {
       method: 'PATCH',
       headers: {
         'Idempotency-Key': idempotencyKey(`update:${id}:${revision}`, payload),
+        'If-Match': String(revision),
+      },
+      body: JSON.stringify(payload),
+    }),
+  executionStageHistory: (id: string) =>
+    api<OpportunityExecutionStageHistory[]>(
+      `/v1/admin/opportunities/${id}/execution-stage/history`,
+    ),
+  updateExecutionStage: (
+    id: string,
+    revision: number,
+    payload: {
+      stage: OpportunityExecutionStage;
+      publicNote?: string;
+      expectedAt?: string | null;
+      notifyInApp?: boolean;
+      notifyEmail?: boolean;
+      regressionReason?: string;
+    },
+  ) =>
+    api<Opportunity>(`/v1/admin/opportunities/${id}/execution-stage`, {
+      method: 'PATCH',
+      headers: {
+        'Idempotency-Key': idempotencyKey(`execution-stage:${id}:${revision}`, payload),
         'If-Match': String(revision),
       },
       body: JSON.stringify(payload),

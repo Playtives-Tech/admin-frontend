@@ -18,6 +18,7 @@ import {
   ReturnSchedule,
   TermType,
 } from '@/lib/services/opportunity-service';
+import { ExecutionProgressPanel } from './execution-progress-panel';
 
 type FormState = {
   title: string;
@@ -196,6 +197,7 @@ export function OpportunityEditor({
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [revision, setRevision] = useState(1);
+  const [loadedOpportunity, setLoadedOpportunity] = useState<Opportunity | null>(null);
   const [currentStatus, setCurrentStatus] = useState<
     'DRAFT' | 'PUBLISHED' | 'INTEREST_OPEN' | 'INTEREST_CLOSED'
   >('DRAFT');
@@ -219,6 +221,7 @@ export function OpportunityEditor({
     opportunityService
       .get(opportunityId)
       .then((value) => {
+        setLoadedOpportunity(value);
         setRevision(value.revision);
         setCurrentStatus(
           ['PUBLISHED', 'INTEREST_OPEN', 'INTEREST_CLOSED'].includes(value.status)
@@ -494,6 +497,15 @@ export function OpportunityEditor({
         </div>
         <div className="mx-auto grid max-w-6xl items-start gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(320px,0.62fr)]">
           <div className="grid gap-4">
+            {loadedOpportunity ? (
+              <ExecutionProgressPanel
+                opportunity={loadedOpportunity}
+                onUpdated={(value) => {
+                  setLoadedOpportunity(value);
+                  setRevision(value.revision);
+                }}
+              />
+            ) : null}
             <Section
               title="Opportunity details"
               description="What members see before they decide to participate."
