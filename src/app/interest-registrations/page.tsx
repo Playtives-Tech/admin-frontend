@@ -3,6 +3,7 @@
 import { Download, UsersRound } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { DashboardShell } from '@/components/dashboard/shell';
+import { notify } from '@/lib/notify';
 import {
   opportunityService,
   type OpportunityInterestRegistration,
@@ -12,20 +13,33 @@ export default function InterestRegistrationsPage(): React.JSX.Element {
   const [items, setItems] = useState<OpportunityInterestRegistration[]>([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState('');
+  const [opportunityId, setOpportunityId] = useState('');
   useEffect(() => {
     void opportunityService
       .interests()
       .then(setItems)
+      .catch((error: unknown) =>
+        notify.error(error instanceof Error ? error.message : 'Could not load registrations'),
+      )
       .finally(() => setLoading(false));
   }, []);
+  const opportunities = useMemo(
+    () =>
+      Array.from(
+        new Map(items.map((item) => [item.opportunityId._id, item.opportunityId])).values(),
+      ).sort((left, right) => left.title.localeCompare(right.title)),
+    [items],
+  );
   const visible = useMemo(
     () =>
-      items.filter((item) =>
-        `${item.userId.name} ${item.userId.email} ${item.opportunityId.title}`
-          .toLowerCase()
-          .includes(query.toLowerCase()),
+      items.filter(
+        (item) =>
+          (!opportunityId || item.opportunityId._id === opportunityId) &&
+          `${item.userId.name} ${item.userId.email} ${item.opportunityId.title}`
+            .toLowerCase()
+            .includes(query.toLowerCase()),
       ),
-    [items, query],
+    [items, opportunityId, query],
   );
   const download = () => {
     const rows = [
@@ -81,12 +95,28 @@ export default function InterestRegistrationsPage(): React.JSX.Element {
             Export CSV
           </button>
         </div>
-        <input
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-          placeholder="Search member, email, or opportunity"
-          className="mb-4 w-full max-w-md rounded-xl border bg-background px-4 py-2.5 text-sm outline-none focus:border-brand"
-        />
+        <div className="mb-4 grid gap-3 sm:grid-cols-2">
+          <select
+            value={opportunityId}
+            onChange={(event) => setOpportunityId(event.target.value)}
+            aria-label="Filter by opportunity"
+            className="w-full rounded-xl border bg-background px-4 py-2.5 text-sm outline-none focus:border-brand"
+          >
+            <option value="">All interest opportunities ({items.length})</option>
+            {opportunities.map((opportunity) => (
+              <option key={opportunity._id} value={opportunity._id}>
+                {opportunity.title} (
+                {items.filter((item) => item.opportunityId._id === opportunity._id).length})
+              </option>
+            ))}
+          </select>
+          <input
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Search member, email, or opportunity"
+            className="w-full rounded-xl border bg-background px-4 py-2.5 text-sm outline-none focus:border-brand"
+          />
+        </div>
         {loading ? (
           <p className="p-10 text-center text-sm text-muted-foreground">Loading registrations…</p>
         ) : visible.length === 0 ? (

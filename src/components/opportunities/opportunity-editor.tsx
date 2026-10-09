@@ -18,6 +18,7 @@ import {
   ReturnSchedule,
   TermType,
 } from '@/lib/services/opportunity-service';
+import { ExecutionProgressPanel } from './execution-progress-panel';
 
 type FormState = {
   title: string;
@@ -196,6 +197,7 @@ export function OpportunityEditor({
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [revision, setRevision] = useState(1);
+  const [loadedOpportunity, setLoadedOpportunity] = useState<Opportunity | null>(null);
   const [currentStatus, setCurrentStatus] = useState<
     'DRAFT' | 'PUBLISHED' | 'INTEREST_OPEN' | 'INTEREST_CLOSED'
   >('DRAFT');
@@ -219,6 +221,7 @@ export function OpportunityEditor({
     opportunityService
       .get(opportunityId)
       .then((value) => {
+        setLoadedOpportunity(value);
         setRevision(value.revision);
         setCurrentStatus(
           ['PUBLISHED', 'INTEREST_OPEN', 'INTEREST_CLOSED'].includes(value.status)
@@ -281,6 +284,13 @@ export function OpportunityEditor({
     summary: form.summary.trim(),
     about: form.about.trim(),
     agreement: form.agreement.trim(),
+    agreementVersion: loadedOpportunity?.agreementVersion || '1.0',
+    agreementStatus:
+      status === 'PUBLISHED' ? 'ACTIVE' : loadedOpportunity?.agreementStatus || 'DRAFT',
+    agreementEffectiveDate:
+      status === 'PUBLISHED'
+        ? loadedOpportunity?.agreementEffectiveDate || new Date().toISOString()
+        : loadedOpportunity?.agreementEffectiveDate || undefined,
     agreementResourceUrl: form.agreementResourceUrl.trim() || undefined,
     pricePerUnitMinorUnits: Math.round((Number(form.price) || 0) * 100),
     minimumUnits: numberOrUndefined(form.minimumUnits),
@@ -453,7 +463,7 @@ export function OpportunityEditor({
                     <MdDeleteOutline /> Delete
                   </Link>
                 )}
-                {opportunityId ? (
+                {currentStatus !== 'DRAFT' ? (
                   <button
                     disabled={saving}
                     onClick={() => save(currentStatus)}
@@ -475,7 +485,7 @@ export function OpportunityEditor({
                       onClick={() => save('PUBLISHED')}
                       className="rounded-xl bg-brand px-4 py-2 text-sm font-semibold text-brand-foreground disabled:cursor-not-allowed disabled:opacity-60"
                     >
-                      {saving ? 'Publishing…' : 'Publish'}
+                      {saving ? 'Publishing…' : 'Publish opportunity'}
                     </button>
                   </>
                 )}
@@ -494,6 +504,15 @@ export function OpportunityEditor({
         </div>
         <div className="mx-auto grid max-w-6xl items-start gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(320px,0.62fr)]">
           <div className="grid gap-4">
+            {loadedOpportunity ? (
+              <ExecutionProgressPanel
+                opportunity={loadedOpportunity}
+                onUpdated={(value) => {
+                  setLoadedOpportunity(value);
+                  setRevision(value.revision);
+                }}
+              />
+            ) : null}
             <Section
               title="Opportunity details"
               description="What members see before they decide to participate."
