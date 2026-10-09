@@ -284,6 +284,13 @@ export function OpportunityEditor({
     summary: form.summary.trim(),
     about: form.about.trim(),
     agreement: form.agreement.trim(),
+    agreementVersion: loadedOpportunity?.agreementVersion || '1.0',
+    agreementStatus:
+      status === 'PUBLISHED' ? 'ACTIVE' : loadedOpportunity?.agreementStatus || 'DRAFT',
+    agreementEffectiveDate:
+      status === 'PUBLISHED'
+        ? loadedOpportunity?.agreementEffectiveDate || new Date().toISOString()
+        : loadedOpportunity?.agreementEffectiveDate || undefined,
     agreementResourceUrl: form.agreementResourceUrl.trim() || undefined,
     pricePerUnitMinorUnits: Math.round((Number(form.price) || 0) * 100),
     minimumUnits: numberOrUndefined(form.minimumUnits),
@@ -456,7 +463,7 @@ export function OpportunityEditor({
                     <MdDeleteOutline /> Delete
                   </Link>
                 )}
-                {opportunityId ? (
+                {currentStatus !== 'DRAFT' ? (
                   <button
                     disabled={saving}
                     onClick={() => save(currentStatus)}
@@ -478,7 +485,7 @@ export function OpportunityEditor({
                       onClick={() => save('PUBLISHED')}
                       className="rounded-xl bg-brand px-4 py-2 text-sm font-semibold text-brand-foreground disabled:cursor-not-allowed disabled:opacity-60"
                     >
-                      {saving ? 'Publishing…' : 'Publish'}
+                      {saving ? 'Publishing…' : 'Publish opportunity'}
                     </button>
                   </>
                 )}
