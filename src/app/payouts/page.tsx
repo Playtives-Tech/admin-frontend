@@ -112,7 +112,9 @@ export default function PayoutsPage(): React.JSX.Element {
         );
       } else {
         notify.success(
-          `${result.eligibleOwnerships} due ownership return${result.eligibleOwnerships === 1 ? '' : 's'} grouped into ${result.preparedBatches} review batch${result.preparedBatches === 1 ? '' : 'es'}.`,
+          result.reconciledOwnerships > 0
+            ? `${result.reconciledOwnerships} previously processed ownership${result.reconciledOwnerships === 1 ? '' : 's'} repaired safely without repeating wallet credits.${result.preparedBatches ? ` ${result.preparedBatches} new review batch${result.preparedBatches === 1 ? '' : 'es'} prepared.` : ''}`
+            : `${result.eligibleOwnerships} due ownership return${result.eligibleOwnerships === 1 ? '' : 's'} grouped into ${result.preparedBatches} review batch${result.preparedBatches === 1 ? '' : 'es'}.`,
         );
       }
     } catch (error) {

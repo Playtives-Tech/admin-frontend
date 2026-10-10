@@ -80,6 +80,7 @@ export type PayoutPage = Readonly<{
 export type DuePayoutProcessingResult = Readonly<{
   eligibleOwnerships: number;
   preparedBatches: number;
+  reconciledOwnerships: number;
   failedOwnerships: number;
 }>;
 
