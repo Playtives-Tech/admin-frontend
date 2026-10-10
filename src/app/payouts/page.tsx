@@ -9,6 +9,7 @@ import {
   MdClose,
   MdPendingActions,
   MdPayments,
+  MdRefresh,
   MdVisibility,
 } from 'react-icons/md';
 import { DashboardShell } from '@/components/dashboard/shell';
@@ -44,6 +45,8 @@ export default function PayoutsPage(): React.JSX.Element {
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState('');
   const [range, setRange] = useState<AdminDateRange>(defaultAdminDateRange);
+  const [processingDue, setProcessingDue] = useState(false);
+  const [distributionRefreshKey, setDistributionRefreshKey] = useState(0);
   const load = useCallback(async () => {
     const response = await payoutService.list(status === 'ALL' ? undefined : status, range, page);
     setItems(response.items);
@@ -95,6 +98,29 @@ export default function PayoutsPage(): React.JSX.Element {
     }
   };
   const pending = items.filter((item) => item.status === 'PENDING' || item.status === 'PROCESSING');
+  const processDue = async () => {
+    setProcessingDue(true);
+    try {
+      const result = await payoutService.processDue();
+      setDistributionRefreshKey((current) => current + 1);
+      await load();
+      if (result.eligibleOwnerships === 0) {
+        notify.info('No ownership returns are due today. Nothing was changed.');
+      } else if (result.failedOwnerships > 0) {
+        notify.error(
+          `${result.preparedBatches} due return${result.preparedBatches === 1 ? '' : 's'} prepared, but ${result.failedOwnerships} could not be processed. Check the backend logs.`,
+        );
+      } else {
+        notify.success(
+          `${result.preparedBatches} due return${result.preparedBatches === 1 ? '' : 's'} prepared for admin review.`,
+        );
+      }
+    } catch (error) {
+      notify.error(error instanceof Error ? error.message : 'Could not process due payouts');
+    } finally {
+      setProcessingDue(false);
+    }
+  };
   return (
     <DashboardShell
       title="User payouts"
@@ -118,10 +144,22 @@ export default function PayoutsPage(): React.JSX.Element {
               Capital returns
             </button>
           </div>
-          <DateRangeFilter value={range} onChange={setRange} />
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => void processDue()}
+              disabled={processingDue}
+              className="inline-flex items-center gap-2 rounded-xl bg-brand px-3.5 py-2 text-sm font-semibold text-brand-foreground transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
+              title="Scan ownerships due now and prepare them for admin review. This does not credit wallets."
+            >
+              <MdRefresh className={`size-4 ${processingDue ? 'animate-spin' : ''}`} />
+              {processingDue ? 'Processing due payouts…' : 'Process due payouts'}
+            </button>
+            <DateRangeFilter value={range} onChange={setRange} />
+          </div>
         </div>
         {tab === 'MONTHLY' ? (
-          <MonthlyDistributionPanel range={range} />
+          <MonthlyDistributionPanel key={distributionRefreshKey} range={range} />
         ) : (
           <>
             <div className="pt-2">

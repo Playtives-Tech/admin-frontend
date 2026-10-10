@@ -77,8 +77,18 @@ export type PayoutPage = Readonly<{
   pagination: Readonly<{ page: number; limit: number; totalItems: number; totalPages: number }>;
 }>;
 
+export type DuePayoutProcessingResult = Readonly<{
+  eligibleOwnerships: number;
+  preparedBatches: number;
+  failedOwnerships: number;
+}>;
+
 const keys = new Map<string, string>();
 export const payoutService = {
+  processDue: () =>
+    api<DuePayoutProcessingResult>('/v1/admin/payouts/process-due', {
+      method: 'POST',
+    }),
   list: (status: MaturityPayoutStatus | undefined, range: AdminDateRange, page = 1, limit = 20) =>
     api<PayoutPage>(
       `/v1/admin/payouts?${new URLSearchParams({ ...(status ? { status } : {}), page: String(page), limit: String(limit), ...Object.fromEntries(new URLSearchParams(dateRangeSearchParams(range))) }).toString()}`,
