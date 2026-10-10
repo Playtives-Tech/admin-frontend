@@ -108,11 +108,11 @@ export default function PayoutsPage(): React.JSX.Element {
         notify.info('No ownership returns are due today. Nothing was changed.');
       } else if (result.failedOwnerships > 0) {
         notify.error(
-          `${result.preparedBatches} due return${result.preparedBatches === 1 ? '' : 's'} prepared, but ${result.failedOwnerships} could not be processed. Check the backend logs.`,
+          `${result.preparedBatches} review batch${result.preparedBatches === 1 ? '' : 'es'} prepared for ${result.eligibleOwnerships - result.failedOwnerships} ownership${result.eligibleOwnerships - result.failedOwnerships === 1 ? '' : 's'}. ${result.failedOwnerships} ownership${result.failedOwnerships === 1 ? '' : 's'} could not be prepared; check the backend log for the exact lifecycle conflict.`,
         );
       } else {
         notify.success(
-          `${result.preparedBatches} due return${result.preparedBatches === 1 ? '' : 's'} prepared for admin review.`,
+          `${result.eligibleOwnerships} due ownership return${result.eligibleOwnerships === 1 ? '' : 's'} grouped into ${result.preparedBatches} review batch${result.preparedBatches === 1 ? '' : 'es'}.`,
         );
       }
     } catch (error) {
