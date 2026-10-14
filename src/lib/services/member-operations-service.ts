@@ -226,6 +226,8 @@ export type MemberTransactionHistoryItem = Readonly<{
   description: string | null;
   status: string | null;
   amountMinorUnits: number | null;
+  balanceBeforeMinorUnits: number | null;
+  balanceAfterMinorUnits: number | null;
   reference: string | null;
   units: number | null;
   createdAt: string;

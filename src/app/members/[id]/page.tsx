@@ -560,7 +560,14 @@ export default function MemberDetailPage(): React.JSX.Element {
                         <td
                           className={`px-4 py-3 font-semibold ${item.amountMinorUnits != null && item.amountMinorUnits < 0 ? 'text-red-600' : item.amountMinorUnits != null ? 'text-emerald-600' : ''}`}
                         >
-                          {item.amountMinorUnits == null ? '—' : money(item.amountMinorUnits)}
+                          <span className="block">
+                            {item.amountMinorUnits == null ? '—' : money(item.amountMinorUnits)}
+                          </span>
+                          {item.balanceAfterMinorUnits != null ? (
+                            <span className="mt-0.5 block text-[11px] font-normal text-muted-foreground">
+                              Balance {money(item.balanceAfterMinorUnits)}
+                            </span>
+                          ) : null}
                         </td>
                         <td className="px-4 py-3 text-muted-foreground">
                           {new Date(item.createdAt).toLocaleString('en-NG', {

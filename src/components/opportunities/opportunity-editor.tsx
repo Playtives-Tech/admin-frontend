@@ -19,6 +19,7 @@ import {
   TermType,
 } from '@/lib/services/opportunity-service';
 import { ExecutionProgressPanel } from './execution-progress-panel';
+import { OpportunityUpdatesPanel } from './opportunity-updates-panel';
 
 type FormState = {
   title: string;
@@ -50,6 +51,24 @@ type FormState = {
   memberAvailabilityDate: string;
   offerClosesAt: string;
   commencementDate: string;
+  assetLifecycleEnabled: boolean;
+  assetLifecycleStatus:
+    | 'FUNDING'
+    | 'ACQUISITION_IN_PROGRESS'
+    | 'ASSET_ACQUIRED'
+    | 'COMPLIANCE_IN_PROGRESS'
+    | 'OPERATOR_SETUP'
+    | 'OPERATIONAL'
+    | 'DISTRIBUTIONS_ACTIVE'
+    | 'ASSET_SOLD';
+  fundingClosedAt: string;
+  assetAcquiredAt: string;
+  operationalAt: string;
+  distributionStartAt: string;
+  expectedActivationMinDays: string;
+  expectedActivationMaxDays: string;
+  currentMilestone: string;
+  nextMilestone: string;
   location: string;
   imageUrl: string;
   imageKey: string;
@@ -57,6 +76,7 @@ type FormState = {
   imageHeight?: number;
   imageAlt: string;
   interestModeEnabled: boolean;
+  interestCurrency: 'NGN' | 'GBP' | 'USD';
   interestTargetAmount: string;
   interestAcknowledgementText: string;
 };
@@ -92,11 +112,22 @@ const emptyForm: FormState = {
   memberAvailabilityDate: '',
   offerClosesAt: '',
   commencementDate: '',
+  assetLifecycleEnabled: false,
+  assetLifecycleStatus: 'FUNDING',
+  fundingClosedAt: '',
+  assetAcquiredAt: '',
+  operationalAt: '',
+  distributionStartAt: '',
+  expectedActivationMinDays: '',
+  expectedActivationMaxDays: '',
+  currentMilestone: '',
+  nextMilestone: '',
   location: '',
   imageUrl: '',
   imageKey: '',
   imageAlt: '',
   interestModeEnabled: false,
+  interestCurrency: 'NGN',
   interestTargetAmount: '',
   interestAcknowledgementText:
     'I understand this is an expression of interest only. No payment is required now, and submitting this does not mean that my position has been funded.',
@@ -172,6 +203,22 @@ function toForm(opportunity: Opportunity): FormState {
     memberAvailabilityDate: opportunity.memberAvailabilityDate?.slice(0, 10) ?? '',
     offerClosesAt: opportunity.offerClosesAt?.slice(0, 10) ?? '',
     commencementDate: opportunity.commencementDate?.slice(0, 10) ?? '',
+    assetLifecycleEnabled: opportunity.assetLifecycleEnabled ?? false,
+    assetLifecycleStatus: opportunity.assetLifecycleStatus ?? 'FUNDING',
+    fundingClosedAt: opportunity.fundingClosedAt?.slice(0, 10) ?? '',
+    assetAcquiredAt: opportunity.assetAcquiredAt?.slice(0, 10) ?? '',
+    operationalAt: opportunity.operationalAt?.slice(0, 10) ?? '',
+    distributionStartAt: opportunity.distributionStartAt?.slice(0, 10) ?? '',
+    expectedActivationMinDays:
+      opportunity.expectedActivationMinDays == null
+        ? ''
+        : String(opportunity.expectedActivationMinDays),
+    expectedActivationMaxDays:
+      opportunity.expectedActivationMaxDays == null
+        ? ''
+        : String(opportunity.expectedActivationMaxDays),
+    currentMilestone: opportunity.currentMilestone ?? '',
+    nextMilestone: opportunity.nextMilestone ?? '',
     location: opportunity.location ?? '',
     imageUrl: opportunity.imageUrl ?? '',
     imageKey: opportunity.imageKey ?? '',
@@ -179,6 +226,7 @@ function toForm(opportunity: Opportunity): FormState {
     imageHeight: opportunity.imageHeight,
     imageAlt: opportunity.imageAlt ?? '',
     interestModeEnabled: opportunity.interestModeEnabled ?? false,
+    interestCurrency: opportunity.interestCurrency ?? 'NGN',
     interestTargetAmount:
       opportunity.interestTargetAmount == null ? '' : String(opportunity.interestTargetAmount),
     interestAcknowledgementText:
@@ -330,6 +378,16 @@ export function OpportunityEditor({
     memberAvailabilityDate: form.memberAvailabilityDate || undefined,
     offerClosesAt: form.offerClosesAt || undefined,
     commencementDate: form.commencementDate || undefined,
+    assetLifecycleEnabled: form.assetLifecycleEnabled,
+    assetLifecycleStatus: form.assetLifecycleEnabled ? form.assetLifecycleStatus : undefined,
+    fundingClosedAt: form.fundingClosedAt || undefined,
+    assetAcquiredAt: form.assetAcquiredAt || undefined,
+    operationalAt: form.operationalAt || undefined,
+    distributionStartAt: form.distributionStartAt || undefined,
+    expectedActivationMinDays: numberOrUndefined(form.expectedActivationMinDays),
+    expectedActivationMaxDays: numberOrUndefined(form.expectedActivationMaxDays),
+    currentMilestone: form.currentMilestone.trim() || undefined,
+    nextMilestone: form.nextMilestone.trim() || undefined,
     location: form.location.trim(),
     imageUrl: form.imageUrl || undefined,
     imageKey: form.imageKey || undefined,
@@ -337,6 +395,7 @@ export function OpportunityEditor({
     imageHeight: form.imageHeight,
     imageAlt: form.imageAlt.trim(),
     interestModeEnabled: form.interestModeEnabled,
+    interestCurrency: form.interestCurrency,
     interestTargetAmount: numberOrUndefined(form.interestTargetAmount),
     showInterestProgress: form.interestModeEnabled,
     collectOpeningCapital: form.interestModeEnabled,
@@ -352,13 +411,17 @@ export function OpportunityEditor({
     if (!form.title.trim() || !form.category.trim() || !form.summary.trim())
       return notify.error('Title, category and summary are required.');
     if (status === 'PUBLISHED') {
-      if (!form.memberAvailabilityDate || !form.offerClosesAt || !form.commencementDate)
+      if (
+        !form.memberAvailabilityDate ||
+        !form.offerClosesAt ||
+        (!form.assetLifecycleEnabled && !form.commencementDate)
+      )
         return notify.error(
-          'Offer open, offer close, and deal start dates are required to publish.',
+          'Offer open and offer close dates are required. Non-asset deals also require a deal start date.',
         );
       if (form.offerClosesAt <= form.memberAvailabilityDate)
         return notify.error('Offer close date must be after the offer open date.');
-      if (form.commencementDate < form.offerClosesAt)
+      if (form.commencementDate && form.commencementDate < form.offerClosesAt)
         return notify.error('Deal start date must be on or after the offer close date.');
     }
     setSaving(true);
@@ -504,7 +567,7 @@ export function OpportunityEditor({
         </div>
         <div className="mx-auto grid max-w-6xl items-start gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(320px,0.62fr)]">
           <div className="grid gap-4">
-            {loadedOpportunity ? (
+            {loadedOpportunity && !form.assetLifecycleEnabled ? (
               <ExecutionProgressPanel
                 opportunity={loadedOpportunity}
                 onUpdated={(value) => {
@@ -822,6 +885,114 @@ export function OpportunityEditor({
               </Field>
             </Section>
             <Section
+              title="Asset lifecycle"
+              description="Use this for physical assets that become operational after funding closes."
+            >
+              <label className="flex items-center gap-3 text-sm font-medium sm:col-span-2">
+                <input
+                  type="checkbox"
+                  checked={form.assetLifecycleEnabled}
+                  onChange={(e) => set('assetLifecycleEnabled', e.target.checked)}
+                />
+                Enable asset lifecycle and activation-gated distributions
+              </label>
+              {form.assetLifecycleEnabled ? (
+                <>
+                  <Field label="Current lifecycle stage">
+                    <select
+                      className={inputClass}
+                      value={form.assetLifecycleStatus}
+                      onChange={(e) =>
+                        set(
+                          'assetLifecycleStatus',
+                          e.target.value as FormState['assetLifecycleStatus'],
+                        )
+                      }
+                    >
+                      <option value="FUNDING">Funding</option>
+                      <option value="ACQUISITION_IN_PROGRESS">Acquisition in progress</option>
+                      <option value="ASSET_ACQUIRED">Asset acquired</option>
+                      <option value="COMPLIANCE_IN_PROGRESS">Compliance in progress</option>
+                      <option value="OPERATOR_SETUP">Operator / lease setup</option>
+                      <option value="OPERATIONAL">Operational</option>
+                      <option value="DISTRIBUTIONS_ACTIVE">Distributions active</option>
+                      <option value="ASSET_SOLD">Asset sold</option>
+                    </select>
+                  </Field>
+                  <Field label="Funding closed">
+                    <input
+                      type="date"
+                      className={inputClass}
+                      value={form.fundingClosedAt}
+                      onChange={(e) => set('fundingClosedAt', e.target.value)}
+                    />
+                  </Field>
+                  <Field label="Asset acquired">
+                    <input
+                      type="date"
+                      className={inputClass}
+                      value={form.assetAcquiredAt}
+                      onChange={(e) => set('assetAcquiredAt', e.target.value)}
+                    />
+                  </Field>
+                  <Field label="Operational since">
+                    <input
+                      type="date"
+                      className={inputClass}
+                      value={form.operationalAt}
+                      onChange={(e) => set('operationalAt', e.target.value)}
+                    />
+                  </Field>
+                  <Field
+                    label="Distribution start"
+                    hint="Saving this date creates the same earnings schedule for every owner."
+                  >
+                    <input
+                      type="date"
+                      className={inputClass}
+                      value={form.distributionStartAt}
+                      onChange={(e) => set('distributionStartAt', e.target.value)}
+                    />
+                  </Field>
+                  <Field label="Expected activation minimum days">
+                    <input
+                      type="number"
+                      min="1"
+                      className={inputClass}
+                      value={form.expectedActivationMinDays}
+                      onChange={(e) => set('expectedActivationMinDays', e.target.value)}
+                    />
+                  </Field>
+                  <Field label="Expected activation maximum days">
+                    <input
+                      type="number"
+                      min="1"
+                      className={inputClass}
+                      value={form.expectedActivationMaxDays}
+                      onChange={(e) => set('expectedActivationMaxDays', e.target.value)}
+                    />
+                  </Field>
+                  <Field label="Current milestone" wide>
+                    <input
+                      className={inputClass}
+                      value={form.currentMilestone}
+                      onChange={(e) => set('currentMilestone', e.target.value)}
+                    />
+                  </Field>
+                  <Field label="Next milestone" wide>
+                    <input
+                      className={inputClass}
+                      value={form.nextMilestone}
+                      onChange={(e) => set('nextMilestone', e.target.value)}
+                    />
+                  </Field>
+                </>
+              ) : null}
+            </Section>
+            {opportunityId && form.assetLifecycleEnabled ? (
+              <OpportunityUpdatesPanel opportunityId={opportunityId} />
+            ) : null}
+            <Section
               title="Interest / pre-launch"
               description="Use this for opportunities that gather interest before funding opens."
             >
@@ -835,7 +1006,20 @@ export function OpportunityEditor({
               </label>
               {form.interestModeEnabled ? (
                 <>
-                  <Field label="Interest target amount (NGN)">
+                  <Field label="Interest currency">
+                    <select
+                      className={inputClass}
+                      value={form.interestCurrency}
+                      onChange={(e) =>
+                        set('interestCurrency', e.target.value as 'NGN' | 'GBP' | 'USD')
+                      }
+                    >
+                      <option value="NGN">Nigerian naira (NGN)</option>
+                      <option value="GBP">British pound (GBP)</option>
+                      <option value="USD">US dollar (USD)</option>
+                    </select>
+                  </Field>
+                  <Field label={`Interest target amount (${form.interestCurrency})`}>
                     <input
                       type="number"
                       min="0"

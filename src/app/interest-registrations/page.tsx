@@ -48,6 +48,7 @@ export default function InterestRegistrationsPage(): React.JSX.Element {
         'Email',
         'Phone',
         'Opportunity',
+        'Currency',
         'Opening capital',
         'Monthly commitment',
         'Readiness',
@@ -58,6 +59,7 @@ export default function InterestRegistrationsPage(): React.JSX.Element {
         item.userId.email,
         item.userId.phone ?? '',
         item.opportunityId.title,
+        item.currency ?? item.opportunityId.interestCurrency ?? 'NGN',
         String(item.openingCapital),
         String(item.recurringAmount ?? 0),
         label(item.capitalReadiness),
@@ -132,6 +134,7 @@ export default function InterestRegistrationsPage(): React.JSX.Element {
                   {[
                     'Member',
                     'Opportunity',
+                    'Currency',
                     'Opening capital',
                     'Monthly commitment',
                     'Readiness',
@@ -151,8 +154,9 @@ export default function InterestRegistrationsPage(): React.JSX.Element {
                       <p className="mt-1 text-xs text-muted-foreground">{item.userId.email}</p>
                     </td>
                     <td className="px-4 py-4 font-medium">{item.opportunityId.title}</td>
-                    <td className="px-4 py-4">{money(item.openingCapital)}</td>
-                    <td className="px-4 py-4">{money(item.recurringAmount ?? 0)}</td>
+                    <td className="px-4 py-4">{item.currency ?? 'NGN'}</td>
+                    <td className="px-4 py-4">{money(item.openingCapital, item.currency)}</td>
+                    <td className="px-4 py-4">{money(item.recurringAmount ?? 0, item.currency)}</td>
                     <td className="px-4 py-4">{label(item.capitalReadiness)}</td>
                     <td className="px-4 py-4 text-xs text-muted-foreground">
                       {new Date(item.createdAt).toLocaleString('en-NG')}
@@ -167,10 +171,10 @@ export default function InterestRegistrationsPage(): React.JSX.Element {
     </DashboardShell>
   );
 }
-function money(value: number): string {
+function money(value: number, currency: 'NGN' | 'GBP' | 'USD' = 'NGN'): string {
   return new Intl.NumberFormat('en-NG', {
     style: 'currency',
-    currency: 'NGN',
+    currency,
     maximumFractionDigits: 0,
   }).format(value);
 }
