@@ -32,6 +32,16 @@ export type ProjectionType =
 export type TermType = 'FIXED_TERM' | 'LIFE_OF_ASSET';
 export type DurationUnit = 'DAYS' | 'MONTHS' | 'YEARS';
 export type AgreementStatus = 'DRAFT' | 'ACTIVE' | 'RETIRED';
+export type InterestCurrency = 'NGN' | 'GBP' | 'USD';
+export type AssetLifecycleStatus =
+  | 'FUNDING'
+  | 'ACQUISITION_IN_PROGRESS'
+  | 'ASSET_ACQUIRED'
+  | 'COMPLIANCE_IN_PROGRESS'
+  | 'OPERATOR_SETUP'
+  | 'OPERATIONAL'
+  | 'DISTRIBUTIONS_ACTIVE'
+  | 'ASSET_SOLD';
 export type OpportunityExecutionStage =
   | 'OFFER_CLOSED'
   | 'SOURCING_SELECTION'
@@ -40,16 +50,18 @@ export type OpportunityExecutionStage =
   | 'PREPARING_FOR_DEPLOYMENT'
   | 'DEAL_ACTIVE';
 export type OpportunityExecutionProgress = {
-  stage: OpportunityExecutionStage;
+  stage: string;
   label: string;
   note: string;
   expectedAt: string | null;
   updatedAt: string | null;
   commencementDate: string | null;
   isDerived: boolean;
+  customStages?: boolean;
   steps: Array<{
-    stage: OpportunityExecutionStage;
+    stage: string;
     label: string;
+    date?: string | null;
     status: 'COMPLETED' | 'CURRENT' | 'UPCOMING';
   }>;
 };
@@ -106,6 +118,16 @@ export interface Opportunity {
   memberAvailabilityDate?: string | null;
   offerClosesAt?: string | null;
   commencementDate?: string | null;
+  assetLifecycleEnabled: boolean;
+  assetLifecycleStatus: AssetLifecycleStatus | null;
+  fundingClosedAt: string | null;
+  assetAcquiredAt: string | null;
+  operationalAt: string | null;
+  distributionStartAt: string | null;
+  expectedActivationMinDays: number | null;
+  expectedActivationMaxDays: number | null;
+  currentMilestone: string;
+  nextMilestone: string;
   location?: string;
   imageUrl?: string;
   imageKey?: string;
@@ -113,6 +135,7 @@ export interface Opportunity {
   imageHeight?: number;
   imageAlt?: string;
   interestModeEnabled: boolean;
+  interestCurrency: InterestCurrency;
   interestTargetAmount: number | null;
   interestOpensAt: string | null;
   interestClosesAt: string | null;
@@ -130,13 +153,22 @@ export interface Opportunity {
   executionStageNote: string;
   executionStageExpectedAt: string | null;
   executionStageUpdatedAt: string | null;
+  executionCustomSteps: Array<{
+    _id: string;
+    label: string;
+    note: string;
+    stageDate: string;
+    createdAt: string;
+  }>;
   executionProgress: OpportunityExecutionProgress | null;
 }
 
 export type OpportunityExecutionStageHistory = {
   _id: string;
   previousStage: OpportunityExecutionStage | null;
-  newStage: OpportunityExecutionStage;
+  newStage: OpportunityExecutionStage | null;
+  customLabel?: string;
+  stageDate?: string | null;
   publicNote: string;
   expectedAt: string | null;
   regressionReason: string;
@@ -145,18 +177,30 @@ export type OpportunityExecutionStageHistory = {
   createdAt: string;
 };
 
+export type OpportunityUpdate = {
+  _id: string;
+  title: string;
+  body: string;
+  milestone: string;
+  visibility: 'PUBLIC' | 'COOWNERS_ONLY';
+  attachments: string[];
+  publishedAt: string;
+  createdAt: string;
+};
+
 export type OpportunityInterestRegistration = {
   _id: string;
   openingCapital: number;
   recurringAmount: number | null;
   recurringFrequency: 'monthly' | null;
+  currency: InterestCurrency;
   capitalReadiness: 'available_now' | 'within_7_days' | 'not_sure';
   status: string;
   acknowledgementVersion: string;
   createdAt: string;
   updatedAt: string;
   userId: { _id: string; name: string; email: string; phone?: string | null };
-  opportunityId: { _id: string; title: string; slug: string };
+  opportunityId: { _id: string; title: string; slug: string; interestCurrency?: InterestCurrency };
 };
 
 export type OpportunityPayload = Partial<
@@ -217,6 +261,22 @@ export const opportunityService = {
     api<OpportunityExecutionStageHistory[]>(
       `/v1/admin/opportunities/${id}/execution-stage/history`,
     ),
+  updates: (id: string) =>
+    api<OpportunityUpdate[]>(`/v1/admin/opportunities/${id}/updates`),
+  publishUpdate: (
+    id: string,
+    payload: {
+      title: string;
+      body: string;
+      milestone?: string;
+      visibility: 'PUBLIC' | 'COOWNERS_ONLY';
+      attachments?: string[];
+    },
+  ) =>
+    api<OpportunityUpdate>(`/v1/admin/opportunities/${id}/updates`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
   updateExecutionStage: (
     id: string,
     revision: number,
@@ -236,6 +296,53 @@ export const opportunityService = {
         'If-Match': String(revision),
       },
       body: JSON.stringify(payload),
+    }),
+  appendExecutionStep: (
+    id: string,
+    revision: number,
+    payload: {
+      label: string;
+      stageDate: string;
+      publicNote?: string;
+      notifyInApp?: boolean;
+      notifyEmail?: boolean;
+    },
+  ) =>
+    api<Opportunity>(`/v1/admin/opportunities/${id}/execution-stage`, {
+      method: 'POST',
+      headers: {
+        'Idempotency-Key': idempotencyKey(`execution-step:${id}:${revision}`, payload),
+        'If-Match': String(revision),
+      },
+      body: JSON.stringify(payload),
+    }),
+  updateExecutionStep: (
+    id: string,
+    stepId: string,
+    revision: number,
+    payload: { label: string; stageDate: string; publicNote?: string },
+  ) =>
+    api<Opportunity>(`/v1/admin/opportunities/${id}/execution-stage/${stepId}`, {
+      method: 'PATCH',
+      headers: {
+        'Idempotency-Key': idempotencyKey(
+          `execution-step-update:${id}:${stepId}:${revision}`,
+          payload,
+        ),
+        'If-Match': String(revision),
+      },
+      body: JSON.stringify(payload),
+    }),
+  deleteExecutionStep: (id: string, stepId: string, revision: number) =>
+    api<Opportunity>(`/v1/admin/opportunities/${id}/execution-stage/${stepId}`, {
+      method: 'DELETE',
+      headers: {
+        'Idempotency-Key': idempotencyKey(
+          `execution-step-delete:${id}:${stepId}:${revision}`,
+          { stepId },
+        ),
+        'If-Match': String(revision),
+      },
     }),
   delete: (id: string, revision: number, confirmationTitle: string) =>
     api<{ id: string; deleted: true }>(`/v1/admin/opportunities/${id}`, {
