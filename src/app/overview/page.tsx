@@ -2,6 +2,7 @@
 
 import {
   ArrowDownRight,
+  ArrowRight,
   ArrowUpRight,
   Banknote,
   CircleDollarSign,
@@ -13,6 +14,7 @@ import {
   UserRoundPlus,
   WalletCards,
 } from 'lucide-react';
+import Link from 'next/link';
 import { useEffect, useState, type ComponentType } from 'react';
 import { DashboardShell } from '@/components/dashboard/shell';
 import { getAdminOverview, type AdminOverview } from '@/lib/services/member-operations-service';
@@ -37,6 +39,7 @@ type Metric = Readonly<{
   description: string;
   icon: ComponentType<{ className?: string }>;
   tone?: 'brand' | 'blue' | 'amber' | 'red';
+  href?: string;
 }>;
 
 export default function OverviewPage(): React.JSX.Element {
@@ -81,11 +84,12 @@ export default function OverviewPage(): React.JSX.Element {
 
   const inflowMetrics: Metric[] = [
     {
-      title: 'Uninvested member balance',
+      title: 'Uninvested user balance',
       value: money(data.uninvestedBalanceMinorUnits ?? 0),
       description:
-        'The current available deposit and earnings balances across all member wallets. This is money members have not yet invested or withdrawn.',
+        'The current available deposit and earnings balances across member and administrator wallets. This is money users have not yet invested or withdrawn.',
       icon: WalletCards,
+      href: '/overview/uninvested-balances',
     },
     {
       title: 'Total recorded inflows',
@@ -316,7 +320,8 @@ function MetricCard({ metric }: Readonly<{ metric: Metric }>) {
     red: 'bg-red-500/10 text-red-700 dark:text-red-300',
   }[metric.tone ?? 'brand'];
   return (
-    <article className="app-surface relative rounded-2xl border p-4">
+    <article className={`app-surface relative rounded-2xl border p-4 ${metric.href ? 'group transition hover:border-brand/40 hover:shadow-sm' : ''}`}>
+      {metric.href ? <Link href={metric.href} className="absolute inset-0 rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"><span className="sr-only">View {metric.title}</span></Link> : null}
       <div className="flex items-start justify-between gap-4">
         <div>
           <div className="flex items-center gap-1.5">
@@ -324,7 +329,7 @@ function MetricCard({ metric }: Readonly<{ metric: Metric }>) {
             <button
               type="button"
               onClick={() => setShowInfo((value) => !value)}
-              className="grid size-6 shrink-0 place-items-center rounded-full text-muted-foreground transition hover:bg-muted hover:text-foreground"
+              className="relative z-10 grid size-6 shrink-0 place-items-center rounded-full text-muted-foreground transition hover:bg-muted hover:text-foreground"
               aria-label={`About ${metric.title}`}
               aria-expanded={showInfo}
             >
@@ -343,6 +348,11 @@ function MetricCard({ metric }: Readonly<{ metric: Metric }>) {
           className="absolute inset-x-3 top-[calc(100%-0.35rem)] z-20 rounded-xl border bg-background p-3 text-xs leading-5 text-muted-foreground shadow-lg"
         >
           {metric.description}
+        </div>
+      ) : null}
+      {metric.href ? (
+        <div className="mt-4 inline-flex items-center gap-1.5 rounded-lg border border-brand/30 bg-brand/5 px-3 py-2 text-[11px] font-semibold text-brand transition group-hover:bg-brand/10">
+          View balances <ArrowRight className="size-3.5" />
         </div>
       ) : null}
     </article>

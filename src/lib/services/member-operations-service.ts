@@ -408,6 +408,31 @@ export function getAdminOverview(range: AdminDateRange): Promise<AdminOverview> 
   });
 }
 
+export type UninvestedMemberBalance = Readonly<{
+  _id: string;
+  name: string;
+  email: string;
+  memberCode: string | null;
+  roles: string[];
+  depositBalanceMinorUnits: number;
+  earningsBalanceMinorUnits: number;
+  uninvestedBalanceMinorUnits: number;
+}>;
+
+export function getUninvestedMemberBalances(input: {
+  page: number;
+  limit: number;
+  search?: string;
+}): Promise<{
+  items: UninvestedMemberBalance[];
+  totalBalanceMinorUnits: number;
+  pagination: { page: number; limit: number; totalItems: number; totalPages: number };
+}> {
+  const query = new URLSearchParams({ page: String(input.page), limit: String(input.limit) });
+  if (input.search?.trim()) query.set('search', input.search.trim());
+  return api(`/v1/admin/overview/uninvested-balances?${query}`, { cache: 'no-store' });
+}
+
 export type AdminNameChangeRequest = Readonly<{
   id: string;
   user: Readonly<{ id: string; name: string; email: string }>;
