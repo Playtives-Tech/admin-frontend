@@ -9,6 +9,11 @@ import {
   Landmark,
   Layers3,
   Pencil,
+  Bold,
+  Heading2,
+  Link2,
+  List,
+  Trash2,
 } from 'lucide-react';
 import {
   useCallback,
@@ -834,23 +839,45 @@ function ProgrammeUpdates({
   refresh: () => Promise<void>;
 }>): React.JSX.Element {
   const [busy, setBusy] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [title, setTitle] = useState('');
+  const [body, setBody] = useState('');
+  const editorRef = useRef<HTMLTextAreaElement>(null);
   const [page, setPage] = useState(1);
   const pageSize = 5;
   const pageCount = Math.max(1, Math.ceil(updates.length / pageSize));
-  const publish = (form: HTMLFormElement): void => {
-    const values = new FormData(form);
+  const publish = (): void => {
     setBusy(true);
-    void wealthCollectiveService
-      .publishUpdate({ title: String(values.get('title')), body: String(values.get('body')) })
+    const request = editingId
+      ? wealthCollectiveService.updatePublishedUpdate(editingId, { title, body, format: 'MARKDOWN' })
+      : wealthCollectiveService.publishUpdate({ title, body, format: 'MARKDOWN' });
+    void request
       .then(async () => {
-        form.reset();
-        notify.success('Update published to members.');
+        setTitle(''); setBody(''); setEditingId(null);
+        notify.success(editingId ? 'Update saved.' : 'Update published to members.');
         await refresh();
       })
       .catch((cause: unknown) =>
         notify.error(cause instanceof Error ? cause.message : 'Unable to publish update.'),
       )
       .finally(() => setBusy(false));
+  };
+  const format = (prefix: string, suffix = prefix): void => {
+    const editor = editorRef.current;
+    if (!editor) return;
+    const start = editor.selectionStart;
+    const end = editor.selectionEnd;
+    const selected = body.slice(start, end) || 'text';
+    const next = `${body.slice(0, start)}${prefix}${selected}${suffix}${body.slice(end)}`;
+    setBody(next);
+    window.requestAnimationFrame(() => { editor.focus(); editor.setSelectionRange(start + prefix.length, start + prefix.length + selected.length); });
+  };
+  const remove = async (updateId: string): Promise<void> => {
+    if (!window.confirm('Delete this Collective update? Members will no longer see it.')) return;
+    setBusy(true);
+    try { await wealthCollectiveService.deletePublishedUpdate(updateId); notify.success('Update deleted.'); await refresh(); }
+    catch (cause) { notify.error(cause instanceof Error ? cause.message : 'Unable to delete update.'); }
+    finally { setBusy(false); }
   };
   return (
     <section className="bg-card rounded-2xl border p-6 shadow-sm">
@@ -862,7 +889,7 @@ function ProgrammeUpdates({
         className="mt-5 space-y-3"
         onSubmit={(event) => {
           event.preventDefault();
-          publish(event.currentTarget);
+          publish();
         }}
       >
         <label className="block text-sm font-medium">
@@ -870,16 +897,26 @@ function ProgrammeUpdates({
           <input
             className="mt-1 h-11 w-full rounded-lg border bg-background px-3"
             maxLength={160}
-            name="title"
+            value={title}
+            onChange={(event) => setTitle(event.target.value)}
             required
           />
         </label>
         <label className="block text-sm font-medium">
           Message
+          <span className="mt-1 flex flex-wrap gap-1 rounded-t-lg border border-b-0 bg-muted/30 p-2">
+            <button aria-label="Heading" className="rounded-md border bg-background p-2" onClick={() => format('## ', '')} type="button"><Heading2 className="size-4" /></button>
+            <button aria-label="Bold" className="rounded-md border bg-background p-2" onClick={() => format('**')} type="button"><Bold className="size-4" /></button>
+            <button aria-label="Bullet list" className="rounded-md border bg-background p-2" onClick={() => format('- ', '')} type="button"><List className="size-4" /></button>
+            <button aria-label="Link" className="rounded-md border bg-background p-2" onClick={() => format('[', '](https://)')} type="button"><Link2 className="size-4" /></button>
+            <span className="self-center px-2 text-xs font-normal text-muted-foreground">Markdown formatting supported</span>
+          </span>
           <textarea
-            className="mt-1 min-h-28 w-full rounded-lg border bg-background p-3"
+            ref={editorRef}
+            className="min-h-40 w-full rounded-b-lg border bg-background p-3 font-mono text-sm"
             maxLength={5000}
-            name="body"
+            value={body}
+            onChange={(event) => setBody(event.target.value)}
             required
           />
         </label>
@@ -888,15 +925,16 @@ function ProgrammeUpdates({
           disabled={busy}
           type="submit"
         >
-          {busy ? 'Publishing…' : 'Publish update'}
+          {busy ? 'Saving…' : editingId ? 'Save changes' : 'Publish update'}
         </button>
+        {editingId ? <button className="ml-2 rounded-lg border px-5 py-3 text-sm font-semibold" onClick={() => { setEditingId(null); setTitle(''); setBody(''); }} type="button">Cancel edit</button> : null}
       </form>
       <div className="mt-6 divide-y border-t">
         {updates.slice((page - 1) * pageSize, page * pageSize).map((update) => (
           <article className="py-4" key={update._id}>
-            <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <div className="flex flex-wrap items-start justify-between gap-2">
               <h3 className="font-semibold">{update.title}</h3>
-              <time className="text-xs text-muted-foreground">{dateTime(update.publishedAt)}</time>
+              <div className="flex items-center gap-2"><time className="text-xs text-muted-foreground">{dateTime(update.publishedAt)}</time><button aria-label="Edit update" className="rounded-md border p-2 text-muted-foreground hover:text-brand" onClick={() => { setEditingId(update._id); setTitle(update.title); setBody(update.body); window.scrollTo({ top: 0, behavior: 'smooth' }); }} type="button"><Pencil className="size-3.5" /></button><button aria-label="Delete update" className="rounded-md border p-2 text-muted-foreground hover:text-red-600" disabled={busy} onClick={() => void remove(update._id)} type="button"><Trash2 className="size-3.5" /></button></div>
             </div>
             <p className="mt-1 whitespace-pre-wrap text-sm leading-6 text-muted-foreground">
               {update.body}

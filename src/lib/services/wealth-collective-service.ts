@@ -75,6 +75,7 @@ export type WealthCollectiveOverview = Readonly<{
     _id: string;
     title: string;
     body: string;
+    format?: 'TEXT' | 'MARKDOWN';
     publishedAt: string;
   }>;
 }>;
@@ -142,8 +143,18 @@ export const wealthCollectiveService = {
       `/v1/admin/collectives/cycles/${cycleId}/members/export.csv`,
       `wealth-collective-month-${cycleNumber}-members.csv`,
     ),
-  publishUpdate: (input: { title: string; body: string }) =>
+  publishUpdate: (input: { title: string; body: string; format: 'TEXT' | 'MARKDOWN' }) =>
     api('/v1/admin/collectives/updates', { method: 'POST', body: JSON.stringify(input) }),
+  updatePublishedUpdate: (
+    updateId: string,
+    input: { title: string; body: string; format: 'TEXT' | 'MARKDOWN' },
+  ) =>
+    api(`/v1/admin/collectives/updates/${updateId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(input),
+    }),
+  deletePublishedUpdate: (updateId: string) =>
+    api(`/v1/admin/collectives/updates/${updateId}`, { method: 'DELETE' }),
   updateAbout: (input: { format: 'TEXT' | 'MARKDOWN' | 'HTML'; content: string }) =>
     api<WealthCollectiveProgramme>('/v1/admin/collectives/programme/about', {
       method: 'PATCH',

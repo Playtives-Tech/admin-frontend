@@ -52,6 +52,7 @@ export default function InterestRegistrationsPage(): React.JSX.Element {
         'Opening capital',
         'Monthly commitment',
         'Readiness',
+        'Custom answers',
         'Registered',
       ],
       ...visible.map((item) => [
@@ -63,6 +64,7 @@ export default function InterestRegistrationsPage(): React.JSX.Element {
         String(item.openingCapital),
         String(item.recurringAmount ?? 0),
         label(item.capitalReadiness),
+        (item.answers ?? []).map((answer) => `${answer.question}: ${answer.answer}`).join(' | '),
         new Date(item.createdAt).toLocaleString('en-NG'),
       ]),
     ];
@@ -138,6 +140,7 @@ export default function InterestRegistrationsPage(): React.JSX.Element {
                     'Opening capital',
                     'Monthly commitment',
                     'Readiness',
+                    'Custom answers',
                     'Registered',
                   ].map((heading) => (
                     <th key={heading} className="px-4 py-3 font-semibold">
@@ -158,6 +161,9 @@ export default function InterestRegistrationsPage(): React.JSX.Element {
                     <td className="px-4 py-4">{money(item.openingCapital, item.currency)}</td>
                     <td className="px-4 py-4">{money(item.recurringAmount ?? 0, item.currency)}</td>
                     <td className="px-4 py-4">{label(item.capitalReadiness)}</td>
+                    <td className="max-w-72 px-4 py-4 text-xs text-muted-foreground">
+                      {(item.answers ?? []).length ? item.answers.map((answer) => <p className="mb-1" key={answer.questionId}><span className="font-semibold text-foreground">{answer.question}:</span> {answer.answer}</p>) : 'Standard form'}
+                    </td>
                     <td className="px-4 py-4 text-xs text-muted-foreground">
                       {new Date(item.createdAt).toLocaleString('en-NG')}
                     </td>
