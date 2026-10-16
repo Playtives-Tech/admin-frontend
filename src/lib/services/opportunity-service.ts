@@ -146,6 +146,7 @@ export interface Opportunity {
   collectCapitalReadiness: boolean;
   interestAcknowledgementText: string;
   interestAcknowledgementVersion: string;
+  interestQuestions: Array<{ id: string; label: string; options: string[]; required: boolean }>;
   status: OpportunityStatus;
   publishedAt?: string | null;
   revision: number;
@@ -197,6 +198,7 @@ export type OpportunityInterestRegistration = {
   capitalReadiness: 'available_now' | 'within_7_days' | 'not_sure';
   status: string;
   acknowledgementVersion: string;
+  answers: Array<{ questionId: string; question: string; answer: string }>;
   createdAt: string;
   updatedAt: string;
   userId: { _id: string; name: string; email: string; phone?: string | null };

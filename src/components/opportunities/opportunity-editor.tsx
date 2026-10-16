@@ -79,6 +79,7 @@ type FormState = {
   interestCurrency: 'NGN' | 'GBP' | 'USD';
   interestTargetAmount: string;
   interestAcknowledgementText: string;
+  interestQuestions: Array<{ id: string; label: string; options: string[]; required: boolean }>;
 };
 
 const emptyForm: FormState = {
@@ -131,6 +132,7 @@ const emptyForm: FormState = {
   interestTargetAmount: '',
   interestAcknowledgementText:
     'I understand this is an expression of interest only. No payment is required now, and submitting this does not mean that my position has been funded.',
+  interestQuestions: [],
 };
 
 const inputClass =
@@ -231,6 +233,7 @@ function toForm(opportunity: Opportunity): FormState {
       opportunity.interestTargetAmount == null ? '' : String(opportunity.interestTargetAmount),
     interestAcknowledgementText:
       opportunity.interestAcknowledgementText ?? emptyForm.interestAcknowledgementText,
+    interestQuestions: opportunity.interestQuestions ?? [],
   };
 }
 
@@ -404,12 +407,30 @@ export function OpportunityEditor({
     collectCapitalReadiness: form.interestModeEnabled,
     interestAcknowledgementText: form.interestAcknowledgementText.trim(),
     interestAcknowledgementVersion: 'v1',
+    interestQuestions: form.interestModeEnabled
+      ? form.interestQuestions.map((question) => ({
+          ...question,
+          label: question.label.trim(),
+          options: question.options.map((option) => option.trim()).filter(Boolean),
+        }))
+      : [],
     status,
   });
 
   async function save(status: 'DRAFT' | 'PUBLISHED' | 'INTEREST_OPEN' | 'INTEREST_CLOSED') {
     if (!form.title.trim() || !form.category.trim() || !form.summary.trim())
       return notify.error('Title, category and summary are required.');
+    if (
+      form.interestModeEnabled &&
+      form.interestQuestions.some(
+        (question) =>
+          !question.label.trim() ||
+          question.options.filter((option) => option.trim()).length < 2 ||
+          new Set(question.options.map((option) => option.trim().toLowerCase()).filter(Boolean)).size !==
+            question.options.filter((option) => option.trim()).length,
+      )
+    )
+      return notify.error('Each custom question needs a title and at least two unique options.');
     if (status === 'PUBLISHED') {
       if (
         !form.memberAvailabilityDate ||
@@ -1036,6 +1057,24 @@ export function OpportunityEditor({
                       onChange={(e) => set('interestAcknowledgementText', e.target.value)}
                     />
                   </Field>
+                  <div className="sm:col-span-2 rounded-xl border p-4">
+                    <div className="flex items-center justify-between gap-3">
+                      <div><p className="text-sm font-semibold">Custom interest questions</p><p className="mt-1 text-xs text-muted-foreground">When added, these replace the standard capital and readiness questions for this opportunity.</p></div>
+                      <button type="button" className="rounded-lg border px-3 py-2 text-xs font-semibold" onClick={() => set('interestQuestions', [...form.interestQuestions, { id: crypto.randomUUID(), label: '', options: ['', ''], required: true }])}>Add question</button>
+                    </div>
+                    <div className="mt-4 grid gap-4">
+                      {form.interestQuestions.map((question, questionIndex) => (
+                        <div key={question.id} className="rounded-xl bg-muted/30 p-4">
+                          <div className="flex gap-2"><input className={`${inputClass} flex-1`} value={question.label} maxLength={240} placeholder="Question, e.g. Which type of store would you prefer?" onChange={(event) => set('interestQuestions', form.interestQuestions.map((item, index) => index === questionIndex ? { ...item, label: event.target.value } : item))} /><button type="button" className="rounded-lg border px-3 text-xs font-semibold text-red-600" onClick={() => set('interestQuestions', form.interestQuestions.filter((_, index) => index !== questionIndex))}>Remove</button></div>
+                          <div className="mt-3 grid gap-2">
+                            {question.options.map((option, optionIndex) => <div className="flex gap-2" key={`${question.id}-${optionIndex}`}><input className={`${inputClass} flex-1`} value={option} placeholder={`Option ${optionIndex + 1}`} onChange={(event) => set('interestQuestions', form.interestQuestions.map((item, index) => index === questionIndex ? { ...item, options: item.options.map((value, currentIndex) => currentIndex === optionIndex ? event.target.value : value) } : item))} /><button type="button" disabled={question.options.length <= 2} className="rounded-lg border px-3 text-xs disabled:opacity-40" onClick={() => set('interestQuestions', form.interestQuestions.map((item, index) => index === questionIndex ? { ...item, options: item.options.filter((_, currentIndex) => currentIndex !== optionIndex) } : item))}>Delete</button></div>)}
+                          </div>
+                          <div className="mt-3 flex items-center justify-between"><label className="flex items-center gap-2 text-xs"><input type="checkbox" checked={question.required} onChange={(event) => set('interestQuestions', form.interestQuestions.map((item, index) => index === questionIndex ? { ...item, required: event.target.checked } : item))} /> Required</label><button type="button" disabled={question.options.length >= 12} className="rounded-lg border px-3 py-2 text-xs font-semibold disabled:opacity-40" onClick={() => set('interestQuestions', form.interestQuestions.map((item, index) => index === questionIndex ? { ...item, options: [...item.options, ''] } : item))}>Add option</button></div>
+                        </div>
+                      ))}
+                      {!form.interestQuestions.length ? <p className="rounded-lg border border-dashed p-4 text-center text-xs text-muted-foreground">No custom questions. Members will see the standard interest questions.</p> : null}
+                    </div>
+                  </div>
                 </>
               ) : null}
             </Section>
