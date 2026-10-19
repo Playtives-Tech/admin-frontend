@@ -146,7 +146,14 @@ export interface Opportunity {
   collectCapitalReadiness: boolean;
   interestAcknowledgementText: string;
   interestAcknowledgementVersion: string;
-  interestQuestions: Array<{ id: string; label: string; options: string[]; required: boolean }>;
+  interestQuestions: Array<{
+    id: string;
+    label: string;
+    options: string[];
+    required: boolean;
+    purpose?: 'participation_amount' | null;
+    amountOptions?: Array<{ amount: number | null; minimum: boolean }>;
+  }>;
   status: OpportunityStatus;
   publishedAt?: string | null;
   revision: number;
@@ -192,13 +199,20 @@ export type OpportunityUpdate = {
 export type OpportunityInterestRegistration = {
   _id: string;
   openingCapital: number;
+  participationAmount: number | null;
+  participationAmountKind: 'exact' | 'minimum' | null;
   recurringAmount: number | null;
   recurringFrequency: 'monthly' | null;
   currency: InterestCurrency;
-  capitalReadiness: 'available_now' | 'within_7_days' | 'not_sure';
+  capitalReadiness: 'available_now' | 'within_7_days' | 'not_sure' | null;
   status: string;
   acknowledgementVersion: string;
-  answers: Array<{ questionId: string; question: string; answer: string }>;
+  answers: Array<{
+    questionId: string;
+    question: string;
+    answer: string;
+    customAmount?: number | null;
+  }>;
   createdAt: string;
   updatedAt: string;
   userId: { _id: string; name: string; email: string; phone?: string | null };
@@ -263,8 +277,7 @@ export const opportunityService = {
     api<OpportunityExecutionStageHistory[]>(
       `/v1/admin/opportunities/${id}/execution-stage/history`,
     ),
-  updates: (id: string) =>
-    api<OpportunityUpdate[]>(`/v1/admin/opportunities/${id}/updates`),
+  updates: (id: string) => api<OpportunityUpdate[]>(`/v1/admin/opportunities/${id}/updates`),
   publishUpdate: (
     id: string,
     payload: {
@@ -339,10 +352,9 @@ export const opportunityService = {
     api<Opportunity>(`/v1/admin/opportunities/${id}/execution-stage/${stepId}`, {
       method: 'DELETE',
       headers: {
-        'Idempotency-Key': idempotencyKey(
-          `execution-step-delete:${id}:${stepId}:${revision}`,
-          { stepId },
-        ),
+        'Idempotency-Key': idempotencyKey(`execution-step-delete:${id}:${stepId}:${revision}`, {
+          stepId,
+        }),
         'If-Match': String(revision),
       },
     }),
