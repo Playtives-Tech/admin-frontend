@@ -79,7 +79,14 @@ type FormState = {
   interestCurrency: 'NGN' | 'GBP' | 'USD';
   interestTargetAmount: string;
   interestAcknowledgementText: string;
-  interestQuestions: Array<{ id: string; label: string; options: string[]; required: boolean }>;
+  interestQuestions: Array<{
+    id: string;
+    label: string;
+    options: string[];
+    required: boolean;
+    purpose?: 'participation_amount' | null;
+    amountOptions?: Array<{ amount: number | null; minimum: boolean }>;
+  }>;
 };
 
 const emptyForm: FormState = {
@@ -411,7 +418,7 @@ export function OpportunityEditor({
       ? form.interestQuestions.map((question) => ({
           ...question,
           label: question.label.trim(),
-          options: question.options.map((option) => option.trim()).filter(Boolean),
+          options: question.options.map((option) => option.trim()),
         }))
       : [],
     status,
@@ -425,12 +432,34 @@ export function OpportunityEditor({
       form.interestQuestions.some(
         (question) =>
           !question.label.trim() ||
-          question.options.filter((option) => option.trim()).length < 2 ||
-          new Set(question.options.map((option) => option.trim().toLowerCase()).filter(Boolean)).size !==
-            question.options.filter((option) => option.trim()).length,
+          question.options.some((option) => !option.trim()) ||
+          question.options.length < 2 ||
+          new Set(question.options.map((option) => option.trim().toLowerCase()).filter(Boolean))
+            .size !== question.options.length,
       )
     )
       return notify.error('Each custom question needs a title and at least two unique options.');
+    const amountQuestions = form.interestQuestions.filter(
+      (question) => question.purpose === 'participation_amount',
+    );
+    if (
+      form.interestModeEnabled &&
+      (amountQuestions.length > 1 ||
+        amountQuestions.some(
+          (question) =>
+            !question.required ||
+            question.amountOptions?.length !== question.options.length ||
+            question.amountOptions.some(
+              (option) =>
+                option.amount !== null &&
+                (!Number.isSafeInteger(option.amount) || option.amount <= 0),
+            ) ||
+            question.amountOptions.filter((option) => option.amount === null).length > 1,
+        ))
+    )
+      return notify.error(
+        'Configure one required amount question with a numeric value for each fixed option.',
+      );
     if (status === 'PUBLISHED') {
       if (
         !form.memberAvailabilityDate ||
@@ -1057,22 +1086,284 @@ export function OpportunityEditor({
                       onChange={(e) => set('interestAcknowledgementText', e.target.value)}
                     />
                   </Field>
-                  <div className="sm:col-span-2 rounded-xl border p-4">
+                  <div className="rounded-xl border p-4 sm:col-span-2">
                     <div className="flex items-center justify-between gap-3">
-                      <div><p className="text-sm font-semibold">Custom interest questions</p><p className="mt-1 text-xs text-muted-foreground">When added, these replace the standard capital and readiness questions for this opportunity.</p></div>
-                      <button type="button" className="rounded-lg border px-3 py-2 text-xs font-semibold" onClick={() => set('interestQuestions', [...form.interestQuestions, { id: crypto.randomUUID(), label: '', options: ['', ''], required: true }])}>Add question</button>
+                      <div>
+                        <p className="text-sm font-semibold">Custom interest questions</p>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          When added, these replace the standard capital and readiness questions.
+                          Mark one question as the participation amount to include it in progress.
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        className="rounded-lg border px-3 py-2 text-xs font-semibold"
+                        onClick={() =>
+                          set('interestQuestions', [
+                            ...form.interestQuestions,
+                            {
+                              id: crypto.randomUUID(),
+                              label: '',
+                              options: ['', ''],
+                              required: true,
+                            },
+                          ])
+                        }
+                      >
+                        Add question
+                      </button>
                     </div>
                     <div className="mt-4 grid gap-4">
                       {form.interestQuestions.map((question, questionIndex) => (
                         <div key={question.id} className="rounded-xl bg-muted/30 p-4">
-                          <div className="flex gap-2"><input className={`${inputClass} flex-1`} value={question.label} maxLength={240} placeholder="Question, e.g. Which type of store would you prefer?" onChange={(event) => set('interestQuestions', form.interestQuestions.map((item, index) => index === questionIndex ? { ...item, label: event.target.value } : item))} /><button type="button" className="rounded-lg border px-3 text-xs font-semibold text-red-600" onClick={() => set('interestQuestions', form.interestQuestions.filter((_, index) => index !== questionIndex))}>Remove</button></div>
-                          <div className="mt-3 grid gap-2">
-                            {question.options.map((option, optionIndex) => <div className="flex gap-2" key={`${question.id}-${optionIndex}`}><input className={`${inputClass} flex-1`} value={option} placeholder={`Option ${optionIndex + 1}`} onChange={(event) => set('interestQuestions', form.interestQuestions.map((item, index) => index === questionIndex ? { ...item, options: item.options.map((value, currentIndex) => currentIndex === optionIndex ? event.target.value : value) } : item))} /><button type="button" disabled={question.options.length <= 2} className="rounded-lg border px-3 text-xs disabled:opacity-40" onClick={() => set('interestQuestions', form.interestQuestions.map((item, index) => index === questionIndex ? { ...item, options: item.options.filter((_, currentIndex) => currentIndex !== optionIndex) } : item))}>Delete</button></div>)}
+                          <div className="flex gap-2">
+                            <input
+                              className={`${inputClass} flex-1`}
+                              value={question.label}
+                              maxLength={240}
+                              placeholder="Question, e.g. Which type of store would you prefer?"
+                              onChange={(event) =>
+                                set(
+                                  'interestQuestions',
+                                  form.interestQuestions.map((item, index) =>
+                                    index === questionIndex
+                                      ? { ...item, label: event.target.value }
+                                      : item,
+                                  ),
+                                )
+                              }
+                            />
+                            <button
+                              type="button"
+                              className="rounded-lg border px-3 text-xs font-semibold text-red-600"
+                              onClick={() =>
+                                set(
+                                  'interestQuestions',
+                                  form.interestQuestions.filter(
+                                    (_, index) => index !== questionIndex,
+                                  ),
+                                )
+                              }
+                            >
+                              Remove
+                            </button>
                           </div>
-                          <div className="mt-3 flex items-center justify-between"><label className="flex items-center gap-2 text-xs"><input type="checkbox" checked={question.required} onChange={(event) => set('interestQuestions', form.interestQuestions.map((item, index) => index === questionIndex ? { ...item, required: event.target.checked } : item))} /> Required</label><button type="button" disabled={question.options.length >= 12} className="rounded-lg border px-3 py-2 text-xs font-semibold disabled:opacity-40" onClick={() => set('interestQuestions', form.interestQuestions.map((item, index) => index === questionIndex ? { ...item, options: [...item.options, ''] } : item))}>Add option</button></div>
+                          <label className="mt-3 flex items-center gap-2 text-xs font-semibold">
+                            <input
+                              type="checkbox"
+                              checked={question.purpose === 'participation_amount'}
+                              onChange={(event) =>
+                                set(
+                                  'interestQuestions',
+                                  form.interestQuestions.map((item, index) =>
+                                    index === questionIndex
+                                      ? {
+                                          ...item,
+                                          required: event.target.checked ? true : item.required,
+                                          purpose: event.target.checked
+                                            ? 'participation_amount'
+                                            : null,
+                                          amountOptions: event.target.checked
+                                            ? item.options.map(suggestAmountOption)
+                                            : [],
+                                        }
+                                      : item,
+                                  ),
+                                )
+                              }
+                            />
+                            This question asks how much the member may participate with (
+                            {form.interestCurrency})
+                          </label>
+                          <div className="mt-3 grid gap-2">
+                            {question.options.map((option, optionIndex) => (
+                              <div
+                                className="flex flex-wrap gap-2"
+                                key={`${question.id}-${optionIndex}`}
+                              >
+                                <input
+                                  className={`${inputClass} min-w-48 flex-1`}
+                                  value={option}
+                                  placeholder={`Option ${optionIndex + 1}`}
+                                  onChange={(event) =>
+                                    set(
+                                      'interestQuestions',
+                                      form.interestQuestions.map((item, index) =>
+                                        index === questionIndex
+                                          ? {
+                                              ...item,
+                                              options: item.options.map((value, currentIndex) =>
+                                                currentIndex === optionIndex
+                                                  ? event.target.value
+                                                  : value,
+                                              ),
+                                            }
+                                          : item,
+                                      ),
+                                    )
+                                  }
+                                />
+                                {question.purpose === 'participation_amount' ? (
+                                  <>
+                                    <input
+                                      type="number"
+                                      min="1"
+                                      aria-label={`Amount for ${option || `option ${optionIndex + 1}`}`}
+                                      placeholder="Amount; blank = custom"
+                                      className={`${inputClass} w-44`}
+                                      value={question.amountOptions?.[optionIndex]?.amount ?? ''}
+                                      onChange={(event) =>
+                                        set(
+                                          'interestQuestions',
+                                          form.interestQuestions.map((item, index) =>
+                                            index === questionIndex
+                                              ? {
+                                                  ...item,
+                                                  amountOptions: item.options.map(
+                                                    (_, currentIndex) =>
+                                                      currentIndex === optionIndex
+                                                        ? {
+                                                            amount: event.target.value
+                                                              ? Number(event.target.value)
+                                                              : null,
+                                                            minimum: event.target.value
+                                                              ? (item.amountOptions?.[currentIndex]
+                                                                  ?.minimum ?? false)
+                                                              : false,
+                                                          }
+                                                        : (item.amountOptions?.[currentIndex] ?? {
+                                                            amount: null,
+                                                            minimum: false,
+                                                          }),
+                                                  ),
+                                                }
+                                              : item,
+                                          ),
+                                        )
+                                      }
+                                    />
+                                    <label className="flex items-center gap-1 text-xs">
+                                      <input
+                                        type="checkbox"
+                                        disabled={
+                                          question.amountOptions?.[optionIndex]?.amount == null
+                                        }
+                                        checked={
+                                          question.amountOptions?.[optionIndex]?.minimum ?? false
+                                        }
+                                        onChange={(event) =>
+                                          set(
+                                            'interestQuestions',
+                                            form.interestQuestions.map((item, index) =>
+                                              index === questionIndex
+                                                ? {
+                                                    ...item,
+                                                    amountOptions: item.options.map(
+                                                      (_, currentIndex) =>
+                                                        currentIndex === optionIndex
+                                                          ? {
+                                                              amount:
+                                                                item.amountOptions?.[currentIndex]
+                                                                  ?.amount ?? null,
+                                                              minimum: event.target.checked,
+                                                            }
+                                                          : (item.amountOptions?.[currentIndex] ?? {
+                                                              amount: null,
+                                                              minimum: false,
+                                                            }),
+                                                    ),
+                                                  }
+                                                : item,
+                                            ),
+                                          )
+                                        }
+                                      />
+                                      Minimum (+)
+                                    </label>
+                                  </>
+                                ) : null}
+                                <button
+                                  type="button"
+                                  disabled={question.options.length <= 2}
+                                  className="rounded-lg border px-3 text-xs disabled:opacity-40"
+                                  onClick={() =>
+                                    set(
+                                      'interestQuestions',
+                                      form.interestQuestions.map((item, index) =>
+                                        index === questionIndex
+                                          ? {
+                                              ...item,
+                                              options: item.options.filter(
+                                                (_, currentIndex) => currentIndex !== optionIndex,
+                                              ),
+                                              amountOptions: item.amountOptions?.filter(
+                                                (_, currentIndex) => currentIndex !== optionIndex,
+                                              ),
+                                            }
+                                          : item,
+                                      ),
+                                    )
+                                  }
+                                >
+                                  Delete
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                          <div className="mt-3 flex items-center justify-between">
+                            <label className="flex items-center gap-2 text-xs">
+                              <input
+                                type="checkbox"
+                                disabled={question.purpose === 'participation_amount'}
+                                checked={question.required}
+                                onChange={(event) =>
+                                  set(
+                                    'interestQuestions',
+                                    form.interestQuestions.map((item, index) =>
+                                      index === questionIndex
+                                        ? { ...item, required: event.target.checked }
+                                        : item,
+                                    ),
+                                  )
+                                }
+                              />{' '}
+                              Required
+                            </label>
+                            <button
+                              type="button"
+                              disabled={question.options.length >= 12}
+                              className="rounded-lg border px-3 py-2 text-xs font-semibold disabled:opacity-40"
+                              onClick={() =>
+                                set(
+                                  'interestQuestions',
+                                  form.interestQuestions.map((item, index) =>
+                                    index === questionIndex
+                                      ? {
+                                          ...item,
+                                          options: [...item.options, ''],
+                                          amountOptions:
+                                            item.purpose === 'participation_amount'
+                                              ? [
+                                                  ...(item.amountOptions ?? []),
+                                                  { amount: null, minimum: false },
+                                                ]
+                                              : item.amountOptions,
+                                        }
+                                      : item,
+                                  ),
+                                )
+                              }
+                            >
+                              Add option
+                            </button>
+                          </div>
                         </div>
                       ))}
-                      {!form.interestQuestions.length ? <p className="rounded-lg border border-dashed p-4 text-center text-xs text-muted-foreground">No custom questions. Members will see the standard interest questions.</p> : null}
+                      {!form.interestQuestions.length ? (
+                        <p className="rounded-lg border border-dashed p-4 text-center text-xs text-muted-foreground">
+                          No custom questions. Members will see the standard interest questions.
+                        </p>
+                      ) : null}
                     </div>
                   </div>
                 </>
@@ -1245,4 +1536,13 @@ function PreviewText({ title, text }: { title: string; text: string }) {
       <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-muted-foreground">{text}</p>
     </section>
   );
+}
+
+function suggestAmountOption(label: string): { amount: number | null; minimum: boolean } {
+  const match = label.match(/\d[\d,]*(?:\.\d+)?/);
+  const amount = match ? Number(match[0].replaceAll(',', '')) : null;
+  return {
+    amount: amount && Number.isSafeInteger(amount) ? amount : null,
+    minimum: label.includes('+'),
+  };
 }

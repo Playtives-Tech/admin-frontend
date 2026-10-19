@@ -1,7 +1,7 @@
 'use client';
 
-import { Download, UsersRound } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { ChevronDown, ChevronUp, Download, UsersRound } from 'lucide-react';
+import { Fragment, useEffect, useMemo, useState } from 'react';
 import { DashboardShell } from '@/components/dashboard/shell';
 import { notify } from '@/lib/notify';
 import {
@@ -14,6 +14,7 @@ export default function InterestRegistrationsPage(): React.JSX.Element {
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState('');
   const [opportunityId, setOpportunityId] = useState('');
+  const [expandedId, setExpandedId] = useState<string | null>(null);
   useEffect(() => {
     void opportunityService
       .interests()
@@ -41,6 +42,23 @@ export default function InterestRegistrationsPage(): React.JSX.Element {
       ),
     [items, opportunityId, query],
   );
+  const summaries = useMemo(() => {
+    const byCurrency = new Map<
+      string,
+      { total: number; members: number; unknown: number; minimum: number }
+    >();
+    for (const item of visible) {
+      if (item.status !== 'interest_registered' && item.status !== 'invited') continue;
+      const currency = item.currency ?? item.opportunityId.interestCurrency ?? 'NGN';
+      const summary = byCurrency.get(currency) ?? { total: 0, members: 0, unknown: 0, minimum: 0 };
+      summary.members += 1;
+      if (item.participationAmount == null) summary.unknown += 1;
+      else summary.total += item.participationAmount;
+      if (item.participationAmountKind === 'minimum') summary.minimum += 1;
+      byCurrency.set(currency, summary);
+    }
+    return [...byCurrency.entries()];
+  }, [visible]);
   const download = () => {
     const rows = [
       [
@@ -49,6 +67,9 @@ export default function InterestRegistrationsPage(): React.JSX.Element {
         'Phone',
         'Opportunity',
         'Currency',
+        'Indicative participation',
+        'Amount type',
+        'Status',
         'Opening capital',
         'Monthly commitment',
         'Readiness',
@@ -61,10 +82,18 @@ export default function InterestRegistrationsPage(): React.JSX.Element {
         item.userId.phone ?? '',
         item.opportunityId.title,
         item.currency ?? item.opportunityId.interestCurrency ?? 'NGN',
-        String(item.openingCapital),
-        String(item.recurringAmount ?? 0),
-        label(item.capitalReadiness),
-        (item.answers ?? []).map((answer) => `${answer.question}: ${answer.answer}`).join(' | '),
+        item.participationAmount == null ? '' : String(item.participationAmount),
+        item.participationAmountKind ?? '',
+        item.status,
+        item.answers?.length ? '' : String(item.openingCapital),
+        item.answers?.length || item.recurringAmount == null ? '' : String(item.recurringAmount),
+        !item.answers?.length && item.capitalReadiness ? label(item.capitalReadiness) : '',
+        (item.answers ?? [])
+          .map(
+            (answer) =>
+              `${answer.question}: ${answer.answer}${answer.customAmount ? ` (${money(answer.customAmount, item.currency)})` : ''}`,
+          )
+          .join(' | '),
         new Date(item.createdAt).toLocaleString('en-NG'),
       ]),
     ];
@@ -121,6 +150,27 @@ export default function InterestRegistrationsPage(): React.JSX.Element {
             className="w-full rounded-xl border bg-background px-4 py-2.5 text-sm outline-none focus:border-brand"
           />
         </div>
+        {summaries.length ? (
+          <div className="mb-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            {summaries.map(([currency, summary]) => (
+              <div key={currency} className="rounded-xl border bg-background p-4">
+                <p className="text-xs font-semibold text-muted-foreground">
+                  {currency} · {summary.members} active registrations
+                </p>
+                <p className="mt-1 text-lg font-bold text-brand">
+                  {summary.unknown === summary.members
+                    ? 'Amounts not yet available'
+                    : `${summary.minimum || summary.unknown ? 'At least ' : ''}${money(summary.total, currency as 'NGN' | 'GBP' | 'USD')}`}
+                </p>
+                {summary.unknown ? (
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {summary.unknown} without a specified amount
+                  </p>
+                ) : null}
+              </div>
+            ))}
+          </div>
+        ) : null}
         {loading ? (
           <p className="p-10 text-center text-sm text-muted-foreground">Loading registrations…</p>
         ) : visible.length === 0 ? (
@@ -129,19 +179,42 @@ export default function InterestRegistrationsPage(): React.JSX.Element {
             No matching interest registrations.
           </div>
         ) : (
-          <div className="overflow-x-auto rounded-2xl border bg-background">
-            <table className="w-full min-w-[850px] text-left text-sm">
+          <div className="overflow-hidden rounded-2xl border bg-background">
+            <div className="divide-y lg:hidden">
+              {visible.map((item) => (
+                <div key={item._id} className="p-4">
+                  <p className="font-semibold">{item.userId.name}</p>
+                  <p className="break-all text-xs text-muted-foreground">{item.userId.email}</p>
+                  <p className="mt-2 text-sm">{item.opportunityId.title}</p>
+                  <p className="mt-2 font-semibold text-brand">{participationLabel(item)}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">{statusLabel(item.status)}</p>
+                  <button
+                    type="button"
+                    className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-brand"
+                    onClick={() => setExpandedId(expandedId === item._id ? null : item._id)}
+                    aria-expanded={expandedId === item._id}
+                  >
+                    {expandedId === item._id ? 'Hide answers' : 'View answers'}
+                    {expandedId === item._id ? (
+                      <ChevronUp className="size-4" />
+                    ) : (
+                      <ChevronDown className="size-4" />
+                    )}
+                  </button>
+                  {expandedId === item._id ? <RegistrationDetails item={item} /> : null}
+                </div>
+              ))}
+            </div>
+            <table className="hidden w-full table-fixed text-left text-sm lg:table">
               <thead className="border-b bg-muted/40 text-xs text-muted-foreground">
                 <tr>
                   {[
                     'Member',
                     'Opportunity',
-                    'Currency',
-                    'Opening capital',
-                    'Monthly commitment',
-                    'Readiness',
-                    'Custom answers',
+                    'Indicative amount',
+                    'Status',
                     'Registered',
+                    'Details',
                   ].map((heading) => (
                     <th key={heading} className="px-4 py-3 font-semibold">
                       {heading}
@@ -151,23 +224,48 @@ export default function InterestRegistrationsPage(): React.JSX.Element {
               </thead>
               <tbody>
                 {visible.map((item) => (
-                  <tr key={item._id} className="border-b last:border-0">
-                    <td className="px-4 py-4">
-                      <p className="font-semibold">{item.userId.name}</p>
-                      <p className="mt-1 text-xs text-muted-foreground">{item.userId.email}</p>
-                    </td>
-                    <td className="px-4 py-4 font-medium">{item.opportunityId.title}</td>
-                    <td className="px-4 py-4">{item.currency ?? 'NGN'}</td>
-                    <td className="px-4 py-4">{money(item.openingCapital, item.currency)}</td>
-                    <td className="px-4 py-4">{money(item.recurringAmount ?? 0, item.currency)}</td>
-                    <td className="px-4 py-4">{label(item.capitalReadiness)}</td>
-                    <td className="max-w-72 px-4 py-4 text-xs text-muted-foreground">
-                      {(item.answers ?? []).length ? item.answers.map((answer) => <p className="mb-1" key={answer.questionId}><span className="font-semibold text-foreground">{answer.question}:</span> {answer.answer}</p>) : 'Standard form'}
-                    </td>
-                    <td className="px-4 py-4 text-xs text-muted-foreground">
-                      {new Date(item.createdAt).toLocaleString('en-NG')}
-                    </td>
-                  </tr>
+                  <Fragment key={item._id}>
+                    <tr className="border-b align-top last:border-0">
+                      <td className="min-w-0 px-4 py-4">
+                        <p className="font-semibold">{item.userId.name}</p>
+                        <p className="mt-1 break-all text-xs text-muted-foreground">
+                          {item.userId.email}
+                        </p>
+                      </td>
+                      <td className="px-4 py-4 font-medium">{item.opportunityId.title}</td>
+                      <td className="px-4 py-4 font-semibold text-brand">
+                        {participationLabel(item)}
+                      </td>
+                      <td className="px-4 py-4 text-xs text-muted-foreground">
+                        {statusLabel(item.status)}
+                      </td>
+                      <td className="px-4 py-4 text-xs text-muted-foreground">
+                        {new Date(item.createdAt).toLocaleString('en-NG')}
+                      </td>
+                      <td className="px-4 py-4">
+                        <button
+                          type="button"
+                          className="inline-flex items-center gap-1 whitespace-nowrap font-semibold text-brand"
+                          onClick={() => setExpandedId(expandedId === item._id ? null : item._id)}
+                          aria-expanded={expandedId === item._id}
+                        >
+                          {expandedId === item._id ? 'Hide' : 'View'}
+                          {expandedId === item._id ? (
+                            <ChevronUp className="size-4" />
+                          ) : (
+                            <ChevronDown className="size-4" />
+                          )}
+                        </button>
+                      </td>
+                    </tr>
+                    {expandedId === item._id ? (
+                      <tr className="border-b bg-muted/20">
+                        <td colSpan={6} className="p-4">
+                          <RegistrationDetails item={item} />
+                        </td>
+                      </tr>
+                    ) : null}
+                  </Fragment>
                 ))}
               </tbody>
             </table>
@@ -176,6 +274,68 @@ export default function InterestRegistrationsPage(): React.JSX.Element {
       </div>
     </DashboardShell>
   );
+}
+function RegistrationDetails({
+  item,
+}: {
+  item: OpportunityInterestRegistration;
+}): React.JSX.Element {
+  return (
+    <div className="grid gap-4 text-sm sm:grid-cols-2">
+      <div>
+        <p className="text-xs text-muted-foreground">Registered</p>
+        <p>{new Date(item.createdAt).toLocaleString('en-NG')}</p>
+      </div>
+      <div>
+        <p className="text-xs text-muted-foreground">Currency</p>
+        <p>{item.currency ?? item.opportunityId.interestCurrency ?? 'NGN'}</p>
+      </div>
+      {!item.answers?.length ? (
+        <div>
+          <p className="text-xs text-muted-foreground">Opening capital</p>
+          <p>{money(item.openingCapital, item.currency)}</p>
+        </div>
+      ) : null}
+      {!item.answers?.length && item.recurringAmount != null ? (
+        <div>
+          <p className="text-xs text-muted-foreground">Monthly commitment</p>
+          <p>{money(item.recurringAmount, item.currency)}</p>
+        </div>
+      ) : null}
+      {!item.answers?.length && item.capitalReadiness ? (
+        <div>
+          <p className="text-xs text-muted-foreground">Readiness</p>
+          <p>{label(item.capitalReadiness)}</p>
+        </div>
+      ) : null}
+      {(item.answers ?? [])
+        .filter((answer) => answer.answer)
+        .map((answer) => (
+          <div key={answer.questionId} className="min-w-0">
+            <p className="break-words text-xs text-muted-foreground">{answer.question}</p>
+            <p className="break-words font-medium">
+              {answer.answer}
+              {answer.customAmount ? ` · ${money(answer.customAmount, item.currency)}` : ''}
+            </p>
+          </div>
+        ))}
+    </div>
+  );
+}
+function participationLabel(item: OpportunityInterestRegistration): string {
+  if (item.participationAmount == null) return 'Not specified';
+  return `${item.participationAmountKind === 'minimum' ? 'At least ' : ''}${money(item.participationAmount, item.currency)}`;
+}
+function statusLabel(status: string): string {
+  return status === 'interest_registered'
+    ? 'Registered'
+    : status === 'invited'
+      ? 'Invited'
+      : status === 'converted'
+        ? 'Converted'
+        : status === 'withdrawn'
+          ? 'Withdrawn'
+          : status;
 }
 function money(value: number, currency: 'NGN' | 'GBP' | 'USD' = 'NGN'): string {
   return new Intl.NumberFormat('en-NG', {
