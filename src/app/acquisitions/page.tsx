@@ -3,6 +3,7 @@
 import { MdDownload } from 'react-icons/md';
 import { useEffect, useMemo, useState } from 'react';
 import { DashboardShell } from '@/components/dashboard/shell';
+import { useAuth } from '@/components/providers/auth-provider';
 import {
   acquisitionService,
   hasVariableProjectedDistribution,
@@ -31,6 +32,8 @@ const statusClass: Record<AdminAcquisition['status'], string> = {
 };
 
 export default function AcquisitionsPage(): React.JSX.Element {
+  const { user } = useAuth();
+  const isSuperAdmin = user?.roles.includes('SUPER_ADMIN') ?? false;
   const [items, setItems] = useState<AdminAcquisition[]>([]);
   const [memberSearch, setMemberSearch] = useState('');
   const [opportunityId, setOpportunityId] = useState('all');
@@ -269,7 +272,7 @@ export default function AcquisitionsPage(): React.JSX.Element {
                         : '—'}
                     </td>
                     <td className="px-4 py-3">
-                      {item.status === 'ACTIVE' || item.status === 'COMPLETED' ? (
+                      {isSuperAdmin && (item.status === 'ACTIVE' || item.status === 'COMPLETED') ? (
                         <button
                           type="button"
                           disabled={!item.canReverse}

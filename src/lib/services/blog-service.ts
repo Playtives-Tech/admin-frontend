@@ -13,6 +13,7 @@ export type BlogPost = {
   seoDescription: string | null;
   status: 'DRAFT' | 'PUBLISHED';
   publishedAt: string | null;
+  authorName?: string;
   revision: number;
   viewCount: number;
   likeCount: number;
@@ -33,7 +34,7 @@ export type BlogPayload = Pick<
   | 'status'
 >;
 export const blogAdminService = {
-  list: () => api<BlogPage>('/v1/admin/blog'),
+  list: (limit = 20) => api<BlogPage>(`/v1/admin/blog?page=1&limit=${limit}`),
   get: (id: string) => api<BlogPost>(`/v1/admin/blog/${id}`),
   create: (payload: BlogPayload) =>
     api<BlogPost>('/v1/admin/blog', { method: 'POST', body: JSON.stringify(payload) }),

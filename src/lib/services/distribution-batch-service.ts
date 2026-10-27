@@ -19,6 +19,8 @@ export type DistributionBatch = Readonly<{
   ownershipCount: number;
   rolloverCompoundsReturns: boolean;
   adminNote: string;
+  preparedBy?: string | null;
+  reviewedBy?: string | null;
   revision: number;
 }>;
 

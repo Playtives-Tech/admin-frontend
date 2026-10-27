@@ -11,6 +11,7 @@ import {
   MdPictureAsPdf,
 } from 'react-icons/md';
 import { DashboardShell } from '@/components/dashboard/shell';
+import { useAuth } from '@/components/providers/auth-provider';
 import { notify } from '@/lib/notify';
 import {
   getDepositRequests,
@@ -32,6 +33,8 @@ const money = (value: number) =>
   }).format(value / 100);
 
 export default function DepositsPage(): React.JSX.Element {
+  const { user } = useAuth();
+  const isSuperAdmin = user?.roles.includes('SUPER_ADMIN') ?? false;
   const [items, setItems] = useState<AdminDepositRequest[]>([]);
   const [settledPaystack, setSettledPaystack] = useState<SettledPaystackDeposit[]>([]);
   const [adminAdded, setAdminAdded] = useState<AdminAddedDeposit[]>([]);
@@ -292,6 +295,7 @@ export default function DepositsPage(): React.JSX.Element {
           reviewing={reviewing}
           close={() => setSelected(null)}
           review={review}
+          canReview={isSuperAdmin}
         />
       ) : null}
     </DashboardShell>
@@ -305,6 +309,7 @@ function DepositReviewModal({
   reviewing,
   close,
   review,
+  canReview,
 }: {
   deposit: AdminDepositRequest;
   receiptLoading: boolean;
@@ -312,6 +317,7 @@ function DepositReviewModal({
   reviewing: boolean;
   close: () => void;
   review: (status: 'approved' | 'rejected') => Promise<void>;
+  canReview: boolean;
 }) {
   const isPending = deposit.status === 'pending';
   const isPdf = /\.pdf(?:$|[?#])/i.test(deposit.receiptImageUrl);
@@ -389,7 +395,7 @@ function DepositReviewModal({
           >
             Close
           </button>
-          {isPending ? (
+          {isPending && canReview ? (
             <>
               <button
                 disabled={reviewing}

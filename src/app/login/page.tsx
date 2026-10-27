@@ -25,7 +25,7 @@ export default function LoginPage(): React.JSX.Element {
         throw new Error('Email and password are required');
       }
       const response = await loginAdmin(email.trim().toLowerCase(), password);
-      if (!response.user.roles.includes('ADMIN')) throw new Error('Admin access is required');
+      if (!response.user.roles.some((role) => role === 'ADMIN' || role === 'SUPER_ADMIN')) throw new Error('Admin access is required');
       login(response.accessToken);
       router.replace('/overview');
     } catch (err: unknown) {

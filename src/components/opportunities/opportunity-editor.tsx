@@ -6,6 +6,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { MdChevronRight, MdDeleteOutline, MdFileUpload } from 'react-icons/md';
 import { DashboardShell } from '@/components/dashboard/shell';
+import { useAuth } from '@/components/providers/auth-provider';
 import { notify } from '@/lib/notify';
 import {
   Opportunity,
@@ -76,6 +77,7 @@ type FormState = {
   imageHeight?: number;
   imageAlt: string;
   interestModeEnabled: boolean;
+  historicalOnly: boolean;
   interestCurrency: 'NGN' | 'GBP' | 'USD';
   interestTargetAmount: string;
   interestAcknowledgementText: string;
@@ -135,6 +137,7 @@ const emptyForm: FormState = {
   imageKey: '',
   imageAlt: '',
   interestModeEnabled: false,
+  historicalOnly: false,
   interestCurrency: 'NGN',
   interestTargetAmount: '',
   interestAcknowledgementText:
@@ -235,6 +238,7 @@ function toForm(opportunity: Opportunity): FormState {
     imageHeight: opportunity.imageHeight,
     imageAlt: opportunity.imageAlt ?? '',
     interestModeEnabled: opportunity.interestModeEnabled ?? false,
+    historicalOnly: opportunity.historicalOnly ?? false,
     interestCurrency: opportunity.interestCurrency ?? 'NGN',
     interestTargetAmount:
       opportunity.interestTargetAmount == null ? '' : String(opportunity.interestTargetAmount),
@@ -246,11 +250,15 @@ function toForm(opportunity: Opportunity): FormState {
 
 export function OpportunityEditor({
   opportunityId,
+  historicalMode = false,
 }: {
   opportunityId?: string;
+  historicalMode?: boolean;
 }): React.JSX.Element {
+  const { user } = useAuth();
+  const isSuperAdmin = user?.roles.includes('SUPER_ADMIN') ?? false;
   const router = useRouter();
-  const [form, setForm] = useState<FormState>(emptyForm);
+  const [form, setForm] = useState<FormState>({ ...emptyForm, historicalOnly: historicalMode });
   const [loading, setLoading] = useState(Boolean(opportunityId));
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -262,13 +270,13 @@ export function OpportunityEditor({
   const [draftReady, setDraftReady] = useState(false);
   const [isDirty, setIsDirty] = useState(false);
   const suppressDraftPersistence = useRef(false);
-  const draftKey = `${draftStoragePrefix}${opportunityId ?? 'new'}`;
+  const draftKey = `${draftStoragePrefix}${opportunityId ?? (historicalMode ? 'historical-new' : 'new')}`;
 
   useEffect(() => {
     const draft = readDraft(draftKey);
     if (!opportunityId) {
       if (draft) {
-        setForm(draft.form);
+        setForm({ ...draft.form, historicalOnly: historicalMode });
         setIsDirty(true);
         notify.info('Restored your local opportunity draft.');
       }
@@ -287,7 +295,7 @@ export function OpportunityEditor({
             : 'DRAFT',
         );
         if (draft?.baseRevision === value.revision) {
-          setForm(draft.form);
+          setForm({ ...draft.form, historicalOnly: value.historicalOnly ?? false });
           setIsDirty(true);
           notify.info('Restored your local opportunity draft.');
         } else {
@@ -302,7 +310,7 @@ export function OpportunityEditor({
         setLoading(false);
         setDraftReady(true);
       });
-  }, [draftKey, opportunityId]);
+  }, [draftKey, opportunityId, historicalMode]);
 
   useEffect(() => {
     if (!draftReady || !isDirty || suppressDraftPersistence.current) return;
@@ -405,6 +413,7 @@ export function OpportunityEditor({
     imageHeight: form.imageHeight,
     imageAlt: form.imageAlt.trim(),
     interestModeEnabled: form.interestModeEnabled,
+    historicalOnly: form.historicalOnly,
     interestCurrency: form.interestCurrency,
     interestTargetAmount: numberOrUndefined(form.interestTargetAmount),
     showInterestProgress: form.interestModeEnabled,
@@ -534,7 +543,7 @@ export function OpportunityEditor({
 
   return (
     <DashboardShell
-      title={opportunityId ? 'Edit Opportunity' : 'New Opportunity'}
+      title={opportunityId ? 'Edit Opportunity' : form.historicalOnly ? 'New Historical Opportunity' : 'New Opportunity'}
       description="Set the member-facing details, commercial terms, and payout settings."
     >
       <div>
@@ -568,7 +577,7 @@ export function OpportunityEditor({
                     Discard local changes
                   </button>
                 ) : null}
-                {opportunityId && (
+                {opportunityId && isSuperAdmin && (
                   <Link
                     href={`/opportunities/${opportunityId}/delete`}
                     className="flex items-center gap-2 rounded-xl border border-red-500/30 px-4 py-2 text-sm font-semibold text-red-600"
@@ -578,7 +587,7 @@ export function OpportunityEditor({
                 )}
                 {currentStatus !== 'DRAFT' ? (
                   <button
-                    disabled={saving}
+                    disabled={saving || !isSuperAdmin}
                     onClick={() => save(currentStatus)}
                     className="rounded-xl bg-brand px-4 py-2 text-sm font-semibold text-brand-foreground disabled:cursor-not-allowed disabled:opacity-60"
                   >
@@ -593,18 +602,18 @@ export function OpportunityEditor({
                     >
                       {saving ? 'Saving draft…' : 'Save draft'}
                     </button>
-                    <button
-                      disabled={saving}
+                    {!form.historicalOnly && <button
+                      disabled={saving || !isSuperAdmin}
                       onClick={() => save('PUBLISHED')}
                       className="rounded-xl bg-brand px-4 py-2 text-sm font-semibold text-brand-foreground disabled:cursor-not-allowed disabled:opacity-60"
                     >
                       {saving ? 'Publishing…' : 'Publish opportunity'}
-                    </button>
+                    </button>}
                   </>
                 )}
-                {form.interestModeEnabled ? (
+                {form.interestModeEnabled && !form.historicalOnly ? (
                   <button
-                    disabled={saving}
+                    disabled={saving || !isSuperAdmin}
                     onClick={() => save('INTEREST_OPEN')}
                     className="rounded-xl bg-brand px-4 py-2 text-sm font-semibold text-brand-foreground"
                   >
@@ -615,8 +624,16 @@ export function OpportunityEditor({
             </div>
           </div>
         </div>
+        {!isSuperAdmin ? <p className="mx-auto mb-5 max-w-6xl rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">Administrators can create and edit drafts. Only a super administrator can publish or change a live opportunity. You can still manage updates and execution stages below.</p> : null}
         <div className="mx-auto grid max-w-6xl items-start gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(320px,0.62fr)]">
           <div className="grid gap-4">
+            <section className="rounded-xl border border-amber-300 bg-amber-50 p-5 text-sm text-amber-900">
+              <label className="flex items-center gap-3 font-semibold">
+                <input type="checkbox" checked={form.historicalOnly} disabled={Boolean(opportunityId)} onChange={(event) => set('historicalOnly', event.target.checked)} />
+                Historical, owner-only opportunity (NGN)
+              </label>
+              <p className="mt-2">Use the full editor for its terms and agreement. This opportunity cannot be publicly published; members see it only after their ownership is imported.</p>
+            </section>
             {loadedOpportunity && !form.assetLifecycleEnabled ? (
               <ExecutionProgressPanel
                 opportunity={loadedOpportunity}

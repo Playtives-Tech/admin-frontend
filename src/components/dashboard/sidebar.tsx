@@ -32,6 +32,7 @@ function NavLink({ href, label, icon: Icon }: (typeof navItems)[number]): React.
 
 export function DashboardSidebar(): React.JSX.Element {
   const { user, logout } = useAuth();
+  const isSuperAdmin = user?.roles.includes('SUPER_ADMIN') ?? false;
   const router = useRouter();
   const pathname = usePathname();
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() =>
@@ -85,7 +86,7 @@ export function DashboardSidebar(): React.JSX.Element {
               <ChevronDown className="size-4 transition-transform group-open/nav:rotate-180" />
             </summary>
             <div className="mt-1 grid gap-0.5 pl-1">
-              {group.items.map((item) => (
+              {group.items.filter((item) => !item.superAdminOnly || isSuperAdmin).map((item) => (
                 <NavLink key={item.href} {...item} />
               ))}
             </div>
@@ -102,7 +103,7 @@ export function DashboardSidebar(): React.JSX.Element {
         <div className="flex items-center justify-between px-2">
           <div className="min-w-0">
             <p className="truncate text-sm font-medium">{user?.email ?? '—'}</p>
-            <p className="text-xs text-muted-foreground">Administrator</p>
+            <p className="text-xs text-muted-foreground">{isSuperAdmin ? 'Super administrator' : 'Administrator'}</p>
           </div>
           <ThemeToggle />
         </div>

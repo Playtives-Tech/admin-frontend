@@ -4,10 +4,12 @@
 import { ArrowLeft, ImagePlus, PanelRight, Save, Send } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { DashboardShell } from '@/components/dashboard/shell';
-import { blogAdminService, type BlogPayload } from '@/lib/services/blog-service';
+import { blogAdminService, type BlogPayload, type BlogPost } from '@/lib/services/blog-service';
+import { BlogArticlePreview } from './blog-article-preview';
+import { RichMarkdownEditor } from './rich-markdown-editor';
 
 const empty: BlogPayload = {
   title: '',
@@ -24,43 +26,46 @@ const empty: BlogPayload = {
 
 export function BlogEditor({ id }: Readonly<{ id?: string }>): React.JSX.Element {
   const router = useRouter();
-  const body = useRef<HTMLTextAreaElement>(null);
   const [post, setPost] = useState<BlogPayload>(empty);
+  const [authorName, setAuthorName] = useState('');
+  const [publishedAt, setPublishedAt] = useState<string | null>(null);
+  const [publishedPosts, setPublishedPosts] = useState<BlogPost[]>([]);
   const [tags, setTags] = useState('');
   const [preview, setPreview] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   useEffect(() => {
+    void blogAdminService
+      .list(50)
+      .then((data) => setPublishedPosts(data.items.filter((item) => item.status === 'PUBLISHED')))
+      .catch(() => setPublishedPosts([]));
     if (id)
       void blogAdminService.get(id).then((value) => {
         setPost(value);
         setTags(value.tags.join(', '));
+        setAuthorName(value.authorName ?? '');
+        setPublishedAt(value.publishedAt);
       });
   }, [id]);
   const update = <K extends keyof BlogPayload>(key: K, value: BlogPayload[K]) =>
     setPost((current) => ({ ...current, [key]: value }));
-  const insert = (before: string, after = '') => {
-    const area = body.current;
-    if (!area) return;
-    const start = area.selectionStart;
-    const end = area.selectionEnd;
-    update(
-      'content',
-      `${post.content.slice(0, start)}${before}${post.content.slice(start, end)}${after}${post.content.slice(end)}`,
-    );
-  };
-  const upload = async (file?: File) => {
-    if (!file) return;
+  const uploadImage = async (file: File): Promise<string | null> => {
     setUploading(true);
     try {
       const image = await blogAdminService.uploadImage(file);
-      update('coverImageUrl', image.imageUrl);
-      toast.success('Featured image uploaded');
+      toast.success('Image uploaded');
+      return image.imageUrl;
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Image upload failed');
+      return null;
     } finally {
       setUploading(false);
     }
+  };
+  const uploadCover = async (file?: File) => {
+    if (!file) return;
+    const imageUrl = await uploadImage(file);
+    if (imageUrl) update('coverImageUrl', imageUrl);
   };
   const save = async (status: 'DRAFT' | 'PUBLISHED') => {
     setSaving(true);
@@ -77,6 +82,8 @@ export function BlogEditor({ id }: Readonly<{ id?: string }>): React.JSX.Element
         ? await blogAdminService.update(id, payload)
         : await blogAdminService.create(payload);
       toast.success(status === 'PUBLISHED' ? 'Article published' : 'Draft saved');
+      setAuthorName(saved.authorName ?? '');
+      setPublishedAt(saved.publishedAt);
       if (!id) router.replace(`/blog/${saved._id}`);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Could not save article');
@@ -124,13 +131,16 @@ export function BlogEditor({ id }: Readonly<{ id?: string }>): React.JSX.Element
             </button>
           </div>
         </div>
-        <div className={`grid gap-6 ${preview ? 'xl:grid-cols-2' : ''}`}>
-          <section className="app-surface rounded-2xl border p-6">
+        <div
+          className={`grid items-start gap-6 ${preview ? 'xl:grid-cols-[minmax(0,1fr)_minmax(0,0.9fr)]' : ''}`}
+        >
+          <section className="app-surface min-w-0 rounded-2xl border p-5 sm:p-6">
             <input
               value={post.title}
               onChange={(e) => update('title', e.target.value)}
               placeholder="Article title"
-              className="w-full border-b bg-transparent pb-3 text-3xl font-bold outline-none"
+              aria-label="Article title"
+              className="w-full border-b bg-transparent pb-3 text-2xl font-semibold tracking-tight outline-none placeholder:text-muted-foreground/70 sm:text-[28px]"
             />
             <textarea
               value={post.excerpt}
@@ -173,7 +183,10 @@ export function BlogEditor({ id }: Readonly<{ id?: string }>): React.JSX.Element
                   <input
                     type="file"
                     accept="image/jpeg,image/png,image/webp,image/avif"
-                    onChange={(e) => void upload(e.target.files?.[0])}
+                    onChange={(e) => {
+                      void uploadCover(e.target.files?.[0]);
+                      e.currentTarget.value = '';
+                    }}
                     className="hidden"
                   />
                 </label>
@@ -194,42 +207,11 @@ export function BlogEditor({ id }: Readonly<{ id?: string }>): React.JSX.Element
                 </>
               ) : null}
             </section>
-            <div className="mt-5 flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={() => insert('**', '**')}
-                className="rounded border px-2 py-1 text-xs font-bold"
-              >
-                Bold
-              </button>
-              <button
-                type="button"
-                onClick={() => insert('## ')}
-                className="rounded border px-2 py-1 text-xs font-bold"
-              >
-                Heading
-              </button>
-              <button
-                type="button"
-                onClick={() => insert('- ')}
-                className="rounded border px-2 py-1 text-xs font-bold"
-              >
-                List
-              </button>
-              <button
-                type="button"
-                onClick={() => insert('> ')}
-                className="rounded border px-2 py-1 text-xs font-bold"
-              >
-                Quote
-              </button>
-            </div>
-            <textarea
-              ref={body}
+            <RichMarkdownEditor
               value={post.content}
-              onChange={(e) => update('content', e.target.value)}
-              placeholder="Write your article. Use the toolbar for Markdown formatting."
-              className="mt-3 h-[28rem] w-full resize-none rounded-xl border p-4 font-mono text-sm leading-7"
+              onChange={(value) => update('content', value)}
+              onUploadImage={uploadImage}
+              uploading={uploading}
             />
             <details className="mt-5 rounded-xl border p-4">
               <summary className="cursor-pointer font-semibold">SEO metadata</summary>
@@ -252,26 +234,23 @@ export function BlogEditor({ id }: Readonly<{ id?: string }>): React.JSX.Element
             </details>
           </section>
           {preview ? (
-            <article className="app-surface rounded-2xl border p-6">
-              <p className="text-xs font-bold text-brand">MEMBER PREVIEW</p>
-              {post.coverImageUrl ? (
-                <img
-                  src={post.coverImageUrl}
-                  alt={post.coverImageAlt ?? 'Featured article image'}
-                  className="mt-5 aspect-video w-full rounded-xl object-cover"
-                />
-              ) : null}
-              <p className="mt-5 text-xs font-semibold uppercase tracking-wide text-brand">
-                {post.category}
-              </p>
-              <h1 className="mt-2 text-3xl font-bold">{post.title || 'Your article title'}</h1>
-              <p className="mt-3 text-muted-foreground">
-                {post.excerpt || 'Your summary appears here.'}
-              </p>
-              <div className="mt-8 whitespace-pre-wrap leading-7">
-                {post.content || 'Your formatted article preview appears here.'}
+            <div className="min-w-0">
+              <div className="mb-3 flex items-center justify-between gap-3 px-1">
+                <p className="text-sm font-semibold">Public website preview</p>
+                <span className="text-xs text-muted-foreground">Live · matches article layout</span>
               </div>
-            </article>
+              <BlogArticlePreview
+                post={{ ...post, authorName, publishedAt }}
+                relatedPosts={publishedPosts
+                  .filter(
+                    (item) =>
+                      item._id !== id &&
+                      (item.category === post.category ||
+                        item.tags.some((tag) => post.tags.includes(tag))),
+                  )
+                  .slice(0, 3)}
+              />
+            </div>
           ) : null}
         </div>
       </div>

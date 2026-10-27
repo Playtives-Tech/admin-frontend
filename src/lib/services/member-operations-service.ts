@@ -41,7 +41,7 @@ export type AdminMember = Readonly<{
   emailVerifiedAt: string | null;
   createdAt: string;
   walletId: string | null;
-  roles: ('MEMBER' | 'ADMIN')[];
+  roles: ('MEMBER' | 'ADMIN' | 'SUPER_ADMIN')[];
   activeOwnershipCount: number;
   totalInvestedMinorUnits: number;
   kycStatus: 'pending' | 'verified' | 'rejected';

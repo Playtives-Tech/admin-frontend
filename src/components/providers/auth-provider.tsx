@@ -28,7 +28,7 @@ function parseToken(token: string | null): AdminUser | null {
     typeof payload.email !== 'string' ||
     !Array.isArray(payload.roles) ||
     !payload.roles.every((role) => typeof role === 'string') ||
-    !payload.roles.includes('ADMIN')
+    !payload.roles.some((role) => role === 'ADMIN' || role === 'SUPER_ADMIN')
   )
     return null;
   // Check expiry

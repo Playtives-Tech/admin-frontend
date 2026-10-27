@@ -13,6 +13,7 @@ import {
   MdVisibility,
 } from 'react-icons/md';
 import { DashboardShell } from '@/components/dashboard/shell';
+import { useAuth } from '@/components/providers/auth-provider';
 import { notify } from '@/lib/notify';
 import {
   payoutService,
@@ -34,6 +35,8 @@ const date = (value?: string | null) =>
   value ? new Date(value).toLocaleDateString('en-NG', { dateStyle: 'medium' }) : 'Not available';
 
 export default function PayoutsPage(): React.JSX.Element {
+  const { user } = useAuth();
+  const isSuperAdmin = user?.roles.includes('SUPER_ADMIN') ?? false;
   const [items, setItems] = useState<MaturityPayout[]>([]);
   const [status, setStatus] = useState<'ALL' | MaturityPayoutStatus>('ALL');
   const [tab, setTab] = useState<'MONTHLY' | 'PRINCIPAL'>('MONTHLY');
@@ -147,7 +150,7 @@ export default function PayoutsPage(): React.JSX.Element {
             </button>
           </div>
           <div className="flex flex-wrap items-center justify-end gap-2">
-            <button
+            {isSuperAdmin ? <button
               type="button"
               onClick={() => void processDue()}
               disabled={processingDue}
@@ -156,7 +159,7 @@ export default function PayoutsPage(): React.JSX.Element {
             >
               <MdRefresh className={`size-4 ${processingDue ? 'animate-spin' : ''}`} />
               {processingDue ? 'Processing due payouts…' : 'Process due payouts'}
-            </button>
+            </button> : null}
             <DateRangeFilter value={range} onChange={setRange} />
           </div>
         </div>
@@ -301,6 +304,8 @@ export default function PayoutsPage(): React.JSX.Element {
           close={() => setDetail(undefined)}
           updateDetail={setDetail}
           review={review}
+          isSuperAdmin={isSuperAdmin}
+          actorId={user?.sub ?? ''}
         />
       )}
     </DashboardShell>
@@ -315,6 +320,8 @@ function ReviewPanel({
   close,
   updateDetail,
   review,
+  isSuperAdmin,
+  actorId,
 }: {
   detail: PayoutDetail;
   note: string;
@@ -323,6 +330,8 @@ function ReviewPanel({
   close: () => void;
   updateDetail: (detail: PayoutDetail | undefined) => void;
   review: (action: 'APPROVED' | 'REJECTED') => Promise<void>;
+  isSuperAdmin: boolean;
+  actorId: string;
 }) {
   const { payout, wallet, accruals } = detail;
   const [actualAmount, setActualAmount] = useState(
@@ -514,7 +523,7 @@ function ReviewPanel({
                 placeholder="Optional approval note; required when rejecting"
                 className="min-h-24 w-full rounded-xl border bg-background p-3 text-sm outline-none focus:ring-2 focus:ring-brand"
               />
-              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              {isSuperAdmin ? <div className="mt-4 grid gap-3 sm:grid-cols-2">
                 <button
                   disabled={busy}
                   onClick={() => void review('REJECTED')}
@@ -523,13 +532,14 @@ function ReviewPanel({
                   Reject payout
                 </button>
                 <button
-                  disabled={busy}
+                  disabled={busy || !(payout.preparedBy ?? payout.reviewedBy) || (payout.preparedBy ?? payout.reviewedBy) === actorId}
                   onClick={() => void review('APPROVED')}
                   className="h-11 rounded-xl bg-brand font-semibold text-brand-foreground disabled:opacity-50"
                 >
                   Approve and return principal
                 </button>
-              </div>
+              </div> : <p className="mt-4 text-sm text-muted-foreground">A super administrator reviews prepared payouts.</p>}
+              {isSuperAdmin && (!(payout.preparedBy ?? payout.reviewedBy) || (payout.preparedBy ?? payout.reviewedBy) === actorId) ? <p className="mt-2 text-xs text-muted-foreground">A different administrator must save the payout amount before approval.</p> : null}
             </Section>
           )}
         </div>

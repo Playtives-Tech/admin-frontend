@@ -13,6 +13,8 @@ import {
   UserCheck,
   Layers3,
   BellRing,
+  Archive,
+  ShieldCheck,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
@@ -20,11 +22,13 @@ export interface NavItem {
   href: string;
   label: string;
   icon: LucideIcon;
+  superAdminOnly?: boolean;
 }
 
 export const navItems: NavItem[] = [
   { href: '/overview', label: 'Overview', icon: PieChart },
   { href: '/members', label: 'Members', icon: UsersRound },
+  { href: '/administrators', label: 'Administrators', icon: ShieldCheck, superAdminOnly: true },
   { href: '/participation-requests', label: 'Participation Requests', icon: UserCheck },
   { href: '/member-codes', label: 'Member Codes', icon: TicketCheck },
   // KYC review navigation is temporarily paused.
@@ -35,6 +39,7 @@ export const navItems: NavItem[] = [
   { href: '/blog', label: 'Blog Center', icon: BookOpen },
   { href: '/payouts', label: 'User Payouts', icon: Banknote },
   { href: '/acquisitions', label: 'User Ownerships', icon: ChartNoAxesCombined },
+  { href: '/legacy', label: 'Legacy Ownerships', icon: Archive },
   { href: '/deposits', label: 'Deposit Requests', icon: ArrowDownCircle },
   { href: '/withdrawals', label: 'Withdrawal Requests', icon: ArrowUpCircle },
   { href: '/name-change-requests', label: 'Name Change Requests', icon: BadgeCheck },
@@ -46,7 +51,7 @@ export const navGroups: ReadonlyArray<{ label: string; items: NavItem[] }> = [
   {
     label: 'Member management',
     items: navItems.filter((item) =>
-      ['/overview', '/members', '/participation-requests', '/member-codes'].includes(item.href),
+      ['/overview', '/members', '/administrators', '/participation-requests', '/member-codes'].includes(item.href),
     ),
   },
   {
@@ -57,6 +62,7 @@ export const navGroups: ReadonlyArray<{ label: string; items: NavItem[] }> = [
         '/wealth-collectives',
         '/interest-registrations',
         '/acquisitions',
+        '/legacy',
       ].includes(item.href),
     ),
   },

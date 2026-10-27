@@ -10,6 +10,7 @@ import {
   MdTune,
 } from 'react-icons/md';
 import { DashboardShell } from '@/components/dashboard/shell';
+import { useAuth } from '@/components/providers/auth-provider';
 import { notify } from '@/lib/notify';
 import { cn } from '@/lib/utils';
 import {
@@ -36,6 +37,8 @@ interface WithdrawalRequest {
 }
 
 export default function WithdrawalsPage(): React.JSX.Element {
+  const { user } = useAuth();
+  const isSuperAdmin = user?.roles.includes('SUPER_ADMIN') ?? false;
   const [withdrawals, setWithdrawals] = useState<WithdrawalRequest[]>([]);
   const [selectedWithdrawal, setSelectedWithdrawal] = useState<WithdrawalRequest | null>(null);
   const [statusFilter, setStatusFilter] = useState('All');
@@ -385,7 +388,7 @@ export default function WithdrawalsPage(): React.JSX.Element {
               >
                 Close
               </button>
-              {selectedWithdrawal.status === 'Pending' && (
+              {selectedWithdrawal.status === 'Pending' && isSuperAdmin && (
                 <>
                   <button
                     disabled={isReviewing}
