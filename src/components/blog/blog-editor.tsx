@@ -41,7 +41,18 @@ export function BlogEditor({ id }: Readonly<{ id?: string }>): React.JSX.Element
       .catch(() => setPublishedPosts([]));
     if (id)
       void blogAdminService.get(id).then((value) => {
-        setPost(value);
+        setPost({
+          title: value.title,
+          excerpt: value.excerpt,
+          content: value.content,
+          category: value.category,
+          tags: value.tags,
+          coverImageUrl: value.coverImageUrl,
+          coverImageAlt: value.coverImageAlt,
+          seoTitle: value.seoTitle,
+          seoDescription: value.seoDescription,
+          status: value.status,
+        });
         setTags(value.tags.join(', '));
         setAuthorName(value.authorName ?? '');
         setPublishedAt(value.publishedAt);

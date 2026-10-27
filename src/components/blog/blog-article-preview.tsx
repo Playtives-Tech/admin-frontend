@@ -44,6 +44,26 @@ function safeUrl(value: string): string | null {
   }
 }
 
+function youtubeVideoId(value: string): string | null {
+  try {
+    const url = new URL(value.trim());
+    if (url.protocol !== 'https:' && url.protocol !== 'http:') return null;
+    const host = url.hostname.toLowerCase();
+    let id: string | null = null;
+    if (host === 'youtu.be' || host === 'www.youtu.be') {
+      id = url.pathname.split('/').filter(Boolean)[0] ?? null;
+    } else if (['youtube.com', 'www.youtube.com', 'm.youtube.com'].includes(host)) {
+      id =
+        url.pathname === '/watch'
+          ? url.searchParams.get('v')
+          : (url.pathname.match(/^\/(?:embed|shorts|live)\/([^/]+)/)?.[1] ?? null);
+    }
+    return id && /^[A-Za-z0-9_-]{11}$/.test(id) ? id : null;
+  } catch {
+    return null;
+  }
+}
+
 function getHeadings(markdown: string): { id: string; title: string; level: number }[] {
   return markdown.split(/\r?\n/).flatMap((line) => {
     const match = line.match(/^(##|###)\s+(.+)$/);
@@ -59,12 +79,28 @@ function getHeadings(markdown: string): { id: string; title: string; level: numb
 
 function inline(markdown: string): React.ReactNode[] {
   const token =
-    /(<u>[^<]*<\/u>|<sub>[^<]*<\/sub>|<sup>[^<]*<\/sup>|!\[[^\]]*\]\([^)]+\)|\[[^\]]+\]\([^)]+\)|\*\*[^*]+\*\*|\*[^*]+\*|`[^`]+`)/g;
+    /(@\[youtube\]\([^)]+\)|<u>[^<]*<\/u>|<sub>[^<]*<\/sub>|<sup>[^<]*<\/sup>|!\[[^\]]*\]\([^)]+\)|\[[^\]]+\]\([^)]+\)|\*\*[^*]+\*\*|\*[^*]+\*|`[^`]+`)/g;
   return markdown
     .split(token)
     .filter(Boolean)
     .map((part, index) => {
       const key = `${index}-${part.slice(0, 14)}`;
+      const video = part.match(/^@\[youtube\]\(([^)]+)\)$/);
+      if (video) {
+        const videoId = youtubeVideoId(video[1]);
+        return videoId ? (
+          <span className={styles.videoEmbed} key={key}>
+            <iframe
+              src={`https://www.youtube-nocookie.com/embed/${videoId}`}
+              title="YouTube video"
+              loading="lazy"
+              referrerPolicy="strict-origin-when-cross-origin"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+              allowFullScreen
+            />
+          </span>
+        ) : null;
+      }
       const image = part.match(/^!\[([^\]]*)\]\(([^)]+)\)$/);
       if (image) {
         const src = safeUrl(image[2]);
