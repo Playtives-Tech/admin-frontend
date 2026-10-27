@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { MdChevronLeft, MdChevronRight, MdClose, MdVisibility } from 'react-icons/md';
 import { notify } from '@/lib/notify';
+import { useAuth } from '@/components/providers/auth-provider';
 import { type AdminDateRange } from '@/lib/date-range';
 import {
   distributionBatchService,
@@ -176,6 +177,10 @@ function DistributionDrawer({
   updateDetail: (updated: DistributionBatchDetail) => void;
   refresh: () => Promise<void>;
 }) {
+  const { user } = useAuth();
+  const isSuperAdmin = user?.roles.includes('SUPER_ADMIN') ?? false;
+  const preparerId = detail.batch.preparedBy ?? detail.batch.reviewedBy;
+  const canApprove = isSuperAdmin && Boolean(preparerId) && preparerId !== user?.sub;
   const [method, setMethod] = useState<
     'RATE_PERCENT' | 'AMOUNT_PER_UNIT' | 'TOTAL_DISTRIBUTION_AMOUNT'
   >(
@@ -429,7 +434,7 @@ function DistributionDrawer({
               </div>
             )}
           </section>
-          {ready && (
+          {ready && isSuperAdmin && (
             <section className="rounded-2xl border p-5">
               <label className="text-sm font-semibold">Admin note</label>
               <textarea
@@ -447,13 +452,14 @@ function DistributionDrawer({
                   Reject distribution
                 </button>
                 <button
-                  disabled={busy}
+                  disabled={busy || !canApprove}
                   onClick={() => void review('APPROVED')}
                   className="h-11 rounded-xl bg-brand font-semibold text-brand-foreground disabled:opacity-50"
                 >
                   Approve and credit earnings
                 </button>
               </div>
+              {!canApprove ? <p className="mt-3 text-xs text-muted-foreground">A different administrator must prepare this distribution before approval.</p> : null}
             </section>
           )}
         </div>

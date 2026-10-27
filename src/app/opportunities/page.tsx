@@ -3,9 +3,12 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { MdAdd, MdCalendarMonth, MdDeleteOutline, MdGridView } from 'react-icons/md';
 import { DashboardShell } from '@/components/dashboard/shell';
+import { useAuth } from '@/components/providers/auth-provider';
 import { Opportunity, opportunityService } from '@/lib/services/opportunity-service';
 
 export default function OpportunitiesPage(): React.JSX.Element {
+  const { user } = useAuth();
+  const isSuperAdmin = user?.roles.includes('SUPER_ADMIN') ?? false;
   const [items, setItems] = useState<Opportunity[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -21,6 +24,8 @@ export default function OpportunitiesPage(): React.JSX.Element {
     void load();
     return opportunityService.subscribe(() => void load());
   }, []);
+  const standardItems = items.filter((item) => !item.historicalOnly);
+  const historicalItems = items.filter((item) => item.historicalOnly);
   return (
     <DashboardShell title="Opportunities" description="Manage platform opportunities">
       <div className="mx-auto max-w-6xl">
@@ -31,13 +36,21 @@ export default function OpportunitiesPage(): React.JSX.Element {
               Create, publish and edit member-facing opportunities.
             </p>
           </div>
-          <Link
-            href="/opportunities/new"
-            className="flex items-center gap-2 rounded-xl bg-brand px-4 py-2.5 text-sm font-semibold text-brand-foreground"
-          >
-            <MdAdd />
-            Create opportunity
-          </Link>
+          <div className="flex flex-wrap gap-2">
+            <Link
+              href="/opportunities/legacy/new"
+              className="flex items-center gap-2 rounded-xl border border-brand px-4 py-2.5 text-sm font-semibold text-brand"
+            >
+              <MdAdd /> Historical opportunity
+            </Link>
+            <Link
+              href="/opportunities/new"
+              className="flex items-center gap-2 rounded-xl bg-brand px-4 py-2.5 text-sm font-semibold text-brand-foreground"
+            >
+              <MdAdd />
+              Create opportunity
+            </Link>
+          </div>
         </div>
         {loading ? (
           <div className="p-16 text-center text-sm text-muted-foreground">
@@ -47,17 +60,17 @@ export default function OpportunitiesPage(): React.JSX.Element {
           <div className="border-destructive/30 text-destructive rounded-xl border p-6 text-sm">
             {error}
           </div>
-        ) : items.length === 0 ? (
+        ) : standardItems.length === 0 ? (
           <div className="flex h-64 flex-col items-center justify-center rounded-2xl border border-dashed">
             <MdGridView className="mb-3 size-8 text-muted-foreground" />
-            <h3 className="font-semibold">No opportunities yet</h3>
+            <h3 className="font-semibold">No public opportunities yet</h3>
             <p className="mt-1 text-sm text-muted-foreground">
-              Create the first opportunity to begin.
+              Create a public opportunity to begin.
             </p>
           </div>
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {items.map((item) => (
+            {standardItems.map((item) => (
               <article
                 key={item._id}
                 className="app-surface overflow-hidden rounded-2xl border p-5 shadow-sm"
@@ -103,19 +116,57 @@ export default function OpportunitiesPage(): React.JSX.Element {
                     <Link href={`/opportunities/${item._id}`} className="font-semibold text-brand">
                       Edit
                     </Link>
-                    <Link
+                    {isSuperAdmin ? <Link
                       href={`/opportunities/${item._id}/delete`}
                       aria-label={`Delete ${item.title}`}
                       className="text-red-600"
                     >
                       <MdDeleteOutline />
-                    </Link>
+                    </Link> : null}
                   </span>
                 </div>
               </article>
             ))}
           </div>
         )}
+        <section className="mt-10 border-t pt-8">
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <div>
+              <h2 className="text-xl font-semibold">Historical opportunities</h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Full opportunities for legacy ownerships; visible only to assigned members.
+              </p>
+            </div>
+            <Link href="/opportunities/legacy/new" className="text-sm font-semibold text-brand">
+              Create historical opportunity
+            </Link>
+          </div>
+          {historicalItems.length === 0 ? (
+            <p className="rounded-2xl border border-dashed p-6 text-sm text-muted-foreground">
+              No historical opportunities created yet.
+            </p>
+          ) : (
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {historicalItems.map((item) => (
+                <div key={item._id} className="rounded-2xl border bg-background p-5">
+                  <span className="text-xs font-bold uppercase text-brand">
+                    Historical · NGN
+                  </span>
+                  <h3 className="mt-2 font-semibold">{item.title}</h3>
+                  {item.summary && (
+                    <p className="mt-2 line-clamp-2 text-sm text-muted-foreground">
+                      {item.summary}
+                    </p>
+                  )}
+                  <div className="mt-4 flex gap-4 text-sm font-semibold text-brand">
+                    <Link href={`/opportunities/${item._id}`}>Edit details</Link>
+                    <Link href="/legacy">Assign ownership →</Link>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
       </div>
     </DashboardShell>
   );

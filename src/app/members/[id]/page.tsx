@@ -16,6 +16,7 @@ import {
   MdRadioButtonUnchecked,
 } from 'react-icons/md';
 import { DashboardShell } from '@/components/dashboard/shell';
+import { useAuth } from '@/components/providers/auth-provider';
 import { notify } from '@/lib/notify';
 import {
   getMember,
@@ -47,6 +48,8 @@ const money = (value: number) =>
   }).format(value / 100);
 
 export default function MemberDetailPage(): React.JSX.Element {
+  const { user } = useAuth();
+  const isSuperAdmin = user?.roles.includes('SUPER_ADMIN') ?? false;
   const { id } = useParams<{ id: string }>();
   const [member, setMember] = useState<AdminMember | null>(null);
   const [wallet, setWallet] = useState<AdminWalletSummary | null>(null);
@@ -589,7 +592,7 @@ export default function MemberDetailPage(): React.JSX.Element {
               </div>
             </section>
 
-            <section className="app-surface rounded-xl border border-red-500/25 p-5">
+            {isSuperAdmin ? <section className="app-surface rounded-xl border border-red-500/25 p-5">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
                   <h2 className="text-sm font-semibold">Debit member balance</h2>
@@ -661,9 +664,9 @@ export default function MemberDetailPage(): React.JSX.Element {
                   {debiting ? 'Debiting…' : 'Debit member balance'}
                 </button>
               </form>
-            </section>
+            </section> : null}
 
-            <section className="app-surface rounded-xl border p-5">
+            {isSuperAdmin ? <section className="app-surface rounded-xl border p-5">
               <h2 className="text-sm font-semibold">Credit member balance</h2>
               <p className="mt-1 text-xs leading-5 text-muted-foreground">
                 Records an offline payment and credits the member’s wallet deposit balance
@@ -738,9 +741,9 @@ export default function MemberDetailPage(): React.JSX.Element {
                   {crediting ? 'Crediting…' : 'Credit balance'}
                 </button>
               </form>
-            </section>
+            </section> : null}
 
-            <section className="app-surface rounded-xl border p-5">
+            {isSuperAdmin ? <section className="app-surface rounded-xl border p-5">
               <div className="flex items-start gap-3">
                 <span className="grid size-10 shrink-0 place-items-center rounded-lg bg-brand/10 text-brand">
                   <MdAddBusiness className="size-5" />
@@ -876,7 +879,7 @@ export default function MemberDetailPage(): React.JSX.Element {
                   </button>
                 </div>
               </form>
-            </section>
+            </section> : null}
 
             <section className="app-surface rounded-xl border p-5">
               <h2 className="text-sm font-semibold">Next of Kin</h2>

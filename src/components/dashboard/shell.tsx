@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useRequireAuth } from '@/hooks/use-require-auth';
+import { useAuth } from '@/components/providers/auth-provider';
 import { DashboardSidebar } from './sidebar';
 import { navItems } from './nav-items';
 import { cn } from '@/lib/utils';
@@ -39,6 +40,7 @@ export function DashboardShell({
   children,
 }: DashboardShellProps): React.JSX.Element | null {
   const { ready } = useRequireAuth();
+  const { user } = useAuth();
 
   if (!ready) {
     return (
@@ -47,6 +49,8 @@ export function DashboardShell({
       </div>
     );
   }
+
+  const isSuperAdmin = user?.roles.includes('SUPER_ADMIN') ?? false;
 
   return (
     <div className="app-background min-h-dvh">
@@ -67,7 +71,7 @@ export function DashboardShell({
 
       {/* Mobile bottom nav */}
       <nav className="app-surface fixed inset-x-0 bottom-0 z-20 flex h-[4.75rem] items-center justify-around border-t px-1 pb-[max(0.25rem,env(safe-area-inset-bottom))] pt-1 backdrop-blur lg:hidden">
-        {navItems.map((item) => (
+        {navItems.filter((item) => !item.superAdminOnly || isSuperAdmin).map((item) => (
           <MobileNavLink key={item.href} {...item} />
         ))}
       </nav>

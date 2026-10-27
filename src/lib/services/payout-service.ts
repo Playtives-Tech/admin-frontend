@@ -19,6 +19,8 @@ export type MaturityPayout = Readonly<{
   status: MaturityPayoutStatus;
   processingDecision: 'APPROVED' | 'REJECTED' | null;
   reviewNote: string;
+  preparedBy?: string | null;
+  reviewedBy?: string | null;
   revision: number;
   createdAt: string;
   reviewedAt: string | null;

@@ -24,6 +24,7 @@ import {
   type FormEvent,
 } from 'react';
 import { DashboardShell } from '@/components/dashboard/shell';
+import { useAuth } from '@/components/providers/auth-provider';
 import { CollectiveAboutEditor } from '@/components/collectives/collective-about-editor';
 import { CollectiveAgreementEditor } from '@/components/collectives/collective-agreement-editor';
 import { notify } from '@/lib/notify';
@@ -65,6 +66,8 @@ const lagosDateTimeInput = (value: string): string => {
 };
 
 export default function WealthCollectivesPage(): React.JSX.Element {
+  const { user } = useAuth();
+  const isSuperAdmin = user?.roles.includes('SUPER_ADMIN') ?? false;
   const [overview, setOverview] = useState<WealthCollectiveOverview | null>(null);
   const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState<WealthCollectivePeriod>('30d');
@@ -102,8 +105,10 @@ export default function WealthCollectivesPage(): React.JSX.Element {
             loading={loading}
             refresh={load}
           />
-        ) : (
+        ) : isSuperAdmin ? (
           <ProgrammeSetup refresh={load} />
+        ) : (
+          <p className="rounded-xl border p-6 text-sm text-muted-foreground">A super administrator must create the programme.</p>
         )}
       </div>
     </DashboardShell>
@@ -225,6 +230,8 @@ function ProgrammeOverview({
   refresh: () => Promise<void>;
 }>): React.JSX.Element {
   const programme = overview.programme!;
+  const { user } = useAuth();
+  const isSuperAdmin = user?.roles.includes('SUPER_ADMIN') ?? false;
   const [section, setSection] = useState<
     'overview' | 'months' | 'members' | 'exits' | 'content' | 'updates' | 'agreement'
   >('overview');
@@ -260,13 +267,13 @@ function ProgrammeOverview({
               {dateTime(programme.startsAt)} to {dateTime(programme.endsAt)} · {programme.timezone}
             </p>
           </div>
-          <button
+          {isSuperAdmin ? <button
             className="inline-flex h-10 items-center gap-2 rounded-lg border px-3 text-sm font-semibold hover:bg-muted"
             onClick={() => setStartDateOpen(true)}
             type="button"
           >
             <Pencil className="size-4" /> Edit start date
-          </button>
+          </button> : null}
         </div>
       </section>
       {startDateOpen && (
@@ -479,9 +486,10 @@ function ProgrammeOverview({
         </div>
       )}
       {section === 'updates' && <ProgrammeUpdates updates={overview.updates} refresh={refresh} />}
-      {section === 'agreement' && (
+      {section === 'agreement' && isSuperAdmin && (
         <CollectiveAgreementEditor programme={programme} refresh={refresh} />
       )}
+      {section === 'agreement' && !isSuperAdmin && <p className="rounded-xl border p-6 text-sm text-muted-foreground">Only a super administrator can change the agreement.</p>}
     </>
   );
 }
@@ -503,6 +511,8 @@ function SettlementSettings(): React.JSX.Element {
 }
 
 function EarlyExitsPanel(): React.JSX.Element {
+  const { user } = useAuth();
+  const isSuperAdmin = user?.roles.includes('SUPER_ADMIN') ?? false;
   const [page, setPage] = useState(1);
   const [result, setResult] = useState<Awaited<
     ReturnType<typeof wealthCollectiveService.earlyExits>
@@ -587,7 +597,7 @@ function EarlyExitsPanel(): React.JSX.Element {
                   {request.status === 'COMPLETED' ? 'Settled' : 'Pending settlement'}
                 </td>
                 <td className="px-4 py-3">
-                  {request.status === 'REQUESTED' && (
+                  {isSuperAdmin && request.status === 'REQUESTED' && (
                     <button
                       className="rounded-lg border border-brand px-3 py-2 font-semibold text-brand disabled:opacity-50"
                       disabled={settlingId !== null || !request.canSettle}
@@ -1035,6 +1045,8 @@ function CycleRow({
   refresh: () => Promise<void>;
   stats?: WealthCollectiveOverview['cycleStats'][number];
 }>): React.JSX.Element {
+  const { user } = useAuth();
+  const isSuperAdmin = user?.roles.includes('SUPER_ADMIN') ?? false;
   const [rate, setRate] = useState('');
   const [busy, setBusy] = useState(false);
   const [windowBusy, setWindowBusy] = useState(false);
@@ -1127,7 +1139,7 @@ function CycleRow({
             </p>
           )}
           <div className="mt-3 flex flex-wrap items-center gap-2">
-            <button
+            {isSuperAdmin ? <button
               className="rounded-lg border border-brand px-3 py-2 text-xs font-semibold text-brand disabled:cursor-not-allowed disabled:opacity-50"
               disabled={windowBusy || !halfwayCanChange || cycle.status === 'RECONCILED'}
               onClick={toggleHalfway}
@@ -1138,8 +1150,8 @@ function CycleRow({
                 : cycle.secondWindowEnabled
                   ? 'Disable halfway window'
                   : 'Enable halfway window'}
-            </button>
-            <button
+            </button> : null}
+            {isSuperAdmin ? <button
               className="rounded-lg bg-brand px-3 py-2 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
               disabled={
                 deploymentBusy ||
@@ -1153,7 +1165,7 @@ function CycleRow({
               {deploymentBusy
                 ? 'Deploying…'
                 : `Deploy pending now · ${stats?.manualEligibleCount ?? 0}`}
-            </button>
+            </button> : null}
           </div>
           <p className="mt-2 text-xs text-muted-foreground">
             Eligible awaiting deployment: {money(stats?.manualEligibleMinorUnits ?? 0)}. Manual
@@ -1201,7 +1213,7 @@ function CycleRow({
           <p className="text-sm font-semibold text-brand">
             Actual return: {(cycle.actualReturnRateBps! / 100).toFixed(2)}%
           </p>
-        ) : (
+        ) : isSuperAdmin ? (
           <div className="flex gap-2">
             <input
               className="h-10 w-28 rounded-lg border px-3 text-sm"
@@ -1222,6 +1234,8 @@ function CycleRow({
               {busy ? 'Saving…' : 'Reconcile'}
             </button>
           </div>
+        ) : (
+          <p className="text-sm text-muted-foreground">Awaiting super administrator reconciliation.</p>
         )}
       </div>
       <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">

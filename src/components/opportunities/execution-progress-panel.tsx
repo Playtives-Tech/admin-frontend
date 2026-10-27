@@ -131,7 +131,7 @@ export function ExecutionProgressPanel({
       {opportunity.executionProgress ? (
         <div className="mt-5 grid gap-2 sm:grid-cols-3">
           {opportunity.executionProgress.steps.map((step) => {
-            const customStep = opportunity.executionCustomSteps.find(
+            const customStep = (opportunity.executionCustomSteps ?? []).find(
               (item) => item._id === step.stage,
             );
             const isEditing = customStep?._id === editingStepId;

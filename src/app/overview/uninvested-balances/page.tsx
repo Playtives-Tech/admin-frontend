@@ -91,7 +91,7 @@ export default function UninvestedBalancesPage(): React.JSX.Element {
                       <Link href={`/members/${item._id}`} className="font-semibold text-foreground hover:text-brand hover:underline">{item.name}</Link>
                       <p className="mt-0.5 text-[11px] text-muted-foreground">{item.email}</p>
                     </td>
-                    <td className="px-4 py-3"><span className="rounded-full bg-muted px-2.5 py-1 text-[10px] font-semibold">{item.roles.includes('ADMIN') ? 'Administrator' : 'Member'}</span></td>
+                    <td className="px-4 py-3"><span className="rounded-full bg-muted px-2.5 py-1 text-[10px] font-semibold">{item.roles.includes('SUPER_ADMIN') ? 'Super admin' : item.roles.includes('ADMIN') ? 'Administrator' : 'Member'}</span></td>
                     <td className="px-4 py-3 text-muted-foreground">{item.memberCode ?? '—'}</td>
                     <td className="px-4 py-3">{money(item.depositBalanceMinorUnits)}</td>
                     <td className="px-4 py-3">{money(item.earningsBalanceMinorUnits)}</td>
