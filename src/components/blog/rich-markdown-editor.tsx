@@ -17,6 +17,7 @@ import {
   Table2,
   Underline,
   Undo2,
+  Video,
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
@@ -50,9 +51,34 @@ function safeUrl(value: string): string | null {
   }
 }
 
+function youtubeVideoId(value: string): string | null {
+  try {
+    const url = new URL(value.trim());
+    if (url.protocol !== 'https:' && url.protocol !== 'http:') return null;
+    const host = url.hostname.toLowerCase();
+    let id: string | null = null;
+    if (host === 'youtu.be' || host === 'www.youtu.be') {
+      id = url.pathname.split('/').filter(Boolean)[0] ?? null;
+    } else if (['youtube.com', 'www.youtube.com', 'm.youtube.com'].includes(host)) {
+      id =
+        url.pathname === '/watch'
+          ? url.searchParams.get('v')
+          : (url.pathname.match(/^\/(?:embed|shorts|live)\/([^/]+)/)?.[1] ?? null);
+    }
+    return id && /^[A-Za-z0-9_-]{11}$/.test(id) ? id : null;
+  } catch {
+    return null;
+  }
+}
+
+function youtubePlaceholder(videoId: string): string {
+  const url = `https://www.youtube.com/watch?v=${videoId}`;
+  return `<span contenteditable="false" data-youtube-video="${escapeHtml(url)}" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin:1.25rem 0;padding:1rem;border:1px dashed #b7c8bd;border-radius:0.75rem;background:#f4f8f5;color:#245f46;font:500 14px/1.5 sans-serif"><span>▶ YouTube video · Plays in article preview</span><span style="display:inline-flex;gap:8px"><button type="button" data-video-action="write-below" style="cursor:pointer;border:1px solid #b7c8bd;border-radius:6px;padding:5px 9px;background:white;color:#245f46">Write below</button><button type="button" data-video-action="remove" style="cursor:pointer;border:1px solid #d5b9b9;border-radius:6px;padding:5px 9px;background:white;color:#a33434">Remove</button></span></span>`;
+}
+
 function inlineHtml(markdown: string): string {
   const token =
-    /(<u>[^<]*<\/u>|<sub>[^<]*<\/sub>|<sup>[^<]*<\/sup>|!\[[^\]]*\]\([^)]+\)|\[[^\]]+\]\([^)]+\)|\*\*[^*]+\*\*|\*[^*]+\*|`[^`]+`)/g;
+    /(@\[youtube\]\([^)]+\)|<u>[^<]*<\/u>|<sub>[^<]*<\/sub>|<sup>[^<]*<\/sup>|!\[[^\]]*\]\([^)]+\)|\[[^\]]+\]\([^)]+\)|\*\*[^*]+\*\*|\*[^*]+\*|`[^`]+`)/g;
   let result = '';
   let previous = 0;
 
@@ -62,8 +88,12 @@ function inlineHtml(markdown: string): string {
     result += escapeHtml(markdown.slice(previous, offset));
     const image = part.match(/^!\[([^\]]*)\]\(([^)]+)\)$/);
     const link = part.match(/^\[([^\]]+)\]\(([^)]+)\)$/);
+    const video = part.match(/^@\[youtube\]\(([^)]+)\)$/);
     const markup = part.match(/^<(u|sub|sup)>(.*?)<\/\1>$/);
-    if (markup) {
+    if (video) {
+      const videoId = youtubeVideoId(video[1]);
+      result += videoId ? youtubePlaceholder(videoId) : escapeHtml(part);
+    } else if (markup) {
       result += `<${markup[1]}>${escapeHtml(markup[2])}</${markup[1]}>`;
     } else if (image) {
       const src = safeUrl(image[2]);
@@ -136,6 +166,14 @@ function markdownToHtml(markdown: string): string {
       continue;
     }
 
+    const video = line.match(/^@\[youtube\]\(([^)]+)\)$/);
+    if (video) {
+      const videoId = youtubeVideoId(video[1]);
+      blocks.push(videoId ? youtubePlaceholder(videoId) : `<p>${escapeHtml(line)}</p>`);
+      index += 1;
+      continue;
+    }
+
     const image = line.match(/^!\[([^\]]*)\]\(([^)]+)\)$/);
     if (image) {
       const src = safeUrl(image[2]);
@@ -172,19 +210,32 @@ function markdownToHtml(markdown: string): string {
     while (
       index < lines.length &&
       lines[index].trim() &&
-      !/^(#{1,3}\s|>\s?|[-*]\s+|\d+[.)]\s+|!\[)/.test(lines[index].trim())
+      !/^(#{1,3}\s|>\s?|[-*]\s+|\d+[.)]\s+|!\[|@\[youtube\]\()/.test(lines[index].trim())
     ) {
       paragraph.push(lines[index++].trim());
     }
-    blocks.push(`<p>${inlineHtml(paragraph.join(' '))}</p>`);
+    for (const part of paragraph.join(' ').split(/(@\[youtube\]\([^)]+\))/g)) {
+      if (!part.trim()) continue;
+      const inlineVideo = part.match(/^@\[youtube\]\(([^)]+)\)$/);
+      const videoId = inlineVideo ? youtubeVideoId(inlineVideo[1]) : null;
+      blocks.push(videoId ? youtubePlaceholder(videoId) : `<p>${inlineHtml(part.trim())}</p>`);
+    }
   }
 
+  if (blocks.at(-1)?.startsWith('<span contenteditable="false" data-youtube-video=')) {
+    blocks.push('<p><br></p>');
+  }
   return blocks.join('');
 }
 
 function serializeInline(node: Node): string {
   if (node.nodeType === Node.TEXT_NODE) return node.textContent ?? '';
   if (!(node instanceof HTMLElement)) return '';
+  const videoUrl = node.getAttribute('data-youtube-video');
+  if (videoUrl) {
+    const videoId = youtubeVideoId(videoUrl);
+    return videoId ? `@[youtube](https://www.youtube.com/watch?v=${videoId})` : '';
+  }
   if (node.tagName === 'IMG') {
     const src = safeUrl(node.getAttribute('src') ?? '');
     return src ? `![${node.getAttribute('alt') ?? ''}](${src})` : '';
@@ -207,6 +258,7 @@ function serializeInline(node: Node): string {
 function serializeBlock(node: Node): string {
   if (node.nodeType === Node.TEXT_NODE) return node.textContent?.trim() ?? '';
   if (!(node instanceof HTMLElement)) return '';
+  if (node.hasAttribute('data-youtube-video')) return serializeInline(node);
   const content = Array.from(node.childNodes).map(serializeInline).join('').trim();
   if (node.tagName === 'H1' || node.tagName === 'H2') return content ? `## ${content}` : '';
   if (node.tagName === 'H3') return content ? `### ${content}` : '';
@@ -254,7 +306,8 @@ function serializeEditor(editor: HTMLDivElement): string {
   return Array.from(editor.childNodes)
     .map(serializeBlock)
     .join('\n\n')
-    .replace(/\n{3,}/g, '\n\n');
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
 }
 
 export function RichMarkdownEditor({
@@ -322,6 +375,18 @@ export function RichMarkdownEditor({
     rememberSelection();
   };
 
+  const focusParagraph = (paragraph: HTMLElement) => {
+    const selection = window.getSelection();
+    if (!selection) return;
+    editor.current?.focus();
+    const range = document.createRange();
+    range.selectNodeContents(paragraph);
+    range.collapse(true);
+    selection.removeAllRanges();
+    selection.addRange(range);
+    savedRange.current = range.cloneRange();
+  };
+
   const runCommand = (command: string, argument?: string) => {
     restoreSelection();
     document.execCommand(command, false, argument);
@@ -342,6 +407,60 @@ export function RichMarkdownEditor({
     } else {
       document.execCommand('insertHTML', false, `<a href="${escapeHtml(safeHref)}">Link text</a>`);
     }
+    commit();
+  };
+
+  const addYoutubeVideo = () => {
+    const url = window.prompt('Paste a YouTube video link');
+    if (!url?.trim()) return;
+    const videoId = youtubeVideoId(url);
+    if (!videoId) {
+      window.alert('Enter a valid YouTube watch, share, Shorts, or embed link.');
+      return;
+    }
+    const element = editor.current;
+    const selection = restoreSelection();
+    if (!element || !selection?.rangeCount) return;
+    const range = selection.getRangeAt(0);
+    range.deleteContents();
+
+    const template = document.createElement('template');
+    template.innerHTML = youtubePlaceholder(videoId);
+    const video = template.content.firstElementChild;
+    if (!(video instanceof HTMLElement)) return;
+
+    let block: Node | null = range.startContainer;
+    while (block && block !== element && block.parentNode !== element) block = block.parentNode;
+
+    let reference: Node | null = null;
+    let remainder: DocumentFragment | null = null;
+    if (
+      block instanceof HTMLElement &&
+      block.parentNode === element &&
+      ['P', 'DIV', 'H1', 'H2', 'H3'].includes(block.tagName)
+    ) {
+      const after = document.createRange();
+      after.setStart(range.startContainer, range.startOffset);
+      after.setEnd(block, block.childNodes.length);
+      remainder = after.extractContents();
+      reference = block.nextSibling;
+      if (!serializeBlock(block)) block.remove();
+    } else if (block === element) {
+      reference = element.childNodes[range.startOffset] ?? null;
+    } else if (block?.parentNode === element) {
+      reference = block.nextSibling;
+    }
+
+    element.insertBefore(video, reference);
+    const paragraph = document.createElement('p');
+    paragraph.appendChild(document.createElement('br'));
+    element.insertBefore(paragraph, video.nextSibling);
+    if (remainder && Array.from(remainder.childNodes).map(serializeInline).join('').trim()) {
+      const trailingParagraph = document.createElement('p');
+      trailingParagraph.appendChild(remainder);
+      element.insertBefore(trailingParagraph, paragraph.nextSibling);
+    }
+    focusParagraph(paragraph);
     commit();
   };
 
@@ -461,6 +580,7 @@ export function RichMarkdownEditor({
         )}
         <span className="mx-1 h-6 border-l" aria-hidden="true" />
         {toolbarButton('Add link', <Link2 className="size-4" />, addLink)}
+        {toolbarButton('Insert YouTube video', <Video className="size-4" />, addYoutubeVideo)}
         {toolbarButton(
           uploading ? 'Uploading image' : 'Insert image',
           <ImagePlus className="size-4" />,
@@ -504,6 +624,28 @@ export function RichMarkdownEditor({
         onFocus={rememberSelection}
         onClick={(event) => {
           const target = event.target;
+          if (target instanceof Element) {
+            const action = target.closest<HTMLElement>('[data-video-action]');
+            const video = action?.closest<HTMLElement>('[data-youtube-video]');
+            if (action && video && editor.current?.contains(video)) {
+              if (action.dataset.videoAction === 'remove') {
+                const next = video.nextElementSibling;
+                video.remove();
+                if (next instanceof HTMLParagraphElement) focusParagraph(next);
+                commit();
+              } else if (action.dataset.videoAction === 'write-below') {
+                let paragraph = video.nextElementSibling;
+                if (!(paragraph instanceof HTMLParagraphElement) || serializeBlock(paragraph)) {
+                  paragraph = document.createElement('p');
+                  paragraph.appendChild(document.createElement('br'));
+                  video.after(paragraph);
+                  commit();
+                }
+                focusParagraph(paragraph as HTMLParagraphElement);
+              }
+              return;
+            }
+          }
           if (target instanceof HTMLImageElement) {
             setSelectedImage(target);
             setImageAlt(target.alt);
