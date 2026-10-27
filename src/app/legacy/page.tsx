@@ -349,7 +349,8 @@ export default function LegacyPage(): React.JSX.Element {
       description="Import external history, then activate remaining months under admin-approved payouts"
     >
       <div className="mb-6 rounded-2xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
-        Past payments were made outside Playtives and are recorded without wallet credits. Only verified future months enter the normal distribution approval flow.
+        Past payments were made outside Playtives and are recorded without wallet credits. Only
+        verified future months enter the normal distribution approval flow.
       </div>
       <nav
         aria-label="Legacy ownership sections"
@@ -599,7 +600,11 @@ function PositionForm({
         </div>
       )}
       <div>
-        <AssignmentFieldLabel htmlFor="legacy-opportunity" topic="opportunity" onHelp={setHelpTopic}>
+        <AssignmentFieldLabel
+          htmlFor="legacy-opportunity"
+          topic="opportunity"
+          onHelp={setHelpTopic}
+        >
           Opportunity
         </AssignmentFieldLabel>
         <select
@@ -610,7 +615,11 @@ function PositionForm({
           onChange={(event) => {
             setOpportunityId(event.target.value);
             setFirstCycle('1');
-            setLastCycle(String(opportunities.find((item) => item._id === event.target.value)?.totalCycles ?? ''));
+            setLastCycle(
+              String(
+                opportunities.find((item) => item._id === event.target.value)?.totalCycles ?? '',
+              ),
+            );
           }}
         >
           <option value="">Select opportunity</option>
@@ -623,24 +632,69 @@ function PositionForm({
       </div>
       {selectedOpportunity && (
         <p className="rounded-xl bg-muted/50 p-3 text-xs text-muted-foreground">
-          Opportunity starts {dateOnly(selectedOpportunity.startDate)} · {selectedOpportunity.totalCycles} monthly cycles · {selectedOpportunity.totalUnits} total units. Past months are generated on the shared opportunity calendar.
+          Opportunity starts {dateOnly(selectedOpportunity.startDate)} ·{' '}
+          {selectedOpportunity.totalCycles} monthly cycles · {selectedOpportunity.totalUnits} total
+          units. Past months are generated on the shared opportunity calendar.
         </p>
       )}
       <div className="grid gap-3 sm:grid-cols-2">
         <div>
-          <AssignmentFieldLabel htmlFor="legacy-units" topic="units" onHelp={setHelpTopic}>Units owned</AssignmentFieldLabel>
-          <input id="legacy-units" className={field} type="number" min="1" max={selectedOpportunity?.totalUnits} required value={units} onChange={(event) => setUnits(event.target.value)} />
+          <AssignmentFieldLabel htmlFor="legacy-units" topic="units" onHelp={setHelpTopic}>
+            Units owned
+          </AssignmentFieldLabel>
+          <input
+            id="legacy-units"
+            className={field}
+            type="number"
+            min="1"
+            max={selectedOpportunity?.totalUnits}
+            required
+            value={units}
+            onChange={(event) => setUnits(event.target.value)}
+          />
         </div>
         <div>
-          <AssignmentFieldLabel htmlFor="legacy-first-cycle" topic="firstCycle" onHelp={setHelpTopic}>First participating month</AssignmentFieldLabel>
-          <input id="legacy-first-cycle" className={field} type="number" min="1" max={selectedOpportunity?.totalCycles} required value={firstCycle} onChange={(event) => setFirstCycle(event.target.value)} />
+          <AssignmentFieldLabel
+            htmlFor="legacy-first-cycle"
+            topic="firstCycle"
+            onHelp={setHelpTopic}
+          >
+            First participating month
+          </AssignmentFieldLabel>
+          <input
+            id="legacy-first-cycle"
+            className={field}
+            type="number"
+            min="1"
+            max={selectedOpportunity?.totalCycles}
+            required
+            value={firstCycle}
+            onChange={(event) => setFirstCycle(event.target.value)}
+          />
         </div>
         <div>
-          <AssignmentFieldLabel htmlFor="legacy-last-cycle" topic="lastCycle" onHelp={setHelpTopic}>Last participating month</AssignmentFieldLabel>
-          <input id="legacy-last-cycle" className={field} type="number" min={firstCycle} max={selectedOpportunity?.totalCycles} required value={lastCycle} onChange={(event) => setLastCycle(event.target.value)} />
+          <AssignmentFieldLabel htmlFor="legacy-last-cycle" topic="lastCycle" onHelp={setHelpTopic}>
+            Last participating month
+          </AssignmentFieldLabel>
+          <input
+            id="legacy-last-cycle"
+            className={field}
+            type="number"
+            min={firstCycle}
+            max={selectedOpportunity?.totalCycles}
+            required
+            value={lastCycle}
+            onChange={(event) => setLastCycle(event.target.value)}
+          />
         </div>
         <div>
-          <AssignmentFieldLabel htmlFor="legacy-member-code" topic="memberCode" onHelp={setHelpTopic}>Source investor ID (member code)</AssignmentFieldLabel>
+          <AssignmentFieldLabel
+            htmlFor="legacy-member-code"
+            topic="memberCode"
+            onHelp={setHelpTopic}
+          >
+            Source investor ID (member code)
+          </AssignmentFieldLabel>
           <input
             id="legacy-member-code"
             className={field}
@@ -650,7 +704,13 @@ function PositionForm({
           />
         </div>
         <div>
-          <AssignmentFieldLabel htmlFor="legacy-position-id" topic="positionId" onHelp={setHelpTopic}>Source position ID</AssignmentFieldLabel>
+          <AssignmentFieldLabel
+            htmlFor="legacy-position-id"
+            topic="positionId"
+            onHelp={setHelpTopic}
+          >
+            Source position ID
+          </AssignmentFieldLabel>
           <input
             id="legacy-position-id"
             className={field}
@@ -660,7 +720,9 @@ function PositionForm({
           />
         </div>
         <div>
-          <AssignmentFieldLabel htmlFor="legacy-principal" topic="principal" onHelp={setHelpTopic}>Original principal (NGN)</AssignmentFieldLabel>
+          <AssignmentFieldLabel htmlFor="legacy-principal" topic="principal" onHelp={setHelpTopic}>
+            Original principal (NGN)
+          </AssignmentFieldLabel>
           <input
             id="legacy-principal"
             className={field}
@@ -673,7 +735,9 @@ function PositionForm({
           />
         </div>
         <div>
-          <AssignmentFieldLabel htmlFor="legacy-rate" topic="rate" onHelp={setHelpTopic}>Return rate % (optional)</AssignmentFieldLabel>
+          <AssignmentFieldLabel htmlFor="legacy-rate" topic="rate" onHelp={setHelpTopic}>
+            Return rate % (optional)
+          </AssignmentFieldLabel>
           <input
             id="legacy-rate"
             className={field}
@@ -685,7 +749,9 @@ function PositionForm({
           />
         </div>
         <div>
-          <AssignmentFieldLabel htmlFor="legacy-fixed" topic="fixed" onHelp={setHelpTopic}>Fixed return per period (optional)</AssignmentFieldLabel>
+          <AssignmentFieldLabel htmlFor="legacy-fixed" topic="fixed" onHelp={setHelpTopic}>
+            Fixed return per period (optional)
+          </AssignmentFieldLabel>
           <input
             id="legacy-fixed"
             className={field}
@@ -697,7 +763,13 @@ function PositionForm({
           />
         </div>
         <div>
-          <AssignmentFieldLabel htmlFor="legacy-preference" topic="preference" onHelp={setHelpTopic}>Preference</AssignmentFieldLabel>
+          <AssignmentFieldLabel
+            htmlFor="legacy-preference"
+            topic="preference"
+            onHelp={setHelpTopic}
+          >
+            Preference
+          </AssignmentFieldLabel>
           <select
             id="legacy-preference"
             className={field}
@@ -753,26 +825,36 @@ function LinkPositionForm({
       notify.error('Map every existing period to its matching opportunity month');
       return;
     }
-    if (!window.confirm('Link this record to the selected opportunity calendar? Existing payments will stay external.'))
+    if (
+      !window.confirm(
+        'Link this record to the selected opportunity calendar? Existing payments will stay external.',
+      )
+    )
       return;
-    void save(() => legacyService.linkPosition(position._id, {
-      opportunityId,
-      units: Number(units),
-      firstCycle: Number(firstCycle),
-      lastCycle: Number(lastCycle),
-      periodMappings: position.periods.map((period) => ({
-        periodId: period._id,
-        cycleNumber: Number(mappings[period._id]),
-      })),
-      revision: position.revision,
-    }));
+    void save(() =>
+      legacyService.linkPosition(position._id, {
+        opportunityId,
+        units: Number(units),
+        firstCycle: Number(firstCycle),
+        lastCycle: Number(lastCycle),
+        periodMappings: position.periods.map((period) => ({
+          periodId: period._id,
+          cycleNumber: Number(mappings[period._id]),
+        })),
+        revision: position.revision,
+      }),
+    );
   };
   return (
-    <form onSubmit={submit} className="mt-5 space-y-3 rounded-xl border border-brand/30 bg-brand/5 p-4">
+    <form
+      onSubmit={submit}
+      className="mt-5 space-y-3 rounded-xl border border-brand/30 bg-brand/5 p-4"
+    >
       <h3 className="font-semibold">Link older record to a standard opportunity</h3>
       <p className="text-xs text-muted-foreground">
         Select the opportunity and exact participation months. Map each existing payment record
-        explicitly; its original date is retained for audit while the new calendar is shared by all members.
+        explicitly; its original date is retained for audit while the new calendar is shared by all
+        members.
       </p>
       <select
         className={field}
@@ -786,36 +868,88 @@ function LinkPositionForm({
         }}
       >
         <option value="">Select historical opportunity</option>
-        {opportunities.map((item) => <option key={item._id} value={item._id}>{item.title}</option>)}
+        {opportunities.map((item) => (
+          <option key={item._id} value={item._id}>
+            {item.title}
+          </option>
+        ))}
       </select>
       {selectedOpportunity && (
         <p className="text-xs text-muted-foreground">
-          Begins {dateOnly(selectedOpportunity.startDate)} · {selectedOpportunity.totalCycles} months · {selectedOpportunity.totalUnits} total units
+          Begins {dateOnly(selectedOpportunity.startDate)} · {selectedOpportunity.totalCycles}{' '}
+          months · {selectedOpportunity.totalUnits} total units
         </p>
       )}
       <div className="grid gap-3 sm:grid-cols-3">
-        <label className="text-sm">Units
-          <input className={field} type="number" min="1" max={selectedOpportunity?.totalUnits} required value={units} onChange={(event) => setUnits(event.target.value)} />
+        <label className="text-sm">
+          Units
+          <input
+            className={field}
+            type="number"
+            min="1"
+            max={selectedOpportunity?.totalUnits}
+            required
+            value={units}
+            onChange={(event) => setUnits(event.target.value)}
+          />
         </label>
-        <label className="text-sm">First month
-          <input className={field} type="number" min="1" max={selectedOpportunity?.totalCycles} required value={firstCycle} onChange={(event) => setFirstCycle(event.target.value)} />
+        <label className="text-sm">
+          First month
+          <input
+            className={field}
+            type="number"
+            min="1"
+            max={selectedOpportunity?.totalCycles}
+            required
+            value={firstCycle}
+            onChange={(event) => setFirstCycle(event.target.value)}
+          />
         </label>
-        <label className="text-sm">Last month
-          <input className={field} type="number" min="1" max={selectedOpportunity?.totalCycles} required value={lastCycle} onChange={(event) => setLastCycle(event.target.value)} />
+        <label className="text-sm">
+          Last month
+          <input
+            className={field}
+            type="number"
+            min="1"
+            max={selectedOpportunity?.totalCycles}
+            required
+            value={lastCycle}
+            onChange={(event) => setLastCycle(event.target.value)}
+          />
         </label>
       </div>
       {position.periods.map((period) => (
-        <label key={period._id} className="grid gap-2 text-sm sm:grid-cols-[1fr_12rem] sm:items-center">
-          <span>{period.label} · {dateOnly(period.dueAt)} · {period.status.replaceAll('_', ' ').toLowerCase()}</span>
-          <select className={field} required value={mappings[period._id] ?? ''} onChange={(event) => setMappings((current) => ({ ...current, [period._id]: event.target.value }))}>
+        <label
+          key={period._id}
+          className="grid gap-2 text-sm sm:grid-cols-[1fr_12rem] sm:items-center"
+        >
+          <span>
+            {period.label} · {dateOnly(period.dueAt)} ·{' '}
+            {period.status.replaceAll('_', ' ').toLowerCase()}
+          </span>
+          <select
+            className={field}
+            required
+            value={mappings[period._id] ?? ''}
+            onChange={(event) =>
+              setMappings((current) => ({ ...current, [period._id]: event.target.value }))
+            }
+          >
             <option value="">Map to month</option>
-            {Array.from({ length: selectedOpportunity?.totalCycles ?? 0 }, (_, index) => index + 1).map((cycle) => (
-              <option key={cycle} value={cycle}>Month {cycle}</option>
+            {Array.from(
+              { length: selectedOpportunity?.totalCycles ?? 0 },
+              (_, index) => index + 1,
+            ).map((cycle) => (
+              <option key={cycle} value={cycle}>
+                Month {cycle}
+              </option>
             ))}
           </select>
         </label>
       ))}
-      <button className={button} disabled={busy || !selectedOpportunity}>Link historical record</button>
+      <button className={button} disabled={busy || !selectedOpportunity}>
+        Link historical record
+      </button>
     </form>
   );
 }
@@ -891,7 +1025,8 @@ function PositionEditor({
           </h2>
           <p className="text-sm text-muted-foreground">
             {position.opportunityId.title} · {money(position.principalMinorUnits, currency)}{' '}
-            principal · {position.units || 'Unknown'} units · months {position.firstCycle ?? '?'}–{position.lastCycle ?? '?'} · {position.preference.replaceAll('_', ' ')}
+            principal · {position.units || 'Unknown'} units · months {position.firstCycle ?? '?'}–
+            {position.lastCycle ?? '?'} · {position.preference.replaceAll('_', ' ')}
           </p>
         </div>
         <button type="button" className="text-sm text-brand" onClick={close}>
@@ -899,163 +1034,224 @@ function PositionEditor({
         </button>
       </div>
       <p className="mt-2 text-xs text-muted-foreground">
-        Participation starts {dateOnly(position.participationStartAt ?? position.startAt)} · Ends {dateOnly(position.endAt) || 'unconfirmed'} · Rate{' '}
-        {position.ratePercent ?? 'unconfirmed'}%
+        Participation starts {dateOnly(position.participationStartAt ?? position.startAt)} · Ends{' '}
+        {dateOnly(position.endAt) || 'unconfirmed'} · Rate {position.ratePercent ?? 'unconfirmed'}%
       </p>
       {isSuperAdmin && position.opportunityModel !== 'Opportunity' && !position.activatedAt && (
-        <LinkPositionForm position={position} opportunities={opportunities} busy={busy} save={save} />
+        <LinkPositionForm
+          position={position}
+          opportunities={opportunities}
+          busy={busy}
+          save={save}
+        />
       )}
       {position.activatedAt ? (
-        <p className="mt-4 rounded-xl bg-brand/10 p-3 text-sm font-semibold text-brand">Import activated. Historical payments remain external; remaining months use reviewed distributions.</p>
+        <p className="mt-4 rounded-xl bg-brand/10 p-3 text-sm font-semibold text-brand">
+          Import activated. Historical payments remain external; remaining months use reviewed
+          distributions.
+        </p>
       ) : (
         <div className="mt-4 rounded-xl border border-brand/30 bg-brand/5 p-4 text-sm">
-          <p>{position.activationStartedAt ? 'Activation is in progress. Retry activation to resume safely; edits are locked.' : 'Review every elapsed month and confirm any external capital return before activating. Activation never credits past payments to a wallet.'}</p>
-          {isSuperAdmin ? <button type="button" disabled={busy || position.opportunityModel !== 'Opportunity'} onClick={() => {
-            if (window.confirm('Activate this verified historical import and schedule only remaining months?'))
-              void save(() => legacyService.activatePosition(position._id, position.revision));
-          }} className={`${button} mt-3`}>Activate verified import</button> : null}
+          <p>
+            {position.activationStartedAt
+              ? 'Activation is in progress. Retry activation to resume safely; edits are locked.'
+              : 'Review every elapsed month and confirm any external capital return before activating. Activation never credits past payments to a wallet.'}
+          </p>
+          {isSuperAdmin ? (
+            <button
+              type="button"
+              disabled={busy || position.opportunityModel !== 'Opportunity'}
+              onClick={() => {
+                if (
+                  window.confirm(
+                    'Activate this verified historical import and schedule only remaining months?',
+                  )
+                )
+                  void save(() => legacyService.activatePosition(position._id, position.revision));
+              }}
+              className={`${button} mt-3`}
+            >
+              Activate verified import
+            </button>
+          ) : null}
         </div>
       )}
-      {isSuperAdmin && !position.activatedAt && !position.activationStartedAt && <TermsEditor position={position} busy={busy} save={save} />}
-      {isSuperAdmin && !position.activatedAt && !position.activationStartedAt && <div className="mt-5 grid gap-5 xl:grid-cols-2">
-        {position.opportunityModel !== 'Opportunity' && <form onSubmit={add} className="space-y-3 rounded-xl border p-4">
-          <h3 className="font-semibold">Add a monthly period</h3>
-          <p className="text-xs text-muted-foreground">
-            Add only periods supported by historical records. Leave return blank if terms are
-            unknown.
-          </p>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <label className="text-sm">
-              Trade or month label
+      {isSuperAdmin && !position.activatedAt && !position.activationStartedAt && (
+        <TermsEditor position={position} busy={busy} save={save} />
+      )}
+      {isSuperAdmin && !position.activatedAt && !position.activationStartedAt && (
+        <div className="mt-5 grid gap-5 xl:grid-cols-2">
+          {position.opportunityModel !== 'Opportunity' && (
+            <form onSubmit={add} className="space-y-3 rounded-xl border p-4">
+              <h3 className="font-semibold">Add a monthly period</h3>
+              <p className="text-xs text-muted-foreground">
+                Add only periods supported by historical records. Leave return blank if terms are
+                unknown.
+              </p>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <label className="text-sm">
+                  Trade or month label
+                  <input
+                    className={field}
+                    placeholder="e.g. T3 or Month 3"
+                    required
+                    value={label}
+                    onChange={(event) => setLabel(event.target.value)}
+                  />
+                </label>
+                <label className="text-sm">
+                  Period due date
+                  <input
+                    className={field}
+                    type="date"
+                    required
+                    value={dueAt}
+                    onChange={(event) => setDueAt(event.target.value)}
+                  />
+                </label>
+                <label className="text-sm">
+                  Principal override
+                  <input
+                    className={field}
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    placeholder="Use position principal"
+                    value={principal}
+                    onChange={(event) => setPrincipal(event.target.value)}
+                  />
+                </label>
+                <label className="text-sm">
+                  Rate override %
+                  <input
+                    className={field}
+                    type="number"
+                    min="0"
+                    step="0.0001"
+                    placeholder="Use position rate"
+                    value={rate}
+                    onChange={(event) => setRate(event.target.value)}
+                  />
+                </label>
+                <label className="text-sm sm:col-span-2">
+                  Expected return override ({currency})
+                  <input
+                    className={field}
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    placeholder="Calculate from rate or leave unconfirmed"
+                    value={expected}
+                    onChange={(event) => setExpected(event.target.value)}
+                  />
+                </label>
+              </div>
               <input
                 className={field}
-                placeholder="e.g. T3 or Month 3"
-                required
-                value={label}
-                onChange={(event) => setLabel(event.target.value)}
+                placeholder="Reason for expected-return override (if different)"
+                aria-label="Period override reason"
+                value={periodNote}
+                onChange={(event) => setPeriodNote(event.target.value)}
               />
-            </label>
-            <label className="text-sm">
-              Period due date
-              <input
-                className={field}
-                type="date"
-                required
-                value={dueAt}
-                onChange={(event) => setDueAt(event.target.value)}
-              />
-            </label>
-            <label className="text-sm">
-              Principal override
-              <input
-                className={field}
-                type="number"
-                min="0"
-                step="0.01"
-                placeholder="Use position principal"
-                value={principal}
-                onChange={(event) => setPrincipal(event.target.value)}
-              />
-            </label>
-            <label className="text-sm">
-              Rate override %
-              <input
-                className={field}
-                type="number"
-                min="0"
-                step="0.0001"
-                placeholder="Use position rate"
-                value={rate}
-                onChange={(event) => setRate(event.target.value)}
-              />
-            </label>
-            <label className="text-sm sm:col-span-2">
-              Expected return override ({currency})
-              <input
-                className={field}
-                type="number"
-                min="0"
-                step="0.01"
-                placeholder="Calculate from rate or leave unconfirmed"
-                value={expected}
-                onChange={(event) => setExpected(event.target.value)}
-              />
-            </label>
-          </div>
-          <input
-            className={field}
-            placeholder="Reason for expected-return override (if different)"
-            aria-label="Period override reason"
-            value={periodNote}
-            onChange={(event) => setPeriodNote(event.target.value)}
-          />
-          <button className={button} disabled={busy}>
-            Add unverified period
-          </button>
-        </form>}
-        <form onSubmit={update} className="space-y-3 rounded-xl border p-4">
-          <h3 className="font-semibold">Position and capital exit</h3>
-          <div>
-            <AssignmentFieldLabel htmlFor="legacy-position-status" topic="status" onHelp={setHelpTopic}>Status</AssignmentFieldLabel>
-            <select
-              id="legacy-position-status"
-              className={field}
-              value={status}
-              onChange={(event) => setStatus(event.target.value as LegacyPosition['status'])}
-            >
-              <option value="UNVERIFIED">Unverified</option>
-              <option value="ACTIVE">Active</option>
-              <option value="COMPLETED">Completed</option>
-              <option value="EXITED">Exited</option>
-            </select>
-          </div>
-          <div className="grid gap-3 sm:grid-cols-2">
+              <button className={button} disabled={busy}>
+                Add unverified period
+              </button>
+            </form>
+          )}
+          <form onSubmit={update} className="space-y-3 rounded-xl border p-4">
+            <h3 className="font-semibold">Position and capital exit</h3>
             <div>
-              <AssignmentFieldLabel htmlFor="legacy-capital-returned" topic="capital" onHelp={setHelpTopic}>Capital returned ({currency})</AssignmentFieldLabel>
-              <input
-                id="legacy-capital-returned"
+              <AssignmentFieldLabel
+                htmlFor="legacy-position-status"
+                topic="status"
+                onHelp={setHelpTopic}
+              >
+                Status
+              </AssignmentFieldLabel>
+              <select
+                id="legacy-position-status"
                 className={field}
-                type="number"
-                min="0"
-                step="0.01"
-                value={capital}
-                onChange={(event) => setCapital(event.target.value)}
+                value={status}
+                onChange={(event) => setStatus(event.target.value as LegacyPosition['status'])}
+              >
+                <option value="UNVERIFIED">Unverified</option>
+                <option value="ACTIVE">Active</option>
+                <option value="COMPLETED">Completed</option>
+                <option value="EXITED">Exited</option>
+              </select>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div>
+                <AssignmentFieldLabel
+                  htmlFor="legacy-capital-returned"
+                  topic="capital"
+                  onHelp={setHelpTopic}
+                >
+                  Capital returned ({currency})
+                </AssignmentFieldLabel>
+                <input
+                  id="legacy-capital-returned"
+                  className={field}
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={capital}
+                  onChange={(event) => setCapital(event.target.value)}
+                />
+              </div>
+              <div>
+                <AssignmentFieldLabel
+                  htmlFor="legacy-capital-date"
+                  topic="capitalDate"
+                  onHelp={setHelpTopic}
+                >
+                  Capital return date
+                </AssignmentFieldLabel>
+                <input
+                  id="legacy-capital-date"
+                  className={field}
+                  type="date"
+                  value={capitalDate}
+                  onChange={(event) => setCapitalDate(event.target.value)}
+                />
+              </div>
+            </div>
+            <div>
+              <AssignmentFieldLabel
+                htmlFor="legacy-capital-reference"
+                topic="capitalReference"
+                onHelp={setHelpTopic}
+              >
+                Capital return payment reference
+              </AssignmentFieldLabel>
+              <input
+                id="legacy-capital-reference"
+                className={field}
+                value={capitalReference}
+                onChange={(event) => setCapitalReference(event.target.value)}
               />
             </div>
             <div>
-              <AssignmentFieldLabel htmlFor="legacy-capital-date" topic="capitalDate" onHelp={setHelpTopic}>Capital return date</AssignmentFieldLabel>
-              <input
-                id="legacy-capital-date"
+              <AssignmentFieldLabel
+                htmlFor="legacy-internal-note"
+                topic="internalNote"
+                onHelp={setHelpTopic}
+              >
+                Internal note
+              </AssignmentFieldLabel>
+              <textarea
+                id="legacy-internal-note"
                 className={field}
-                type="date"
-                value={capitalDate}
-                onChange={(event) => setCapitalDate(event.target.value)}
+                value={note}
+                onChange={(event) => setNote(event.target.value)}
               />
             </div>
-          </div>
-          <div>
-            <AssignmentFieldLabel htmlFor="legacy-capital-reference" topic="capitalReference" onHelp={setHelpTopic}>Capital return payment reference</AssignmentFieldLabel>
-            <input
-              id="legacy-capital-reference"
-              className={field}
-              value={capitalReference}
-              onChange={(event) => setCapitalReference(event.target.value)}
-            />
-          </div>
-          <div>
-            <AssignmentFieldLabel htmlFor="legacy-internal-note" topic="internalNote" onHelp={setHelpTopic}>Internal note</AssignmentFieldLabel>
-            <textarea
-              id="legacy-internal-note"
-              className={field}
-              value={note}
-              onChange={(event) => setNote(event.target.value)}
-            />
-          </div>
-          <button className={button} disabled={busy}>
-            Save position status
-          </button>
-        </form>
-      </div>}
+            <button className={button} disabled={busy}>
+              Save position status
+            </button>
+          </form>
+        </div>
+      )}
       <LegacyHelpDialog topic={helpTopic} onClose={() => setHelpTopic(null)} />
       <h3 className="mb-3 mt-6 font-semibold">Monthly return ledger</h3>
       <div className="grid gap-3">
@@ -1134,132 +1330,180 @@ function TermsEditor({
   return (
     <>
       <details className="mt-5 rounded-xl border p-4">
-      <summary className="cursor-pointer text-sm font-semibold">
-        Correct position terms
-        <button
-          type="button"
-          aria-label="About correcting position terms"
-          onClick={(event) => {
-            event.preventDefault();
-            event.stopPropagation();
-            setHelpTopic('terms');
-          }}
-          className="ml-2 inline-grid size-6 align-middle place-items-center rounded-full text-muted-foreground hover:bg-muted hover:text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
-        >
-          <Info className="size-4" aria-hidden="true" />
-        </button>
-      </summary>
-      <form onSubmit={submit} className="mt-4 space-y-3">
-        <p className="text-xs text-muted-foreground">
-          Existing monthly periods retain their reviewed principal and return snapshots. Correct
-          those periods separately if needed.
-        </p>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <div>
-            <AssignmentFieldLabel htmlFor="legacy-terms-principal" topic="termsPrincipal" onHelp={setHelpTopic}>Principal</AssignmentFieldLabel>
-            <input
-              id="legacy-terms-principal"
-              className={field}
-              type="number"
-              min="0.01"
-              step="0.01"
-              required
-              value={principal}
-              onChange={(event) => setPrincipal(event.target.value)}
-            />
+        <summary className="cursor-pointer text-sm font-semibold">
+          Correct position terms
+          <button
+            type="button"
+            aria-label="About correcting position terms"
+            onClick={(event) => {
+              event.preventDefault();
+              event.stopPropagation();
+              setHelpTopic('terms');
+            }}
+            className="ml-2 inline-grid size-6 place-items-center rounded-full align-middle text-muted-foreground hover:bg-muted hover:text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+          >
+            <Info className="size-4" aria-hidden="true" />
+          </button>
+        </summary>
+        <form onSubmit={submit} className="mt-4 space-y-3">
+          <p className="text-xs text-muted-foreground">
+            Existing monthly periods retain their reviewed principal and return snapshots. Correct
+            those periods separately if needed.
+          </p>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <div>
+              <AssignmentFieldLabel
+                htmlFor="legacy-terms-principal"
+                topic="termsPrincipal"
+                onHelp={setHelpTopic}
+              >
+                Principal
+              </AssignmentFieldLabel>
+              <input
+                id="legacy-terms-principal"
+                className={field}
+                type="number"
+                min="0.01"
+                step="0.01"
+                required
+                value={principal}
+                onChange={(event) => setPrincipal(event.target.value)}
+              />
+            </div>
+            <div>
+              <AssignmentFieldLabel
+                htmlFor="legacy-terms-rate"
+                topic="termsRate"
+                onHelp={setHelpTopic}
+              >
+                Rate %
+              </AssignmentFieldLabel>
+              <input
+                id="legacy-terms-rate"
+                className={field}
+                type="number"
+                min="0"
+                step="0.0001"
+                value={rate}
+                onChange={(event) => setRate(event.target.value)}
+              />
+            </div>
+            <div>
+              <AssignmentFieldLabel
+                htmlFor="legacy-terms-fixed"
+                topic="termsFixed"
+                onHelp={setHelpTopic}
+              >
+                Fixed return
+              </AssignmentFieldLabel>
+              <input
+                id="legacy-terms-fixed"
+                className={field}
+                type="number"
+                min="0"
+                step="0.01"
+                value={fixed}
+                onChange={(event) => setFixed(event.target.value)}
+              />
+            </div>
+            <div>
+              <AssignmentFieldLabel
+                htmlFor="legacy-terms-duration"
+                topic="termsDuration"
+                onHelp={setHelpTopic}
+              >
+                Duration months
+              </AssignmentFieldLabel>
+              <input
+                id="legacy-terms-duration"
+                className={field}
+                type="number"
+                min="1"
+                max="120"
+                disabled={position.opportunityModel === 'Opportunity'}
+                value={duration}
+                onChange={(event) => setDuration(event.target.value)}
+              />
+            </div>
+            <div>
+              <AssignmentFieldLabel
+                htmlFor="legacy-terms-start"
+                topic="termsStart"
+                onHelp={setHelpTopic}
+              >
+                Start date
+              </AssignmentFieldLabel>
+              <input
+                id="legacy-terms-start"
+                className={field}
+                type="date"
+                required
+                disabled={position.opportunityModel === 'Opportunity'}
+                value={startAt}
+                onChange={(event) => setStartAt(event.target.value)}
+              />
+            </div>
+            <div>
+              <AssignmentFieldLabel
+                htmlFor="legacy-terms-end"
+                topic="termsEnd"
+                onHelp={setHelpTopic}
+              >
+                End date
+              </AssignmentFieldLabel>
+              <input
+                id="legacy-terms-end"
+                className={field}
+                type="date"
+                disabled={position.opportunityModel === 'Opportunity'}
+                value={endAt}
+                onChange={(event) => setEndAt(event.target.value)}
+              />
+            </div>
+            <div>
+              <AssignmentFieldLabel
+                htmlFor="legacy-terms-preference"
+                topic="termsPreference"
+                onHelp={setHelpTopic}
+              >
+                Preference
+              </AssignmentFieldLabel>
+              <select
+                id="legacy-terms-preference"
+                className={field}
+                value={preference}
+                onChange={(event) =>
+                  setPreference(event.target.value as LegacyPosition['preference'])
+                }
+              >
+                <option value="UNKNOWN">Unknown</option>
+                <option value="PAY_TO_ACCOUNT">Pay to account</option>
+                <option value="ROLL_OVER">Roll over</option>
+              </select>
+            </div>
           </div>
           <div>
-            <AssignmentFieldLabel htmlFor="legacy-terms-rate" topic="termsRate" onHelp={setHelpTopic}>Rate %</AssignmentFieldLabel>
-            <input
-              id="legacy-terms-rate"
-              className={field}
-              type="number"
-              min="0"
-              step="0.0001"
-              value={rate}
-              onChange={(event) => setRate(event.target.value)}
-            />
-          </div>
-          <div>
-            <AssignmentFieldLabel htmlFor="legacy-terms-fixed" topic="termsFixed" onHelp={setHelpTopic}>Fixed return</AssignmentFieldLabel>
-            <input
-              id="legacy-terms-fixed"
-              className={field}
-              type="number"
-              min="0"
-              step="0.01"
-              value={fixed}
-              onChange={(event) => setFixed(event.target.value)}
-            />
-          </div>
-          <div>
-            <AssignmentFieldLabel htmlFor="legacy-terms-duration" topic="termsDuration" onHelp={setHelpTopic}>Duration months</AssignmentFieldLabel>
-            <input
-              id="legacy-terms-duration"
-              className={field}
-              type="number"
-              min="1"
-              max="120"
-              disabled={position.opportunityModel === 'Opportunity'}
-              value={duration}
-              onChange={(event) => setDuration(event.target.value)}
-            />
-          </div>
-          <div>
-            <AssignmentFieldLabel htmlFor="legacy-terms-start" topic="termsStart" onHelp={setHelpTopic}>Start date</AssignmentFieldLabel>
-            <input
-              id="legacy-terms-start"
-              className={field}
-              type="date"
-              required
-              disabled={position.opportunityModel === 'Opportunity'}
-              value={startAt}
-              onChange={(event) => setStartAt(event.target.value)}
-            />
-          </div>
-          <div>
-            <AssignmentFieldLabel htmlFor="legacy-terms-end" topic="termsEnd" onHelp={setHelpTopic}>End date</AssignmentFieldLabel>
-            <input
-              id="legacy-terms-end"
-              className={field}
-              type="date"
-              disabled={position.opportunityModel === 'Opportunity'}
-              value={endAt}
-              onChange={(event) => setEndAt(event.target.value)}
-            />
-          </div>
-          <div>
-            <AssignmentFieldLabel htmlFor="legacy-terms-preference" topic="termsPreference" onHelp={setHelpTopic}>Preference</AssignmentFieldLabel>
-            <select
-              id="legacy-terms-preference"
-              className={field}
-              value={preference}
-              onChange={(event) =>
-                setPreference(event.target.value as LegacyPosition['preference'])
-              }
+            <AssignmentFieldLabel
+              htmlFor="legacy-terms-reason"
+              topic="termsReason"
+              onHelp={setHelpTopic}
             >
-              <option value="UNKNOWN">Unknown</option>
-              <option value="PAY_TO_ACCOUNT">Pay to account</option>
-              <option value="ROLL_OVER">Roll over</option>
-            </select>
+              Reason for correcting terms
+            </AssignmentFieldLabel>
+            <input
+              id="legacy-terms-reason"
+              className={field}
+              required
+              minLength={3}
+              placeholder="What source confirms this correction?"
+              value={reason}
+              onChange={(event) => setReason(event.target.value)}
+            />
           </div>
-        </div>
-        <div>
-          <AssignmentFieldLabel htmlFor="legacy-terms-reason" topic="termsReason" onHelp={setHelpTopic}>Reason for correcting terms</AssignmentFieldLabel>
-          <input
-            id="legacy-terms-reason"
-            className={field}
-            required
-            minLength={3}
-            placeholder="What source confirms this correction?"
-            value={reason}
-            onChange={(event) => setReason(event.target.value)}
-          />
-        </div>
-        <button className={button} disabled={busy}>
-          Save corrected terms
-        </button>
-      </form>
+          <button className={button} disabled={busy}>
+            Save corrected terms
+          </button>
+        </form>
       </details>
       <LegacyHelpDialog topic={helpTopic} onClose={() => setHelpTopic(null)} />
     </>
@@ -1288,6 +1532,7 @@ function PeriodEditor({
   const [expected, setExpected] = useState(
     period.expectedReturnMinorUnits == null ? '' : String(period.expectedReturnMinorUnits / 100),
   );
+  const helpText = 'mt-1 block text-xs leading-5 text-muted-foreground';
   const submit = (event: FormEvent) => {
     event.preventDefault();
     void save(() =>
@@ -1313,11 +1558,20 @@ function PeriodEditor({
           · {dateOnly(period.dueAt)}
         </strong>
         <span className="text-sm text-muted-foreground">
-          Expected {money(period.expectedReturnMinorUnits, position.opportunityId.currency ?? 'NGN')} ·{' '}
+          Expected{' '}
+          {money(period.expectedReturnMinorUnits, position.opportunityId.currency ?? 'NGN')} ·{' '}
           {period.ratePercent ?? 'no rate'}%
         </span>
       </div>
-      <fieldset disabled={readOnly} className="mt-3 grid gap-3 disabled:opacity-70 sm:grid-cols-2 lg:grid-cols-3">
+      <p className="mt-2 rounded-lg bg-muted/60 px-3 py-2 text-xs leading-5 text-muted-foreground">
+        Record what happened for this month using the original external records. Amounts are in
+        naira (NGN). Historical payments are recorded for the portfolio only; saving this ledger
+        does not credit a Playtives wallet.
+      </p>
+      <fieldset
+        disabled={readOnly}
+        className="mt-3 grid gap-3 disabled:opacity-70 sm:grid-cols-2 lg:grid-cols-3"
+      >
         <label className="text-sm">
           Corrected expected return
           <input
@@ -1329,6 +1583,10 @@ function PeriodEditor({
             value={expected}
             onChange={(event) => setExpected(event.target.value)}
           />
+          <span className={helpText}>
+            Expected profit for this month, in NGN. Change only when source terms confirm a
+            different amount; explain the correction in Evidence note.
+          </span>
         </label>
         <label className="text-sm">
           Actual status
@@ -1343,6 +1601,10 @@ function PeriodEditor({
             <option value="PAID">Paid to account</option>
             <option value="ROLLED_OVER">Rolled over</option>
           </select>
+          <span className={helpText}>
+            Choose Unverified while checking records, Confirmed unpaid when no return was made,
+            Partially settled for a split or incomplete return, or the matching completed outcome.
+          </span>
         </label>
         <label className="text-sm">
           Paid to account
@@ -1354,6 +1616,9 @@ function PeriodEditor({
             value={paid}
             onChange={(event) => setPaid(event.target.value)}
           />
+          <span className={helpText}>
+            Amount actually paid to the member outside Playtives. Enter 0 if none was paid.
+          </span>
         </label>
         <label className="text-sm">
           Rolled over
@@ -1365,6 +1630,9 @@ function PeriodEditor({
             value={rolled}
             onChange={(event) => setRolled(event.target.value)}
           />
+          <span className={helpText}>
+            Profit actually reinvested for this month. Enter 0 if it was not rolled over.
+          </span>
         </label>
         <label className="text-sm">
           Settlement date
@@ -1374,6 +1642,9 @@ function PeriodEditor({
             value={settledAt}
             onChange={(event) => setSettledAt(event.target.value)}
           />
+          <span className={helpText}>
+            Date the external payment or rollover happened. Leave blank for Unverified or unpaid.
+          </span>
         </label>
         <label className="text-sm">
           Statement / payment reference
@@ -1382,12 +1653,40 @@ function PeriodEditor({
             value={reference}
             onChange={(event) => setReference(event.target.value)}
           />
+          <span className={helpText}>
+            Bank statement narration, transfer reference, or another traceable source-record ID.
+            Required for settled amounts.
+          </span>
         </label>
         <label className="text-sm">
           Evidence note
-          <input className={field} value={note} onChange={(event) => setNote(event.target.value)} />
+          <input
+            className={field}
+            value={note}
+            onChange={(event) => setNote(event.target.value)}
+            placeholder="e.g. Bank statement dated 7 Oct 2026"
+          />
+          <span className={helpText}>
+            Briefly identify the evidence or explain a correction. Required for Confirmed unpaid,
+            partial expected-return corrections, and any corrected expected amount.
+          </span>
         </label>
       </fieldset>
+      {!readOnly && status !== 'UNVERIFIED' && status !== 'UNPAID' ? (
+        <p className="mt-3 rounded-lg border border-brand/20 bg-brand/5 px-3 py-2 text-xs leading-5 text-muted-foreground">
+          {status === 'PAID'
+            ? 'For Paid to account, enter the full expected amount under Paid to account and 0 under Rolled over. Add the settlement date and reference.'
+            : status === 'ROLLED_OVER'
+              ? 'For Rolled over, enter the full expected amount under Rolled over and 0 under Paid to account. Add the rollover date and reference.'
+              : 'For Partially settled, enter the actual amounts under Paid to account and/or Rolled over. Their total must be greater than 0 and less than the expected return. Add the date and reference.'}
+        </p>
+      ) : null}
+      {!readOnly && status === 'UNPAID' ? (
+        <p className="mt-3 rounded-lg border border-amber-500/20 bg-amber-500/5 px-3 py-2 text-xs leading-5 text-muted-foreground">
+          For Confirmed unpaid, leave Paid to account and Rolled over at 0, leave Settlement date
+          and Reference blank, and explain how you confirmed non-payment in Evidence note.
+        </p>
+      ) : null}
       <button className={`${button} mt-3`} disabled={busy || readOnly}>
         Save period
       </button>
