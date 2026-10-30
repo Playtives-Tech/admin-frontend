@@ -77,6 +77,7 @@ type FormState = {
   imageHeight?: number;
   imageAlt: string;
   interestModeEnabled: boolean;
+  hideInterestFromDashboard: boolean;
   historicalOnly: boolean;
   interestCurrency: 'NGN' | 'GBP' | 'USD';
   interestTargetAmount: string;
@@ -137,6 +138,7 @@ const emptyForm: FormState = {
   imageKey: '',
   imageAlt: '',
   interestModeEnabled: false,
+  hideInterestFromDashboard: false,
   historicalOnly: false,
   interestCurrency: 'NGN',
   interestTargetAmount: '',
@@ -238,6 +240,7 @@ function toForm(opportunity: Opportunity): FormState {
     imageHeight: opportunity.imageHeight,
     imageAlt: opportunity.imageAlt ?? '',
     interestModeEnabled: opportunity.interestModeEnabled ?? false,
+    hideInterestFromDashboard: opportunity.hideInterestFromDashboard ?? false,
     historicalOnly: opportunity.historicalOnly ?? false,
     interestCurrency: opportunity.interestCurrency ?? 'NGN',
     interestTargetAmount:
@@ -413,6 +416,7 @@ export function OpportunityEditor({
     imageHeight: form.imageHeight,
     imageAlt: form.imageAlt.trim(),
     interestModeEnabled: form.interestModeEnabled,
+    hideInterestFromDashboard: form.hideInterestFromDashboard,
     historicalOnly: form.historicalOnly,
     interestCurrency: form.interestCurrency,
     interestTargetAmount: numberOrUndefined(form.interestTargetAmount),
@@ -1073,6 +1077,14 @@ export function OpportunityEditor({
               </label>
               {form.interestModeEnabled ? (
                 <>
+                  <label className="flex items-center gap-3 text-sm font-medium sm:col-span-2">
+                    <input
+                      type="checkbox"
+                      checked={form.hideInterestFromDashboard}
+                      onChange={(e) => set('hideInterestFromDashboard', e.target.checked)}
+                    />
+                    Hide this interest opportunity from the member dashboard
+                  </label>
                   <Field label="Interest currency">
                     <select
                       className={inputClass}

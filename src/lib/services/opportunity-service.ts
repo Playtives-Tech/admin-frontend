@@ -135,6 +135,7 @@ export interface Opportunity {
   imageHeight?: number;
   imageAlt?: string;
   interestModeEnabled: boolean;
+  hideInterestFromDashboard: boolean;
   historicalOnly: boolean;
   interestCurrency: InterestCurrency;
   interestTargetAmount: number | null;
