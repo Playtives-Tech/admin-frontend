@@ -417,29 +417,40 @@ export default function LegacyPage(): React.JSX.Element {
             </select>
           </div>
           <div className="mt-4 grid gap-3">
-            {positions.map((item) => (
-              <button
-                key={item._id}
-                type="button"
-                onClick={() => setSelected(item)}
-                className="grid gap-1 rounded-xl border p-4 text-left transition hover:border-brand sm:grid-cols-[1fr_1fr_auto] sm:items-center"
-              >
-                <span className="min-w-0">
-                  <strong className="block truncate">
-                    {item.userId?.name ?? 'Missing member'}
-                  </strong>
-                  <small className="text-muted-foreground">
-                    {item.sourceInvestorId} / {item.sourcePositionId} · {item.opportunityId?.title}
-                  </small>
-                </span>
-                <span>
-                  {money(item.principalMinorUnits, item.opportunityId?.currency ?? 'NGN')}
-                </span>
-                <span className="text-xs font-semibold text-brand">
-                  {item.status} · {item.periods.length} periods
-                </span>
-              </button>
-            ))}
+            {positions.map((item) => {
+              const totalMonths = item.firstCycle && item.lastCycle
+                ? item.lastCycle - item.firstCycle + 1
+                : item.periods.length;
+              const reviewedMonths = item.periods.filter(
+                (period) => period.status !== 'UNVERIFIED',
+              ).length;
+              return (
+                <button
+                  key={item._id}
+                  type="button"
+                  onClick={() => setSelected(item)}
+                  className="grid gap-1 rounded-xl border p-4 text-left transition hover:border-brand sm:grid-cols-[1fr_1fr_auto] sm:items-center"
+                >
+                  <span className="min-w-0">
+                    <strong className="block truncate">
+                      {item.userId?.name ?? 'Missing member'}
+                    </strong>
+                    <small className="block truncate text-muted-foreground">
+                      {item.userId?.email ?? 'No email on member record'}
+                    </small>
+                    <small className="text-muted-foreground">
+                      {item.sourceInvestorId} / {item.sourcePositionId} · {item.opportunityId?.title}
+                    </small>
+                  </span>
+                  <span>
+                    {money(item.principalMinorUnits, item.opportunityId?.currency ?? 'NGN')}
+                  </span>
+                  <span className="text-xs font-semibold text-brand">
+                    {item.status} · {reviewedMonths}/{totalMonths} months reviewed
+                  </span>
+                </button>
+              );
+            })}
             {!loading && positions.length === 0 && (
               <p className="py-6 text-center text-sm text-muted-foreground">
                 No legacy positions recorded yet.
@@ -981,7 +992,29 @@ function PositionEditor({
   const [capitalReference, setCapitalReference] = useState(position.capitalReturnReference ?? '');
   const [note, setNote] = useState(position.note);
   const [helpTopic, setHelpTopic] = useState<AssignmentHelpTopic | null>(null);
+  useEffect(() => {
+    if (Number(capital) === 0) {
+      setCapitalDate('');
+      setCapitalReference('');
+    }
+  }, [capital]);
   const currency = position.opportunityId.currency ?? 'NGN';
+  const totalMonths = position.firstCycle && position.lastCycle
+    ? position.lastCycle - position.firstCycle + 1
+    : position.periods.length;
+  const reviewedMonths = position.periods.filter((period) => period.status !== 'UNVERIFIED').length;
+  const unverifiedMonths = position.periods.filter((period) => period.status === 'UNVERIFIED').length;
+  const capitalReturnedAmount = Number.isFinite(Number(capital)) ? minor(capital) : 0;
+  const capitalStillInPosition = position.principalMinorUnits + position.periods.reduce(
+    (total, period) => total + period.rolledOverMinorUnits,
+    0,
+  ) - capitalReturnedAmount;
+  const activationHasUnsavedPositionChanges =
+    status !== position.status ||
+    capitalReturnedAmount !== position.capitalReturnedMinorUnits ||
+    (capitalDate || '') !== dateOnly(position.capitalReturnedAt) ||
+    capitalReference !== position.capitalReturnReference;
+  const activationBlockedByCapital = status === 'ACTIVE' && capitalReturnedAmount > 0;
   const add = (event: FormEvent) => {
     event.preventDefault();
     void save(() =>
@@ -1009,8 +1042,8 @@ function PositionEditor({
       legacyService.updatePosition(position._id, {
         status,
         capitalReturnedMinorUnits: minor(capital),
-        capitalReturnedAt: capitalDate || undefined,
-        capitalReturnReference: capitalReference,
+        capitalReturnedAt: minor(capital) > 0 ? capitalDate || undefined : undefined,
+        capitalReturnReference: minor(capital) > 0 ? capitalReference : '',
         note,
         revision: position.revision,
       }),
@@ -1023,6 +1056,7 @@ function PositionEditor({
           <h2 className="text-lg font-semibold">
             {position.userId.name} · {position.sourceInvestorId} / {position.sourcePositionId}
           </h2>
+          <p className="mt-1 text-sm font-medium text-brand">Member email: {position.userId.email}</p>
           <p className="text-sm text-muted-foreground">
             {position.opportunityId.title} · {money(position.principalMinorUnits, currency)}{' '}
             principal · {position.units || 'Unknown'} units · months {position.firstCycle ?? '?'}–
@@ -1047,31 +1081,42 @@ function PositionEditor({
       )}
       {position.activatedAt ? (
         <p className="mt-4 rounded-xl bg-brand/10 p-3 text-sm font-semibold text-brand">
-          Import activated. Historical payments remain external; remaining months use reviewed
-          distributions.
+          Visible to the linked member under My portfolio → Legacy opportunities. Historical
+          payments remain records only and were not added to their wallet. Any remaining months
+          now follow the opportunity’s normal distribution process.
         </p>
       ) : (
         <div className="mt-4 rounded-xl border border-brand/30 bg-brand/5 p-4 text-sm">
           <p>
             {position.activationStartedAt
-              ? 'Activation is in progress. Retry activation to resume safely; edits are locked.'
-              : 'Review every elapsed month and confirm any external capital return before activating. Activation never credits past payments to a wallet.'}
+              ? 'Activation is in progress. Retry “Make visible to member” to safely resume; editing is locked. The member will see this position after activation finishes.'
+              : `Saving a month only records it in this admin view; it does not show the position to the member. This position has ${reviewedMonths} of ${totalMonths} month records reviewed${unverifiedMonths ? ` and ${unverifiedMonths} still marked unverified` : ''}. Review every month whose due date has passed, then activate to show it under ${position.userId.name}’s My portfolio → Legacy opportunities. Past payments and rollovers are history only and never credit the Playtives wallet. Future months continue through the normal distribution process.`}
           </p>
+          {activationBlockedByCapital ? (
+            <p role="alert" className="mt-3 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm">
+              Activation is blocked: this position is marked Active but has {money(capitalReturnedAmount, currency)} entered as capital returned. For an ongoing position, set Capital returned to 0. Current documented capital before return is {money(capitalStillInPosition + capitalReturnedAmount, currency)}. Save the corrected status and capital record before activating.
+            </p>
+          ) : null}
+          {!activationBlockedByCapital && activationHasUnsavedPositionChanges ? (
+            <p className="mt-3 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm">
+              Save your status and capital changes below before activating. Activation uses the last saved values.
+            </p>
+          ) : null}
           {isSuperAdmin ? (
             <button
               type="button"
-              disabled={busy || position.opportunityModel !== 'Opportunity'}
+              disabled={busy || position.opportunityModel !== 'Opportunity' || activationBlockedByCapital || activationHasUnsavedPositionChanges}
               onClick={() => {
                 if (
                   window.confirm(
-                    'Activate this verified historical import and schedule only remaining months?',
+                    'Make this legacy position visible to the linked member and schedule any remaining months? Historical payments will remain records only and will not be credited to the wallet.',
                   )
                 )
                   void save(() => legacyService.activatePosition(position._id, position.revision));
               }}
               className={`${button} mt-3`}
             >
-              Activate verified import
+              {position.activationStartedAt ? 'Make visible to member' : 'Activate for member dashboard'}
             </button>
           ) : null}
         </div>
@@ -1159,7 +1204,13 @@ function PositionEditor({
             </form>
           )}
           <form onSubmit={update} className="space-y-3 rounded-xl border p-4">
-            <h3 className="font-semibold">Position and capital exit</h3>
+              <h3 className="font-semibold">Position status and capital returned</h3>
+            <p className="text-xs leading-5 text-muted-foreground">
+              Choose Active only when future months remain and Capital returned is 0. The current
+              activation flow does not support recording any capital return while future months
+              remain. Choose Completed when all scheduled months have elapsed, or Exited when the
+              member left early; both require the full documented capital return.
+            </p>
             <div>
               <AssignmentFieldLabel
                 htmlFor="legacy-position-status"
@@ -1196,41 +1247,56 @@ function PositionEditor({
                   min="0"
                   step="0.01"
                   value={capital}
-                  onChange={(event) => setCapital(event.target.value)}
+                  onChange={(event) => {
+                    const value = event.target.value;
+                    setCapital(value);
+                    if (!value || Number(value) === 0) {
+                      setCapitalDate('');
+                      setCapitalReference('');
+                    }
+                  }}
                 />
               </div>
+              {Number(capital) > 0 ? (
+                <div>
+                  <AssignmentFieldLabel
+                    htmlFor="legacy-capital-date"
+                    topic="capitalDate"
+                    onHelp={setHelpTopic}
+                  >
+                    Capital return date
+                  </AssignmentFieldLabel>
+                  <input
+                    id="legacy-capital-date"
+                    className={field}
+                    type="date"
+                    value={capitalDate}
+                    onChange={(event) => setCapitalDate(event.target.value)}
+                  />
+                </div>
+              ) : null}
+            </div>
+            {Number(capital) > 0 ? (
               <div>
                 <AssignmentFieldLabel
-                  htmlFor="legacy-capital-date"
-                  topic="capitalDate"
+                  htmlFor="legacy-capital-reference"
+                  topic="capitalReference"
                   onHelp={setHelpTopic}
                 >
-                  Capital return date
+                  Capital return payment reference
                 </AssignmentFieldLabel>
                 <input
-                  id="legacy-capital-date"
+                  id="legacy-capital-reference"
                   className={field}
-                  type="date"
-                  value={capitalDate}
-                  onChange={(event) => setCapitalDate(event.target.value)}
+                  value={capitalReference}
+                  onChange={(event) => setCapitalReference(event.target.value)}
                 />
               </div>
-            </div>
-            <div>
-              <AssignmentFieldLabel
-                htmlFor="legacy-capital-reference"
-                topic="capitalReference"
-                onHelp={setHelpTopic}
-              >
-                Capital return payment reference
-              </AssignmentFieldLabel>
-              <input
-                id="legacy-capital-reference"
-                className={field}
-                value={capitalReference}
-                onChange={(event) => setCapitalReference(event.target.value)}
-              />
-            </div>
+            ) : (
+              <p className="text-xs text-muted-foreground">
+                No capital return has been recorded. The return date and payment reference are not needed.
+              </p>
+            )}
             <div>
               <AssignmentFieldLabel
                 htmlFor="legacy-internal-note"
@@ -1247,13 +1313,25 @@ function PositionEditor({
               />
             </div>
             <button className={button} disabled={busy}>
-              Save position status
+              Save status and capital record
             </button>
           </form>
         </div>
       )}
       <LegacyHelpDialog topic={helpTopic} onClose={() => setHelpTopic(null)} />
-      <h3 className="mb-3 mt-6 font-semibold">Monthly return ledger</h3>
+      <div className="mb-1 mt-6 flex flex-wrap items-baseline justify-between gap-2">
+        <h3 className="font-semibold">Monthly return history</h3>
+        <p className="text-xs text-muted-foreground">
+          {reviewedMonths} reviewed · {unverifiedMonths} unverified · {Math.max(0, totalMonths - position.periods.length)} not yet recorded ({totalMonths} months total)
+        </p>
+      </div>
+      <p className="mb-3 text-sm leading-6 text-muted-foreground">
+        Save one record for each month whose due date has passed. This saves the month to the
+        admin record only; it does not notify the member, credit a wallet, or activate the
+        position. Leave future months untouched. After checking all elapsed months against source
+        records, use “Activate for member dashboard” above to make the position visible and start
+        any remaining months.
+      </p>
       <div className="grid gap-3">
         {position.periods.map((period) => (
           <PeriodEditor
@@ -1262,7 +1340,7 @@ function PositionEditor({
             position={position}
             busy={busy}
             save={save}
-            readOnly={Boolean(position.activatedAt) || !isSuperAdmin}
+            readOnly={!isSuperAdmin}
           />
         ))}
         {!position.periods.length && (
@@ -1564,16 +1642,17 @@ function PeriodEditor({
         </span>
       </div>
       <p className="mt-2 rounded-lg bg-muted/60 px-3 py-2 text-xs leading-5 text-muted-foreground">
-        Record what happened for this month using the original external records. Amounts are in
-        naira (NGN). Historical payments are recorded for the portfolio only; saving this ledger
-        does not credit a Playtives wallet.
+            Record what happened for this elapsed month from the original external records. Amounts
+            are in naira (NGN). Historical corrections after activation update the member-visible
+            history and documented rollover balance, but never create a wallet credit. Corrections
+            are locked once a live payout has been prepared.
       </p>
       <fieldset
         disabled={readOnly}
         className="mt-3 grid gap-3 disabled:opacity-70 sm:grid-cols-2 lg:grid-cols-3"
       >
         <label className="text-sm">
-          Corrected expected return
+          Expected return for this month
           <input
             className={field}
             type="number"
@@ -1584,8 +1663,8 @@ function PeriodEditor({
             onChange={(event) => setExpected(event.target.value)}
           />
           <span className={helpText}>
-            Expected profit for this month, in NGN. Change only when source terms confirm a
-            different amount; explain the correction in Evidence note.
+            Expected profit for this month, in NGN. Leave the displayed amount unless source terms
+            prove it should be different; document any correction in Evidence note.
           </span>
         </label>
         <label className="text-sm">
@@ -1688,7 +1767,7 @@ function PeriodEditor({
         </p>
       ) : null}
       <button className={`${button} mt-3`} disabled={busy || readOnly}>
-        Save period
+        Save month record
       </button>
     </form>
   );

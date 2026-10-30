@@ -52,7 +52,7 @@ export function DashboardSidebar(): React.JSX.Element {
   }
 
   return (
-    <aside className="app-surface fixed inset-y-0 left-0 z-20 hidden w-64 flex-col overflow-y-auto border-r px-4 py-5 lg:flex">
+    <aside className="app-surface fixed inset-y-0 left-0 z-20 hidden w-72 flex-col overflow-y-auto border-r px-4 py-5 lg:flex">
       {/* Wordmark */}
       <Link
         href="/overview"
