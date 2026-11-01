@@ -70,63 +70,80 @@ export default function OpportunitiesPage(): React.JSX.Element {
           </div>
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {standardItems.map((item) => (
-              <article
-                key={item._id}
-                className="app-surface overflow-hidden rounded-2xl border p-5 shadow-sm"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="rounded-full bg-brand/10 px-2.5 py-1 text-[10px] font-bold uppercase text-brand">
-                    {item.category}
-                  </span>
-                  <span
-                    className={
-                      item.status === 'PUBLISHED'
-                        ? 'text-xs font-bold text-emerald-600'
-                        : 'text-xs font-bold text-amber-600'
-                    }
-                  >
-                    {item.status}
-                  </span>
-                </div>
-                <h2 className="mt-4 line-clamp-2 text-lg font-semibold">{item.title}</h2>
-                <p className="mt-2 line-clamp-2 text-sm text-muted-foreground">{item.summary}</p>
-                <div className="mt-5 grid grid-cols-2 gap-3 text-sm">
-                  <div>
-                    <p className="text-xs text-muted-foreground">Unit price</p>
-                    <p className="font-semibold">
-                      ₦{(item.pricePerUnitMinorUnits / 100).toLocaleString()}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground">Available</p>
-                    <p className="font-semibold">{item.availableUnits.toLocaleString()}</p>
-                  </div>
-                </div>
-                <div className="mt-5 flex items-center justify-between border-t pt-4 text-xs text-muted-foreground">
-                  <span className="flex items-center gap-1">
-                    <MdCalendarMonth />
-                    {item.offerClosesAt
-                      ? `Closes ${new Date(item.offerClosesAt).toLocaleDateString()}`
-                      : item.memberAvailabilityDate
-                        ? `Opens ${new Date(item.memberAvailabilityDate).toLocaleDateString()}`
-                        : 'Offer dates required'}
-                  </span>
-                  <span className="flex items-center gap-3">
-                    <Link href={`/opportunities/${item._id}`} className="font-semibold text-brand">
-                      Edit
-                    </Link>
-                    {isSuperAdmin ? <Link
-                      href={`/opportunities/${item._id}/delete`}
-                      aria-label={`Delete ${item.title}`}
-                      className="text-red-600"
+            {standardItems.map((item) => {
+              const isClosed = item.isConcluded === true;
+              return (
+                <article
+                  key={item._id}
+                  className="app-surface relative isolate overflow-hidden rounded-2xl border p-5 shadow-sm"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="rounded-full bg-brand/10 px-2.5 py-1 text-[10px] font-bold uppercase text-brand">
+                      {item.category}
+                    </span>
+                    <span
+                      className={
+                        isClosed
+                          ? 'text-xs font-bold text-red-600'
+                          : item.status === 'PUBLISHED'
+                            ? 'text-xs font-bold text-emerald-600'
+                            : 'text-xs font-bold text-amber-600'
+                      }
                     >
-                      <MdDeleteOutline />
-                    </Link> : null}
-                  </span>
-                </div>
-              </article>
-            ))}
+                      {isClosed ? 'CLOSED' : item.status}
+                    </span>
+                  </div>
+                  <h2 className="mt-4 line-clamp-2 text-lg font-semibold">{item.title}</h2>
+                  <p className="mt-2 line-clamp-2 text-sm text-muted-foreground">{item.summary}</p>
+                  <div className="mt-5 grid grid-cols-2 gap-3 text-sm">
+                    <div>
+                      <p className="text-xs text-muted-foreground">Unit price</p>
+                      <p className="font-semibold">
+                        ₦{(item.pricePerUnitMinorUnits / 100).toLocaleString()}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Available</p>
+                      <p className="font-semibold">{item.availableUnits.toLocaleString()}</p>
+                    </div>
+                  </div>
+                  <div className="mt-5 flex items-center justify-between border-t pt-4 text-xs text-muted-foreground">
+                    <span className="flex items-center gap-1">
+                      <MdCalendarMonth />
+                      {item.offerClosesAt
+                        ? `Closes ${new Date(item.offerClosesAt).toLocaleDateString()}`
+                        : item.memberAvailabilityDate
+                          ? `Opens ${new Date(item.memberAvailabilityDate).toLocaleDateString()}`
+                          : 'Offer dates required'}
+                    </span>
+                    <span className="flex items-center gap-3">
+                      <Link
+                        href={`/opportunities/${item._id}`}
+                        className="font-semibold text-brand"
+                      >
+                        Edit
+                      </Link>
+                      {isSuperAdmin ? (
+                        <Link
+                          href={`/opportunities/${item._id}/delete`}
+                          aria-label={`Delete ${item.title}`}
+                          className="text-red-600"
+                        >
+                          <MdDeleteOutline />
+                        </Link>
+                      ) : null}
+                    </span>
+                  </div>
+                  {isClosed ? (
+                    <div className="pointer-events-none absolute inset-0 z-10 grid place-items-center bg-white/25 backdrop-blur-[3px] dark:bg-black/20">
+                      <span className="-rotate-[18deg] border-y-4 border-red-600/80 px-8 py-2 text-4xl font-black uppercase tracking-[0.2em] text-red-600/90 drop-shadow-[0_2px_2px_rgba(255,255,255,0.8)] sm:text-5xl">
+                        Closed
+                      </span>
+                    </div>
+                  ) : null}
+                </article>
+              );
+            })}
           </div>
         )}
         <section className="mt-10 border-t pt-8">
@@ -149,9 +166,7 @@ export default function OpportunitiesPage(): React.JSX.Element {
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {historicalItems.map((item) => (
                 <div key={item._id} className="rounded-2xl border bg-background p-5">
-                  <span className="text-xs font-bold uppercase text-brand">
-                    Historical · NGN
-                  </span>
+                  <span className="text-xs font-bold uppercase text-brand">Historical · NGN</span>
                   <h3 className="mt-2 font-semibold">{item.title}</h3>
                   {item.summary && (
                     <p className="mt-2 line-clamp-2 text-sm text-muted-foreground">

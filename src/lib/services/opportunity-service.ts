@@ -137,6 +137,7 @@ export interface Opportunity {
   interestModeEnabled: boolean;
   hideInterestFromDashboard: boolean;
   historicalOnly: boolean;
+  isConcluded?: boolean;
   interestCurrency: InterestCurrency;
   interestTargetAmount: number | null;
   interestOpensAt: string | null;

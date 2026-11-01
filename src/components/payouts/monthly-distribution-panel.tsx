@@ -179,8 +179,7 @@ function DistributionDrawer({
 }) {
   const { user } = useAuth();
   const isSuperAdmin = user?.roles.includes('SUPER_ADMIN') ?? false;
-  const preparerId = detail.batch.preparedBy ?? detail.batch.reviewedBy;
-  const canApprove = isSuperAdmin && Boolean(preparerId) && preparerId !== user?.sub;
+  const canApprove = isSuperAdmin;
   const [method, setMethod] = useState<
     'RATE_PERCENT' | 'AMOUNT_PER_UNIT' | 'TOTAL_DISTRIBUTION_AMOUNT'
   >(
@@ -459,7 +458,6 @@ function DistributionDrawer({
                   Approve and credit earnings
                 </button>
               </div>
-              {!canApprove ? <p className="mt-3 text-xs text-muted-foreground">A different administrator must prepare this distribution before approval.</p> : null}
             </section>
           )}
         </div>
