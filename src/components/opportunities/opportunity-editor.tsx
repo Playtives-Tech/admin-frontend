@@ -25,6 +25,7 @@ import { OpportunityUpdatesPanel } from './opportunity-updates-panel';
 type FormState = {
   title: string;
   category: string;
+  relatedOpportunityId: string;
   summary: string;
   about: string;
   agreement: string;
@@ -95,6 +96,7 @@ type FormState = {
 const emptyForm: FormState = {
   title: '',
   category: '',
+  relatedOpportunityId: '',
   summary: '',
   about: '',
   agreement: '',
@@ -173,6 +175,7 @@ function toForm(opportunity: Opportunity): FormState {
   return {
     title: opportunity.title,
     category: opportunity.category,
+    relatedOpportunityId: opportunity.relatedOpportunityId ?? '',
     summary: opportunity.summary,
     about: opportunity.about ?? '',
     agreement: opportunity.agreement ?? '',
@@ -264,6 +267,10 @@ export function OpportunityEditor({
   const isSuperAdmin = user?.roles.includes('SUPER_ADMIN') ?? false;
   const router = useRouter();
   const [form, setForm] = useState<FormState>({ ...emptyForm, historicalOnly: historicalMode });
+  const [relatedCandidates, setRelatedCandidates] = useState<Opportunity[]>([]);
+  useEffect(() => {
+    void opportunityService.list().then(setRelatedCandidates).catch(() => undefined);
+  }, []);
   const [loading, setLoading] = useState(Boolean(opportunityId || copyFromId));
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -288,6 +295,7 @@ export function OpportunityEditor({
             setForm(
               draft?.form ?? {
                 ...copied,
+                relatedOpportunityId: '',
                 memberAvailabilityDate: '',
                 offerClosesAt: '',
                 commencementDate: '',
@@ -386,6 +394,7 @@ export function OpportunityEditor({
   ): OpportunityPayload => ({
     title: form.title.trim(),
     category: form.category.trim(),
+    relatedOpportunityId: form.relatedOpportunityId || null,
     summary: form.summary.trim(),
     about: form.about.trim(),
     agreement: form.agreement.trim(),
@@ -722,6 +731,18 @@ export function OpportunityEditor({
                   onChange={(e) => set('category', e.target.value)}
                   placeholder="e.g. Agriculture, Property, Logistics"
                 />
+              </Field>
+              <Field label="Next opportunity (optional)" wide>
+                <select
+                  className={inputClass}
+                  value={form.relatedOpportunityId}
+                  onChange={(event) => set('relatedOpportunityId', event.target.value)}
+                >
+                  <option value="">None — show browse opportunities instead</option>
+                  {relatedCandidates.filter((candidate) => candidate._id !== opportunityId && candidate.status === 'PUBLISHED' && !candidate.interestModeEnabled).map((candidate) => (
+                    <option key={candidate._id} value={candidate._id}>{candidate.title}</option>
+                  ))}
+                </select>
               </Field>
               <Field label="Summary *" wide>
                 <textarea

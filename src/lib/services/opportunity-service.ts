@@ -91,6 +91,8 @@ export interface Opportunity {
   ownershipPerUnitPercent: number | null;
   maximumUnitsPerMember: number | null;
   availableUnits: number;
+  relatedOpportunityId?: string | null;
+  fullyFundedAt?: string | null;
   durationMonths: number | null;
   termType: TermType;
   durationValue: number | null;
