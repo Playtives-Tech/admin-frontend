@@ -1,6 +1,7 @@
 .preview {
   min-width: 0;
-  max-height: calc(100vh - 190px);
+  height: calc(100vh - 8rem);
+  min-height: min(650px, calc(100vh - 8rem));
   overflow: auto;
   border: 1px solid hsl(var(--border));
   border-radius: 18px;

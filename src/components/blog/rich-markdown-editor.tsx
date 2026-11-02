@@ -15,6 +15,7 @@ import {
   Subscript,
   Superscript,
   Table2,
+  Code2,
   Underline,
   Undo2,
   Video,
@@ -282,7 +283,7 @@ function serializeBlock(node: Node): string {
   }
   if (node.tagName === 'TABLE') {
     const rows = Array.from(node.querySelectorAll('tr')).map((row) =>
-      Array.from(row.children).map((cell) => serializeInline(cell).trim()),
+      Array.from(row.children).map((cell) => serializeInline(cell).trim().replace(/\|/g, '&#124;')),
     );
     if (rows.length === 0) return '';
     const columns = Math.max(...rows.map((row) => row.length));
@@ -298,11 +299,14 @@ function serializeBlock(node: Node): string {
     const image = node.querySelector('img');
     return image ? serializeInline(image) : content;
   }
+  if (['DIV', 'SECTION', 'ARTICLE', 'MAIN'].includes(node.tagName)) {
+    return Array.from(node.childNodes).map(serializeBlock).filter(Boolean).join('\n\n');
+  }
   if (node.tagName === 'P' || node.tagName === 'DIV') return content;
   return serializeInline(node).trim();
 }
 
-function serializeEditor(editor: HTMLDivElement): string {
+function serializeEditor(editor: HTMLElement): string {
   return Array.from(editor.childNodes)
     .map(serializeBlock)
     .join('\n\n')
@@ -322,6 +326,21 @@ export function RichMarkdownEditor({
   const lastAppliedValue = useRef<string | null>(null);
   const [selectedImage, setSelectedImage] = useState<HTMLImageElement | null>(null);
   const [imageAlt, setImageAlt] = useState('');
+  const [showHtmlImport, setShowHtmlImport] = useState(false);
+  const [htmlSource, setHtmlSource] = useState('');
+
+  const importHtml = () => {
+    const document = new DOMParser().parseFromString(htmlSource, 'text/html');
+    document.querySelectorAll('script, style, iframe, object, embed, form, svg').forEach((node) => node.remove());
+    const converted = serializeEditor(document.body);
+    if (!converted) {
+      window.alert('Enter article HTML with text, headings, images, links, lists, or tables.');
+      return;
+    }
+    onChange(converted);
+    setHtmlSource('');
+    setShowHtmlImport(false);
+  };
 
   useEffect(() => {
     const element = editor.current;
@@ -519,6 +538,20 @@ export function RichMarkdownEditor({
 
   return (
     <section className="mt-5 overflow-hidden rounded-2xl border bg-background">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b px-4 py-3">
+        <p className="text-xs text-muted-foreground">Write visually or import HTML, including tables.</p>
+        <button type="button" onClick={() => setShowHtmlImport((current) => !current)} className="inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-semibold hover:bg-surface">
+          <Code2 className="size-4" /> {showHtmlImport ? 'Close HTML import' : 'Import HTML'}
+        </button>
+      </div>
+      {showHtmlImport ? (
+        <div className="grid gap-3 border-b bg-surface/40 p-4">
+          <label htmlFor="article-html-import" className="text-sm font-semibold">Paste article HTML</label>
+          <textarea id="article-html-import" value={htmlSource} onChange={(event) => setHtmlSource(event.target.value)} rows={12} spellCheck={false} placeholder="<h2>Heading</h2><table><tr><th>Column</th></tr><tr><td>Value</td></tr></table>" className="w-full resize-y rounded-lg border bg-background p-3 font-mono text-sm outline-none focus:ring-2 focus:ring-brand/30" />
+          <p className="text-xs text-muted-foreground">Import replaces the current article body. Supported formatting is converted to the saved article format; scripts, embeds, and custom styling are not imported.</p>
+          <button type="button" onClick={importHtml} disabled={!htmlSource.trim()} className="w-fit rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-brand-foreground disabled:opacity-50">Replace body with HTML</button>
+        </div>
+      ) : null}
       <div
         role="toolbar"
         aria-label="Article formatting"
