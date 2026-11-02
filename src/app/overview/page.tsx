@@ -87,7 +87,7 @@ export default function OverviewPage(): React.JSX.Element {
       title: 'Uninvested user balance',
       value: money(data.uninvestedBalanceMinorUnits ?? 0),
       description:
-        'The current available deposit and earnings balances across member and administrator wallets. This is money users have not yet invested or withdrawn.',
+        'Combined available wallet balance, including tagged admin credits. Current balances cannot be split by source without tracking how each credit was spent.',
       icon: WalletCards,
       href: '/overview/uninvested-balances',
     },
@@ -124,6 +124,20 @@ export default function OverviewPage(): React.JSX.Element {
       tone: 'amber',
     },
     {
+      title: 'Internal admin credits',
+      value: money(data.fakeAdminAddedDepositsMinorUnits),
+      description: 'Tagged credits excluded from genuine recorded inflows; still available in member wallets.',
+      icon: CircleDollarSign,
+      tone: 'amber',
+    },
+    {
+      title: 'Internal externally paid ownership capital',
+      value: money(data.fakeManualOpportunityCapitalMinorUnits),
+      description: 'Tagged assignments excluded from genuine recorded inflows.',
+      icon: Banknote,
+      tone: 'amber',
+    },
+    {
       title: 'Externally paid ownership capital',
       value: money(data.manualOpportunityCapitalMinorUnits),
       description: 'Ownership payments made outside the member wallet.',
@@ -133,6 +147,20 @@ export default function OverviewPage(): React.JSX.Element {
   ];
 
   const ownershipMetrics: Metric[] = [
+    {
+      title: 'Internal capital invested',
+      value: money(data.fakeInvestedMinorUnits),
+      description: 'Tagged ownership capital, excluded from genuine invested totals and payouts.',
+      icon: WalletCards,
+      tone: 'amber',
+    },
+    {
+      title: 'Internal projected returns',
+      value: money(data.fakeExpectedReturnMinorUnits),
+      description: 'Illustrative return for tagged ownerships; never credited as a payout.',
+      icon: TrendingUp,
+      tone: 'amber',
+    },
     {
       title: 'Capital invested',
       value: money(data.investedMinorUnits),
@@ -360,6 +388,10 @@ function MetricCard({ metric }: Readonly<{ metric: Metric }>) {
 }
 
 const emptyOverview: AdminOverview = {
+  fakeAdminAddedDepositsMinorUnits: 0,
+  fakeInvestedMinorUnits: 0,
+  fakeExpectedReturnMinorUnits: 0,
+  fakeManualOpportunityCapitalMinorUnits: 0,
   depositsMinorUnits: 0,
   approvedTransferDepositsMinorUnits: 0,
   paystackDepositsMinorUnits: 0,

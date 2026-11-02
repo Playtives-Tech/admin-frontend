@@ -76,7 +76,7 @@ export default function AcquisitionsPage(): React.JSX.Element {
   const totalExpected = visible.reduce(
     (total, item) =>
       total +
-      (item.status === 'REVERSED' || item.status === 'REVERSING'
+      (item.isFake || item.status === 'REVERSED' || item.status === 'REVERSING'
         ? 0
         : hasVariableProjectedDistribution(item)
           ? 0
@@ -86,12 +86,14 @@ export default function AcquisitionsPage(): React.JSX.Element {
   const activeAmount = visible.reduce(
     (total, item) =>
       total +
-      (item.status === 'REVERSED' || item.status === 'REVERSING' ? 0 : item.amountMinorUnits),
+      (item.isFake || item.status === 'REVERSED' || item.status === 'REVERSING' ? 0 : item.amountMinorUnits),
     0,
   );
   const currentOwnershipCount = visible.filter(
-    (item) => item.status !== 'REVERSED' && item.status !== 'REVERSING',
+    (item) => !item.isFake && item.status !== 'REVERSED' && item.status !== 'REVERSING',
   ).length;
+  const internalInvested = visible.reduce((total, item) => total + (item.isFake && item.status !== 'REVERSED' && item.status !== 'REVERSING' ? item.amountMinorUnits : 0), 0);
+  const internalProjected = visible.reduce((total, item) => total + (item.isFake && item.status !== 'REVERSED' && item.status !== 'REVERSING' && !hasVariableProjectedDistribution(item) ? projectedReturnForAcquisition(item) : 0), 0);
 
   const reverseOwnership = async (): Promise<void> => {
     if (!selected || reason.trim().length < 3 || !walletAction) return;
@@ -111,6 +113,26 @@ export default function AcquisitionsPage(): React.JSX.Element {
       notify.error(error instanceof Error ? error.message : 'Could not reverse ownership');
     } finally {
       setReversing(false);
+    }
+  };
+
+  const changeClassification = async (item: AdminAcquisition) => {
+    const isInternal = !item.isFake;
+    const reason = window.prompt(
+      `Reason for marking this ownership as ${isInternal ? 'Internal' : 'genuine'}? This changes reporting and future payout eligibility, not existing wallet balances.`,
+    )?.trim();
+    if (reason === undefined) return;
+    if (reason.length < 10) {
+      notify.error('Enter a reason of at least 10 characters');
+      return;
+    }
+    if (!window.confirm(`Confirm: mark ${item.opportunityId.title} for ${item.userId.name} as ${isInternal ? 'Internal (no payouts)' : 'genuine (payout eligible)'}?`)) return;
+    try {
+      await acquisitionService.reclassify(item._id, { isInternal, reason });
+      setItems(await acquisitionService.list(range));
+      notify.success('Ownership classification updated');
+    } catch (error) {
+      notify.error(error instanceof Error ? error.message : 'Could not update ownership classification');
     }
   };
 
@@ -196,6 +218,8 @@ export default function AcquisitionsPage(): React.JSX.Element {
           <Metric label="Ownerships" value={String(currentOwnershipCount)} />
           <Metric label="Amount invested" value={money(activeAmount)} />
           <Metric label="Fixed projected returns" value={money(totalExpected)} />
+          <Metric label="Internal amount invested" value={money(internalInvested)} />
+          <Metric label="Internal projected returns" value={money(internalProjected)} />
         </section>
 
         <section className="app-surface overflow-x-auto rounded-xl border">
@@ -242,6 +266,7 @@ export default function AcquisitionsPage(): React.JSX.Element {
                           ? 'Admin assigned'
                           : 'Wallet purchase'}
                       </p>
+                      {item.isFake ? <span className="mt-1 inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-800">Internal · no payout</span> : null}
                       {item.assignmentReference ? (
                         <p className="mt-0.5 text-[11px] text-muted-foreground">
                           {item.assignmentReference}
@@ -272,6 +297,17 @@ export default function AcquisitionsPage(): React.JSX.Element {
                         : '—'}
                     </td>
                     <td className="px-4 py-3">
+                      {isSuperAdmin && (item.status === 'ACTIVE' || item.status === 'COMPLETED') ? (
+                        <button
+                          type="button"
+                          disabled={!item.canReclassify}
+                          title={item.reclassificationBlockedReason ?? 'Change admin classification'}
+                          onClick={() => void changeClassification(item)}
+                          className="mr-3 font-semibold text-brand disabled:cursor-not-allowed disabled:opacity-40"
+                        >
+                          Mark {item.isFake ? 'genuine' : 'Internal'}
+                        </button>
+                      ) : null}
                       {isSuperAdmin && (item.status === 'ACTIVE' || item.status === 'COMPLETED') ? (
                         <button
                           type="button"

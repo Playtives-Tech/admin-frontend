@@ -18,6 +18,7 @@ import {
   getAdminAddedDeposits,
   getSettledPaystackDeposits,
   reviewDepositRequest,
+  reclassifyAdminCredit,
   type AdminDepositRequest,
   type AdminAddedDeposit,
   type SettledPaystackDeposit,
@@ -73,6 +74,25 @@ export default function DepositsPage(): React.JSX.Element {
       setReviewing(false);
     }
   };
+  const changeCreditClassification = async (item: AdminAddedDeposit) => {
+    const isInternal = !item.isFake;
+    const reason = window.prompt(
+      `Reason for marking this credit as ${isInternal ? 'Internal' : 'genuine'}? This changes reporting only; the wallet balance stays the same.`,
+    )?.trim();
+    if (reason === undefined) return;
+    if (reason.length < 10) {
+      notify.error('Enter a reason of at least 10 characters');
+      return;
+    }
+    if (!window.confirm(`Confirm: mark ${money(item.amountMinorUnits)} as ${isInternal ? 'Internal' : 'genuine'}?`)) return;
+    try {
+      await reclassifyAdminCredit(item._id, { isInternal, reason });
+      await load();
+      notify.success('Credit classification updated');
+    } catch (error) {
+      notify.error(error instanceof Error ? error.message : 'Could not update credit classification');
+    }
+  };
   const pending = items.filter((item) => item.status === 'pending');
   return (
     <DashboardShell
@@ -91,13 +111,17 @@ export default function DepositsPage(): React.JSX.Element {
           />
           <Metric
             label="Admin-added deposits"
-            value={money(adminAdded.reduce((sum, item) => sum + item.amountMinorUnits, 0))}
+            value={money(adminAdded.filter((item) => !item.isFake).reduce((sum, item) => sum + item.amountMinorUnits, 0))}
           />
           <Metric
-            label="All settled deposits"
+            label="Internal admin credits"
+            value={money(adminAdded.filter((item) => item.isFake).reduce((sum, item) => sum + item.amountMinorUnits, 0))}
+          />
+          <Metric
+            label="Genuine settled deposits"
             value={money(
               settledPaystack.reduce((sum, item) => sum + item.amountMinorUnits, 0) +
-                adminAdded.reduce((sum, item) => sum + item.amountMinorUnits, 0) +
+                adminAdded.filter((item) => !item.isFake).reduce((sum, item) => sum + item.amountMinorUnits, 0) +
                 items
                   .filter((item) => item.status === 'approved')
                   .reduce((sum, item) => sum + item.amountMinorUnits, 0),
@@ -120,7 +144,7 @@ export default function DepositsPage(): React.JSX.Element {
           <table className="w-full min-w-[820px] text-left text-xs">
             <thead className="border-b bg-muted/30 text-muted-foreground">
               <tr>
-                {['Member', 'Amount', 'Payment context', 'Reference', 'Proof', 'Credited'].map(
+                {['Member', 'Amount', 'Payment context', 'Reference', 'Proof', 'Credited', 'Classification'].map(
                   (label) => (
                     <th key={label} className="px-4 py-3 font-medium">
                       {label}
@@ -138,6 +162,7 @@ export default function DepositsPage(): React.JSX.Element {
                   </td>
                   <td className="px-4 py-3 font-medium text-emerald-700">
                     {money(item.amountMinorUnits)}
+                    {item.isFake ? <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-800">Internal</span> : null}
                   </td>
                   <td className="max-w-56 px-4 py-3 text-muted-foreground">
                     <p className="line-clamp-2">{item.reason}</p>
@@ -165,11 +190,18 @@ export default function DepositsPage(): React.JSX.Element {
                   <td className="px-4 py-3 text-muted-foreground">
                     {new Date(item.creditedAt ?? item.createdAt).toLocaleString('en-NG')}
                   </td>
+                  <td className="px-4 py-3">
+                    {isSuperAdmin ? (
+                      <button type="button" onClick={() => void changeCreditClassification(item)} className="font-semibold text-brand hover:underline">
+                        Mark {item.isFake ? 'genuine' : 'Internal'}
+                      </button>
+                    ) : null}
+                  </td>
                 </tr>
               ))}
               {adminAdded.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">
+                  <td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">
                     No admin-added deposits in this period.
                   </td>
                 </tr>

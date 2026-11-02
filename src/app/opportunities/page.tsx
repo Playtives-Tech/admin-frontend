@@ -107,7 +107,9 @@ export default function OpportunitiesPage(): React.JSX.Element {
                       <p className="font-semibold">{item.availableUnits.toLocaleString()}</p>
                     </div>
                   </div>
-                  <div className="mt-5 flex items-center justify-between border-t pt-4 text-xs text-muted-foreground">
+                  <div
+                    className={`mt-5 flex items-center justify-between border-t pt-4 text-xs text-muted-foreground ${isClosed ? 'relative z-20 rounded-lg bg-background/90 px-2' : ''}`}
+                  >
                     <span className="flex items-center gap-1">
                       <MdCalendarMonth />
                       {item.offerClosesAt
@@ -123,6 +125,14 @@ export default function OpportunitiesPage(): React.JSX.Element {
                       >
                         Edit
                       </Link>
+                      {isClosed ? (
+                        <Link
+                          href={`/opportunities/${item._id}/duplicate`}
+                          className="font-semibold text-brand"
+                        >
+                          Create new from this
+                        </Link>
+                      ) : null}
                       {isSuperAdmin ? (
                         <Link
                           href={`/opportunities/${item._id}/delete`}

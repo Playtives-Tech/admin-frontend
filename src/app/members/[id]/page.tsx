@@ -68,6 +68,7 @@ export default function MemberDetailPage(): React.JSX.Element {
   const [creditReference, setCreditReference] = useState('');
   const [creditReason, setCreditReason] = useState('');
   const [creditReceipt, setCreditReceipt] = useState<File | null>(null);
+  const [creditIsFake, setCreditIsFake] = useState(false);
   const [crediting, setCrediting] = useState(false);
   const [debitAmount, setDebitAmount] = useState('');
   const [debitReference, setDebitReference] = useState('');
@@ -82,6 +83,7 @@ export default function MemberDetailPage(): React.JSX.Element {
   const [assignmentNote, setAssignmentNote] = useState('');
   const [assignmentRollover, setAssignmentRollover] = useState<'PAYOUT' | 'COMPOUND'>('PAYOUT');
   const [assignmentConfirmed, setAssignmentConfirmed] = useState(false);
+  const [assignmentIsFake, setAssignmentIsFake] = useState(false);
   const [assigning, setAssigning] = useState(false);
 
   useEffect(() => {
@@ -205,12 +207,14 @@ export default function MemberDetailPage(): React.JSX.Element {
           reference,
           reason: creditReason.trim(),
           receipt: creditReceipt,
+          isFake: creditIsFake,
         }),
       );
       setCreditAmount('');
       setCreditReference('');
       setCreditReason('');
       setCreditReceipt(null);
+      setCreditIsFake(false);
       form.reset();
       await refreshTransactionHistory();
       notify.success('Member wallet balance credited');
@@ -303,6 +307,7 @@ export default function MemberDetailPage(): React.JSX.Element {
         reference,
         note: assignmentNote.trim() || undefined,
         rolloverElection: assignmentRollover,
+        isFake: assignmentIsFake,
       });
       const [allOwnerships, opportunityResults] = await Promise.all([
         acquisitionService.list(),
@@ -317,6 +322,7 @@ export default function MemberDetailPage(): React.JSX.Element {
       setAssignmentNote('');
       setAssignmentRollover('PAYOUT');
       setAssignmentConfirmed(false);
+      setAssignmentIsFake(false);
       await refreshTransactionHistory();
       notify.success('Ownership assigned without debiting the member wallet');
     } catch (error) {
@@ -734,6 +740,10 @@ export default function MemberDetailPage(): React.JSX.Element {
                     />
                   </span>
                 </label>
+                <label className="flex items-start gap-2 text-xs leading-5 sm:col-span-2">
+                  <input type="checkbox" checked={creditIsFake} onChange={(event) => setCreditIsFake(event.target.checked)} className="mt-1 size-4 accent-brand" />
+                  <span>Mark as Internal for admin reporting. The wallet is credited normally, but this amount is excluded from genuine inflows.</span>
+                </label>
                 <button
                   disabled={crediting || !creditReceipt}
                   className="h-10 rounded-lg bg-brand px-4 text-sm font-semibold text-white transition hover:brightness-110 disabled:opacity-60 sm:col-span-2"
@@ -863,6 +873,10 @@ export default function MemberDetailPage(): React.JSX.Element {
                     I confirm this member previously purchased these units and the recorded amount
                     is correct. I understand the units will be removed from availability.
                   </span>
+                </label>
+                <label className="flex items-start gap-2 text-xs leading-5 sm:col-span-2">
+                  <input type="checkbox" checked={assignmentIsFake} onChange={(event) => setAssignmentIsFake(event.target.checked)} className="mt-1 size-4 accent-brand" />
+                  <span>Mark this ownership as Internal. It remains visible to the member but is excluded from genuine investment totals and future payouts.</span>
                 </label>
                 <div className="flex justify-end sm:col-span-2">
                   <button
