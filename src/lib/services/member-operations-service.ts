@@ -191,12 +191,13 @@ export function getMemberWallet(userId: string): Promise<AdminWalletSummary> {
 
 export function creditMemberBalance(
   userId: string,
-  input: { amountMinorUnits: number; reference: string; reason: string; receipt: File },
+  input: { amountMinorUnits: number; reference: string; reason: string; receipt: File; isFake?: boolean },
 ): Promise<AdminWalletSummary> {
   const body = new FormData();
   body.set('amountMinorUnits', String(input.amountMinorUnits));
   body.set('reference', input.reference);
   body.set('reason', input.reason);
+  body.set('isFake', String(Boolean(input.isFake)));
   body.set('receipt', input.receipt);
   return api<AdminWalletSummary>(`/v1/admin/users/${encodeURIComponent(userId)}/balance-credits`, {
     method: 'POST',
@@ -271,6 +272,7 @@ export type SettledPaystackDeposit = Readonly<{
 
 export type AdminAddedDeposit = Readonly<{
   _id: string;
+  isFake?: boolean;
   userId: RequestUser;
   creditedByUserId?: RequestUser | null;
   amountMinorUnits: number;
@@ -296,6 +298,16 @@ export function getSettledPaystackDeposits(
 export function getAdminAddedDeposits(range: AdminDateRange): Promise<AdminAddedDeposit[]> {
   return api<AdminAddedDeposit[]>(
     `/v1/admin/wallet/deposits/admin-added?${dateRangeSearchParams(range)}`,
+  );
+}
+
+export function reclassifyAdminCredit(
+  creditId: string,
+  input: { isInternal: boolean; reason: string },
+): Promise<AdminAddedDeposit> {
+  return api<AdminAddedDeposit>(
+    `/v1/admin/wallet/deposits/admin-added/${encodeURIComponent(creditId)}/classification`,
+    { method: 'PATCH', body: JSON.stringify(input) },
   );
 }
 
@@ -347,6 +359,10 @@ export function getAdminActivity(): Promise<ActivityLog[]> {
 }
 
 export type AdminOverview = Readonly<{
+  fakeAdminAddedDepositsMinorUnits: number;
+  fakeInvestedMinorUnits: number;
+  fakeExpectedReturnMinorUnits: number;
+  fakeManualOpportunityCapitalMinorUnits: number;
   depositsMinorUnits: number;
   approvedTransferDepositsMinorUnits: number;
   paystackDepositsMinorUnits: number;

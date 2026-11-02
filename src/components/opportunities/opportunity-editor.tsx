@@ -253,16 +253,18 @@ function toForm(opportunity: Opportunity): FormState {
 
 export function OpportunityEditor({
   opportunityId,
+  copyFromId,
   historicalMode = false,
 }: {
   opportunityId?: string;
+  copyFromId?: string;
   historicalMode?: boolean;
 }): React.JSX.Element {
   const { user } = useAuth();
   const isSuperAdmin = user?.roles.includes('SUPER_ADMIN') ?? false;
   const router = useRouter();
   const [form, setForm] = useState<FormState>({ ...emptyForm, historicalOnly: historicalMode });
-  const [loading, setLoading] = useState(Boolean(opportunityId));
+  const [loading, setLoading] = useState(Boolean(opportunityId || copyFromId));
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [revision, setRevision] = useState(1);
@@ -273,11 +275,45 @@ export function OpportunityEditor({
   const [draftReady, setDraftReady] = useState(false);
   const [isDirty, setIsDirty] = useState(false);
   const suppressDraftPersistence = useRef(false);
-  const draftKey = `${draftStoragePrefix}${opportunityId ?? (historicalMode ? 'historical-new' : 'new')}`;
+  const draftKey = `${draftStoragePrefix}${opportunityId ?? (copyFromId ? `copy-${copyFromId}` : historicalMode ? 'historical-new' : 'new')}`;
 
   useEffect(() => {
     const draft = readDraft(draftKey);
     if (!opportunityId) {
+      if (copyFromId) {
+        opportunityService
+          .get(copyFromId)
+          .then((source) => {
+            const copied = toForm(source);
+            setForm(
+              draft?.form ?? {
+                ...copied,
+                memberAvailabilityDate: '',
+                offerClosesAt: '',
+                commencementDate: '',
+                distributionStartAt: '',
+                fundingClosedAt: '',
+                assetAcquiredAt: '',
+                operationalAt: '',
+                assetLifecycleStatus: 'FUNDING',
+                currentMilestone: '',
+                nextMilestone: '',
+                imageUrl: '',
+                imageKey: '',
+                hideInterestFromDashboard: false,
+              },
+            );
+            if (draft) notify.info('Restored your local opportunity draft.');
+          })
+          .catch((error: unknown) =>
+            notify.error(error instanceof Error ? error.message : 'Unable to copy opportunity'),
+          )
+          .finally(() => {
+            setLoading(false);
+            setDraftReady(true);
+          });
+        return;
+      }
       if (draft) {
         setForm({ ...draft.form, historicalOnly: historicalMode });
         setIsDirty(true);
@@ -313,7 +349,7 @@ export function OpportunityEditor({
         setLoading(false);
         setDraftReady(true);
       });
-  }, [draftKey, opportunityId, historicalMode]);
+  }, [draftKey, opportunityId, copyFromId, historicalMode]);
 
   useEffect(() => {
     if (!draftReady || !isDirty || suppressDraftPersistence.current) return;
@@ -547,7 +583,13 @@ export function OpportunityEditor({
 
   return (
     <DashboardShell
-      title={opportunityId ? 'Edit Opportunity' : form.historicalOnly ? 'New Historical Opportunity' : 'New Opportunity'}
+      title={
+        opportunityId
+          ? 'Edit Opportunity'
+          : form.historicalOnly
+            ? 'New Historical Opportunity'
+            : 'New Opportunity'
+      }
       description="Set the member-facing details, commercial terms, and payout settings."
     >
       <div>
@@ -606,13 +648,15 @@ export function OpportunityEditor({
                     >
                       {saving ? 'Saving draft…' : 'Save draft'}
                     </button>
-                    {!form.historicalOnly && <button
-                      disabled={saving || !isSuperAdmin}
-                      onClick={() => save('PUBLISHED')}
-                      className="rounded-xl bg-brand px-4 py-2 text-sm font-semibold text-brand-foreground disabled:cursor-not-allowed disabled:opacity-60"
-                    >
-                      {saving ? 'Publishing…' : 'Publish opportunity'}
-                    </button>}
+                    {!form.historicalOnly && (
+                      <button
+                        disabled={saving || !isSuperAdmin}
+                        onClick={() => save('PUBLISHED')}
+                        className="rounded-xl bg-brand px-4 py-2 text-sm font-semibold text-brand-foreground disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        {saving ? 'Publishing…' : 'Publish opportunity'}
+                      </button>
+                    )}
                   </>
                 )}
                 {form.interestModeEnabled && !form.historicalOnly ? (
@@ -628,15 +672,28 @@ export function OpportunityEditor({
             </div>
           </div>
         </div>
-        {!isSuperAdmin ? <p className="mx-auto mb-5 max-w-6xl rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">Administrators can create and edit drafts. Only a super administrator can publish or change a live opportunity. You can still manage updates and execution stages below.</p> : null}
+        {!isSuperAdmin ? (
+          <p className="mx-auto mb-5 max-w-6xl rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
+            Administrators can create and edit drafts. Only a super administrator can publish or
+            change a live opportunity. You can still manage updates and execution stages below.
+          </p>
+        ) : null}
         <div className="mx-auto grid max-w-6xl items-start gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(320px,0.62fr)]">
           <div className="grid gap-4">
             <section className="rounded-xl border border-amber-300 bg-amber-50 p-5 text-sm text-amber-900">
               <label className="flex items-center gap-3 font-semibold">
-                <input type="checkbox" checked={form.historicalOnly} disabled={Boolean(opportunityId)} onChange={(event) => set('historicalOnly', event.target.checked)} />
+                <input
+                  type="checkbox"
+                  checked={form.historicalOnly}
+                  disabled={Boolean(opportunityId)}
+                  onChange={(event) => set('historicalOnly', event.target.checked)}
+                />
                 Historical, owner-only opportunity (NGN)
               </label>
-              <p className="mt-2">Use the full editor for its terms and agreement. This opportunity cannot be publicly published; members see it only after their ownership is imported.</p>
+              <p className="mt-2">
+                Use the full editor for its terms and agreement. This opportunity cannot be publicly
+                published; members see it only after their ownership is imported.
+              </p>
             </section>
             {loadedOpportunity && !form.assetLifecycleEnabled ? (
               <ExecutionProgressPanel

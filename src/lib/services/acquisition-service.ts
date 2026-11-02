@@ -5,6 +5,7 @@ import { defaultAdminDateRange } from '@/lib/date-range';
 export type AcquisitionStatus = 'ACTIVE' | 'COMPLETED' | 'CANCELLED' | 'REVERSING' | 'REVERSED';
 export type AcquisitionSource = 'MEMBER_WALLET' | 'ADMIN_MANUAL';
 export type AdminAcquisition = Readonly<{
+  isFake?: boolean;
   _id: string;
   userId: Readonly<{ _id: string; name: string; email: string; status: string }>;
   opportunityId: Readonly<{
@@ -52,6 +53,8 @@ export type AdminAcquisition = Readonly<{
   reversalWalletAction?: 'CREDIT_WALLET' | 'DO_NOT_CREDIT' | null;
   refundedMinorUnits?: number;
   canReverse: boolean;
+  canReclassify?: boolean;
+  reclassificationBlockedReason?: string | null;
   reversalBlockedReason?: string | null;
 }>;
 export type AcquisitionStats = Readonly<{
@@ -62,6 +65,11 @@ export type AcquisitionStats = Readonly<{
 }>;
 
 export const acquisitionService = {
+  reclassify: (ownershipId: string, input: { isInternal: boolean; reason: string }) =>
+    api<AdminAcquisition>(`/v1/admin/acquisitions/${encodeURIComponent(ownershipId)}/classification`, {
+      method: 'PATCH',
+      body: JSON.stringify(input),
+    }),
   list: (range: AdminDateRange = defaultAdminDateRange) =>
     api<AdminAcquisition[]>(`/v1/admin/acquisitions?${dateRangeSearchParams(range)}`, {
       cache: 'no-store',
@@ -87,6 +95,7 @@ export const acquisitionService = {
     );
   },
   assignManual: (input: {
+    isFake?: boolean;
     userId: string;
     opportunityId: string;
     units: number;
