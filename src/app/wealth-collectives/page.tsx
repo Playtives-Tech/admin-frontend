@@ -44,11 +44,11 @@ import {
 } from '@/lib/services/wealth-collective-service';
 
 const money = (amount: number): string =>
-  new Intl.NumberFormat('en-NG', {
+  Number.isFinite(amount) ? new Intl.NumberFormat('en-NG', {
     style: 'currency',
     currency: 'NGN',
     maximumFractionDigits: 2,
-  }).format(amount / 100);
+  }).format(amount / 100) : '—';
 const dateTime = (value: string): string =>
   new Intl.DateTimeFormat('en-NG', {
     dateStyle: 'medium',
@@ -753,6 +753,14 @@ function MembersPanel({
   const [error, setError] = useState<string | null>(null);
   const selectedMember = result?.members.find((member) => member.userId === selectedMemberId);
   useEffect(() => {
+    if (!selectedMemberId) return;
+    const dismiss = (event: KeyboardEvent): void => {
+      if (event.key === 'Escape') setSelectedMemberId(null);
+    };
+    window.addEventListener('keydown', dismiss);
+    return () => window.removeEventListener('keydown', dismiss);
+  }, [selectedMemberId]);
+  useEffect(() => {
     if (!cycleId) return;
     setBusy(true);
     void wealthCollectiveService
@@ -907,39 +915,41 @@ function MembersPanel({
           <p className="p-4 text-sm text-muted-foreground">No members have funded this month.</p>
         )}
       </div>
-      {selectedMember && (
-        <section className="mt-5 rounded-xl border bg-muted/20 p-5" aria-label={`${selectedMember.name} Collective account details`}>
+      {selectedMember && createPortal(
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/20 p-4 backdrop-blur-sm" onMouseDown={() => setSelectedMemberId(null)} role="presentation">
+        <section aria-label={`${selectedMember.name} Collective account details`} aria-modal="true" className="max-h-[90vh] w-full max-w-5xl overflow-y-auto rounded-2xl border border-slate-200 bg-white p-5 text-slate-900 shadow-2xl sm:p-6" onMouseDown={(event) => event.stopPropagation()} role="dialog">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <h3 className="text-lg font-semibold">{selectedMember.name} · Month {cycles.find((item) => item._id === cycleId)?.number}</h3>
               <p className="text-sm text-muted-foreground">{selectedMember.email} · {selectedMember.memberCode ?? 'No member code'}</p>
             </div>
-            <button className="rounded-lg border px-3 py-2 text-sm" onClick={() => setSelectedMemberId(null)} type="button">Close</button>
+            <button aria-label="Close account details" autoFocus className="rounded-lg border px-3 py-2 text-sm" onClick={() => setSelectedMemberId(null)} type="button">Close</button>
           </div>
           <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <Metric icon={Landmark} label="Deployed now" value={money(selectedMember.deployedMinorUnits)} />
+            <Metric icon={Landmark} label="Deployed now" value={money(selectedMember.deployedMinorUnits ?? selectedMember.amountMinorUnits)} />
             <Metric icon={CalendarDays} label="Awaiting deployment" value={money(selectedMember.scheduledAmountMinorUnits)} />
             <Metric icon={ChartNoAxesCombined} label="Actual profit attributed" value={money(selectedMember.profitMinorUnits)} />
             <Metric icon={Layers3} label="Rolled to next month" value={money(selectedMember.rolledForwardMinorUnits)} />
-            {selectedMember.pendingRolloverMinorUnits > 0 && <Metric icon={CalendarDays} label="Future rollover" value={money(selectedMember.pendingRolloverMinorUnits)} />}
+            {(selectedMember.pendingRolloverMinorUnits ?? 0) > 0 && <Metric icon={CalendarDays} label="Future rollover" value={money(selectedMember.pendingRolloverMinorUnits)} />}
           </div>
           <div className="mt-4 rounded-lg border bg-card p-4 text-sm">
-            <p className="font-semibold">Illustrative profit for this month: {selectedMember.projectedProfitMinorUnits === null ? 'Not available' : money(selectedMember.projectedProfitMinorUnits)}</p>
-            <p className="mt-1 text-muted-foreground">{result?.projectionRateBps === null ? result?.projectionUnavailableReason : `Based on the ${((result?.projectionRateBps ?? 0) / 100).toFixed(2)}% monthly target, each deployed contribution’s amount and eligible days. This is not a guaranteed return or a wallet balance.`}</p>
+            <p className="font-semibold">Illustrative profit for this month: {selectedMember.projectedProfitMinorUnits == null ? 'Not available' : money(selectedMember.projectedProfitMinorUnits)}</p>
+            <p className="mt-1 text-muted-foreground">{result?.projectionRateBps == null ? result?.projectionUnavailableReason ?? 'Projection is unavailable for this month.' : `Based on the ${(result.projectionRateBps / 100).toFixed(2)}% monthly target, each deployed contribution’s amount and eligible days. This is not a guaranteed return or a wallet balance.`}</p>
             <p className="mt-2 text-muted-foreground">First recorded deployment: {selectedMember.firstDeployedAt ? dateTime(selectedMember.firstDeployedAt) : selectedMember.amountMinorUnits > 0 ? 'Date not recorded' : 'No funds deployed'} · Next pending deployment: {selectedMember.scheduledDeploymentAt ? dateTime(selectedMember.scheduledDeploymentAt) : 'None'}</p>
           </div>
           <h4 className="mt-5 font-semibold">Deployed contribution history</h4>
           <div className="mt-2 space-y-2">
-            {selectedMember.contributionDetails.map((item) => (
+            {(selectedMember.contributionDetails ?? []).map((item) => (
               <div className="rounded-lg border bg-card p-3 text-sm" key={item.reference}>
                 <p className="font-medium">{money(item.amountMinorUnits)} · {item.rollover ? 'Rolled in' : 'New capital'}</p>
                 <p className="mt-1 text-xs text-muted-foreground">Earning from {dateTime(item.effectiveAt)} · Deployed {item.deployedAt ? dateTime(item.deployedAt) : 'date not recorded'} · Ref: {item.reference}</p>
                 {item.projectedProfitMinorUnits !== null && <p className="mt-1 text-xs text-brand">Illustrative profit: {money(item.projectedProfitMinorUnits)}</p>}
               </div>
             ))}
-            {!selectedMember.contributionDetails.length && <p className="text-sm text-muted-foreground">No deployed contributions in this month.</p>}
+            {!selectedMember.contributionDetails?.length && <p className="text-sm text-muted-foreground">Contribution details are not available from the current backend response.</p>}
           </div>
         </section>
+        </div>, document.body,
       )}
       {result && (
         <div className="mt-4 flex items-center justify-between text-sm">
