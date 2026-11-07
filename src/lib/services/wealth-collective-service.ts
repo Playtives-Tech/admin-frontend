@@ -41,6 +41,41 @@ export type CollectiveTrade = CollectiveTradeInput &
     settledAt: string;
   }>;
 
+export type CollectiveReconciliationPreview = Readonly<{
+  digest: string;
+  cycleId: string;
+  cycleNumber: number;
+  actualReturnRateBps: number;
+  canReconcile: boolean;
+  blockers: string[];
+  pendingDeploymentCount: number;
+  pendingDeploymentMinorUnits: number;
+  nextCycle: boolean;
+  members: ReadonlyArray<{
+    userId: string;
+    name: string;
+    email: string;
+    capitalMinorUnits: number;
+    awaitingDeploymentMinorUnits: number;
+    eligibleDays: number;
+    monthlyProfitMinorUnits: number;
+    tradeProfitMinorUnits: number;
+    compoundedProfitMinorUnits: number;
+    heldProfitMinorUnits: number;
+    rolloverMinorUnits: number;
+    maturityPayoutMinorUnits: number;
+    excluded: boolean;
+  }>;
+  totals: Readonly<{
+    capitalMinorUnits: number;
+    monthlyProfitMinorUnits: number;
+    tradeProfitMinorUnits: number;
+    rolloverMinorUnits: number;
+    maturityPayoutMinorUnits: number;
+    awaitingDeploymentMinorUnits: number;
+  }>;
+}>;
+
 export type WealthCollectiveProgramme = Readonly<{
   _id: string;
   name: string;
@@ -226,10 +261,18 @@ export const wealthCollectiveService = {
     projectedTargetRateBps?: number;
     settlementTimeframe?: string;
   }) => api('/v1/admin/collectives/programme', { method: 'POST', body: JSON.stringify(input) }),
-  reconcileCycle: (cycleId: string, actualReturnRateBps: number) =>
+  reconciliationPreview: (cycleId: string, actualReturnRateBps: number) =>
+    api<CollectiveReconciliationPreview>(
+      `/v1/admin/collectives/cycles/${cycleId}/reconcile/preview`,
+      {
+        method: 'POST',
+        body: JSON.stringify({ actualReturnRateBps }),
+      },
+    ),
+  reconcileCycle: (cycleId: string, actualReturnRateBps: number, previewDigest?: string) =>
     api(`/v1/admin/collectives/cycles/${cycleId}/reconcile`, {
       method: 'POST',
-      body: JSON.stringify({ actualReturnRateBps }),
+      body: JSON.stringify({ actualReturnRateBps, ...(previewDigest ? { previewDigest } : {}) }),
     }),
   listTrades: (cycleId: string) =>
     api<CollectiveTrade[]>(`/v1/admin/collectives/cycles/${cycleId}/trades`, { cache: 'no-store' }),
