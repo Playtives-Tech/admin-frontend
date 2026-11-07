@@ -15,6 +15,32 @@ export type WealthCollectiveCycle = Readonly<{
   actualReturnRateBps: number | null;
 }>;
 
+export type CollectiveTradeInput = Readonly<{
+  reference: string;
+  startsAt: string;
+  endsAt: string;
+  profitMinorUnits: number;
+  treatment: 'COMPOUND' | 'HOLD';
+}>;
+
+export type CollectiveTradePreview = Readonly<{
+  digest: string;
+  totalProfitMinorUnits: number;
+  allocations: ReadonlyArray<{
+    contributionId: string;
+    userId: string;
+    investedBeforeMinorUnits: number;
+    profitMinorUnits: number;
+  }>;
+}>;
+
+export type CollectiveTrade = CollectiveTradeInput &
+  Readonly<{
+    _id: string;
+    status: 'SETTLED';
+    settledAt: string;
+  }>;
+
 export type WealthCollectiveProgramme = Readonly<{
   _id: string;
   name: string;
@@ -85,7 +111,21 @@ export type WealthCollectiveMember = Readonly<{
   email: string;
   memberCode: string | null;
   amountMinorUnits: number;
+  deployedMinorUnits: number;
+  pendingRolloverMinorUnits: number;
   addedMinorUnits: number;
+  profitMinorUnits: number;
+  rolledForwardMinorUnits: number;
+  projectedProfitMinorUnits: number | null;
+  firstDeployedAt: string | null;
+  contributionDetails: ReadonlyArray<{
+    reference: string;
+    amountMinorUnits: number;
+    effectiveAt: string;
+    deployedAt: string | null;
+    rollover: boolean;
+    projectedProfitMinorUnits: number | null;
+  }>;
   contributionCount: number;
   scheduledAmountMinorUnits: number;
   scheduledCount: number;
@@ -108,6 +148,8 @@ export type WealthCollectiveMember = Readonly<{
 
 export type WealthCollectiveMemberPage = Readonly<{
   cycleId: string;
+  projectionRateBps: number | null;
+  projectionUnavailableReason: string | null;
   members: WealthCollectiveMember[];
   pagination: { page: number; limit: number; total: number; totalPages: number };
 }>;
@@ -188,6 +230,18 @@ export const wealthCollectiveService = {
     api(`/v1/admin/collectives/cycles/${cycleId}/reconcile`, {
       method: 'POST',
       body: JSON.stringify({ actualReturnRateBps }),
+    }),
+  listTrades: (cycleId: string) =>
+    api<CollectiveTrade[]>(`/v1/admin/collectives/cycles/${cycleId}/trades`, { cache: 'no-store' }),
+  previewTrade: (cycleId: string, input: CollectiveTradeInput) =>
+    api<CollectiveTradePreview>(`/v1/admin/collectives/cycles/${cycleId}/trades/preview`, {
+      method: 'POST',
+      body: JSON.stringify(input),
+    }),
+  settleTrade: (cycleId: string, input: CollectiveTradeInput, expectedDigest: string) =>
+    api<CollectiveTrade>(`/v1/admin/collectives/cycles/${cycleId}/trades`, {
+      method: 'POST',
+      body: JSON.stringify({ ...input, expectedDigest, confirmed: true }),
     }),
   updateHalfwayWindow: (cycleId: string, enabled: boolean) =>
     api(`/v1/admin/collectives/cycles/${cycleId}/halfway-window`, {

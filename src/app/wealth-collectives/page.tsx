@@ -11,17 +11,22 @@ import {
   Pencil,
   Bold,
   Heading2,
+  Info,
   Link2,
   List,
   Trash2,
+  X,
 } from 'lucide-react';
+import { createPortal } from 'react-dom';
 import {
   useCallback,
   useEffect,
+  useId,
   useRef,
   useState,
   type ComponentType,
   type FormEvent,
+  type ReactNode,
 } from 'react';
 import { DashboardShell } from '@/components/dashboard/shell';
 import { useAuth } from '@/components/providers/auth-provider';
@@ -33,6 +38,9 @@ import {
   type WealthCollectiveCycle,
   type WealthCollectiveOverview,
   type WealthCollectivePeriod,
+  type CollectiveTrade,
+  type CollectiveTradeInput,
+  type CollectiveTradePreview,
 } from '@/lib/services/wealth-collective-service';
 
 const money = (amount: number): string =>
@@ -63,6 +71,58 @@ const lagosDateTimeInput = (value: string): string => {
       return result;
     }, {});
   return `${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}`;
+};
+
+function HelpText({ label, children }: Readonly<{ label: string; children: ReactNode }>): React.JSX.Element {
+  const [open, setOpen] = useState(false);
+  const titleId = useId();
+  useEffect(() => {
+    if (!open) return;
+    const dismiss = (event: KeyboardEvent): void => {
+      if (event.key === 'Escape') setOpen(false);
+    };
+    window.addEventListener('keydown', dismiss);
+    return () => window.removeEventListener('keydown', dismiss);
+  }, [open]);
+  return (
+    <>
+      <button aria-expanded={open} aria-label={`Information about ${label}`} className="inline-flex size-6 items-center justify-center rounded-full align-middle text-muted-foreground hover:bg-brand/10 hover:text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand" onClick={() => setOpen(true)} type="button"><Info aria-hidden="true" className="size-4" /></button>
+      {open && createPortal(
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/20 p-4 backdrop-blur-sm" onMouseDown={() => setOpen(false)} role="presentation">
+          <div aria-labelledby={titleId} aria-modal="true" className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-6 text-slate-900 shadow-2xl" onMouseDown={(event) => event.stopPropagation()} role="dialog">
+            <div className="flex items-start justify-between gap-4">
+              <h2 className="text-xl font-semibold" id={titleId}>{label}</h2>
+              <button aria-label="Close information" autoFocus className="rounded-lg p-2 text-slate-600 hover:bg-slate-100 hover:text-slate-900" onClick={() => setOpen(false)} type="button"><X aria-hidden="true" className="size-5" /></button>
+            </div>
+            <div className="mt-4 text-sm font-normal leading-7 text-slate-700">{children}</div>
+          </div>
+        </div>, document.body,
+      )}
+    </>
+  );
+}
+
+const metricHelp: Record<string, string> = {
+  'Funds added': 'Money moved from Playtives Wallets into the Collective during the selected period. It may not have been deployed yet.',
+  Deployed: 'New contributions put to work during the selected period; later rollovers are tracked separately.',
+  'Still reserved': 'Contributions added during this period that are waiting for an eligible deployment window.',
+  'Paid to members': 'Cash actually credited to member wallets after maturity or a completed Early Exit. Profit attribution and rollovers are not cash payouts.',
+  'Capital contributed': 'Member-funded capital recorded in the current programme, excluding exited positions.',
+  'Reserved for deployment': 'Member contributions committed to a future deployment and not yet earning.',
+  'Paid to member wallets': 'Total settled Collective value and completed Early Exit payments credited to member wallets.',
+  'Recorded movements': 'Count of Collective ledger events, including funding, profit attribution, and rollover; not a count of payouts.',
+  'Pending Early Exit requests': 'Requests awaiting review or settlement. Capital stops participating while a request is pending.',
+  'Early Exit capital awaiting settlement': 'Capital requested for Early Exit but not yet credited back to member wallets.',
+  'New member capital': 'Fresh contributions deployed into this month, excluding capital carried from a previous month.',
+  'Rolled in': 'Capital and compounded profit carried from the preceding reconciled month.',
+  'Net profit / loss': 'Attributed member result for this month. This is not a wallet payment.',
+  'Rolled to next month': 'Invested balance carried into the next scheduled month after reconciliation; held profit is excluded.',
+  'Maturity paid': 'Final-month value actually credited to member wallets.',
+  'Early exits paid': 'Completed Early Exit payments credited during this month.',
+  'Deployed now': 'Contribution records whose deployment time has arrived. This excludes future-dated rollover records.',
+  'Future rollover': 'Capital already recorded for this month but not due to deploy until its scheduled start.',
+  'Awaiting deployment': 'This member’s scheduled contributions that have not entered the selected month’s invested balance.',
+  'Actual profit attributed': 'This member’s recorded result from reconciliation or settled trades for the selected month. It is not a wallet payment.',
 };
 
 export default function WealthCollectivesPage(): React.JSX.Element {
@@ -108,7 +168,9 @@ export default function WealthCollectivesPage(): React.JSX.Element {
         ) : isSuperAdmin ? (
           <ProgrammeSetup refresh={load} />
         ) : (
-          <p className="rounded-xl border p-6 text-sm text-muted-foreground">A super administrator must create the programme.</p>
+          <p className="rounded-xl border p-6 text-sm text-muted-foreground">
+            A super administrator must create the programme.
+          </p>
         )}
       </div>
     </DashboardShell>
@@ -267,13 +329,15 @@ function ProgrammeOverview({
               {dateTime(programme.startsAt)} to {dateTime(programme.endsAt)} · {programme.timezone}
             </p>
           </div>
-          {isSuperAdmin ? <button
-            className="inline-flex h-10 items-center gap-2 rounded-lg border px-3 text-sm font-semibold hover:bg-muted"
-            onClick={() => setStartDateOpen(true)}
-            type="button"
-          >
-            <Pencil className="size-4" /> Edit start date
-          </button> : null}
+          {isSuperAdmin ? (
+            <button
+              className="inline-flex h-10 items-center gap-2 rounded-lg border px-3 text-sm font-semibold hover:bg-muted"
+              onClick={() => setStartDateOpen(true)}
+              type="button"
+            >
+              <Pencil className="size-4" /> Edit start date
+            </button>
+          ) : null}
         </div>
       </section>
       {startDateOpen && (
@@ -351,13 +415,26 @@ function ProgrammeOverview({
           </button>
         ))}
       </nav>
+      <div className="text-sm text-muted-foreground">
+        <HelpText label={`${section} section`}>
+          {{
+            overview: 'Review date-filtered cash movements and the current programme-wide position. These totals are not individual member balances.',
+            months: 'Review scheduled months, settle trades where enabled, then close a month to record member results and carry invested funds forward. Wallet payouts occur at maturity or completed Early Exit.',
+            members: 'Select a month to compare each member’s capital, personal profit attribution, rollover, reservations, and agreement status.',
+            exits: 'Review member Early Exit requests and settle eligible capital according to the programme rules.',
+            content: 'Edit the explanation members see about the Collective. Saving content does not change financial records.',
+            updates: 'Publish announcements for members; this does not alter balances or payout calculations.',
+            agreement: 'Manage the terms members accept before participating. Changing terms does not recalculate past results.',
+          }[section]}
+        </HelpText>
+      </div>
       {section === 'content' && <CollectiveAboutEditor programme={programme} refresh={refresh} />}
       {section === 'overview' && (
         <div className="space-y-4">
           <section className="bg-card rounded-2xl border p-5 sm:p-6">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
-                <h2 className="text-lg font-semibold">Capital movement</h2>
+                <h2 className="text-lg font-semibold">Capital movement <HelpText label="Capital movement">These figures describe cash events in the chosen date range, not today’s Collective balance. Funding, deployment, and payout can happen on different dates.</HelpText></h2>
                 <p className="mt-1 text-sm text-muted-foreground">
                   Transactions in the selected period · Africa/Lagos time
                 </p>
@@ -415,7 +492,7 @@ function ProgrammeOverview({
               current invested balance.
             </p>
           </section>
-          <h2 className="text-lg font-semibold">Current programme position</h2>
+          <h2 className="text-lg font-semibold">Current programme position <HelpText label="Current programme position">Current member capital, reservations, payouts, and pending exits across the active programme. These figures are not limited by the period filter above.</HelpText></h2>
           <p className="text-xs text-muted-foreground">
             Live capital and reservations exclude members who exited. Payouts and recorded movements
             remain available for audit.
@@ -456,7 +533,7 @@ function ProgrammeOverview({
       )}
       {section === 'months' && (
         <section className="bg-card rounded-2xl border p-6 shadow-sm">
-          <h2 className="text-xl font-semibold">Month amounts and payouts</h2>
+          <h2 className="text-xl font-semibold">Month amounts and payouts <HelpText label="Month amounts and payouts">A month’s return is attributed to each eligible member at reconciliation. Before final maturity, invested capital and compounded profit roll forward rather than being paid to wallets.</HelpText></h2>
           <p className="mt-1 text-sm text-muted-foreground">
             New deposits and rollovers are separate. Actual profit appears after reconciliation;
             payout means cash credited to members, not amounts rolled into the next month.
@@ -470,6 +547,7 @@ function ProgrammeOverview({
             {overview.cycles.map((cycle) => (
               <CycleRow
                 cycle={cycle}
+                hasNextCycle={overview.cycles.some((item) => item.number === cycle.number + 1)}
                 key={cycle._id}
                 refresh={refresh}
                 stats={overview.cycleStats.find((stat) => stat.cycleId === cycle._id)}
@@ -489,7 +567,11 @@ function ProgrammeOverview({
       {section === 'agreement' && isSuperAdmin && (
         <CollectiveAgreementEditor programme={programme} refresh={refresh} />
       )}
-      {section === 'agreement' && !isSuperAdmin && <p className="rounded-xl border p-6 text-sm text-muted-foreground">Only a super administrator can change the agreement.</p>}
+      {section === 'agreement' && !isSuperAdmin && (
+        <p className="rounded-xl border p-6 text-sm text-muted-foreground">
+          Only a super administrator can change the agreement.
+        </p>
+      )}
     </>
   );
 }
@@ -497,7 +579,7 @@ function ProgrammeOverview({
 function SettlementSettings(): React.JSX.Element {
   return (
     <section className="rounded-2xl border border-brand/20 bg-brand/5 p-5 sm:p-6">
-      <h2 className="text-lg font-semibold">Early Exit settlement</h2>
+      <h2 className="text-lg font-semibold">Early Exit settlement <HelpText label="Early Exit settlement">Review an approved Early Exit and confirm the amount before crediting the member’s Playtives Wallet. This is separate from monthly profit attribution.</HelpText></h2>
       <p className="mt-1 text-sm leading-6 text-muted-foreground">
         Settlement timing is fixed. The member’s position stops participating immediately, all
         profit and accrued returns are permanently forfeited, and only personally contributed
@@ -555,7 +637,7 @@ function EarlyExitsPanel(): React.JSX.Element {
   };
   return (
     <section className="bg-card rounded-2xl border p-5 sm:p-6">
-      <h2 className="text-xl font-semibold">Early Exit requests</h2>
+      <h2 className="text-xl font-semibold">Early Exit requests <HelpText label="Early Exit requests">Members asking to leave before maturity appear here. Review eligibility and settlement timing before completing a wallet payout.</HelpText></h2>
       <p className="mt-1 text-sm text-muted-foreground">
         Review contributed capital and forfeited returns. Settlement remains locked until the
         member’s current Collective month ends, and completion is idempotent.
@@ -662,12 +744,14 @@ function MembersPanel({
 }: Readonly<{ cycles: WealthCollectiveCycle[] }>): React.JSX.Element {
   const [cycleId, setCycleId] = useState(cycles[0]?._id ?? '');
   const [page, setPage] = useState(1);
+  const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
   const [result, setResult] = useState<Awaited<
     ReturnType<typeof wealthCollectiveService.cycleMembers>
   > | null>(null);
   const [busy, setBusy] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const selectedMember = result?.members.find((member) => member.userId === selectedMemberId);
   useEffect(() => {
     if (!cycleId) return;
     setBusy(true);
@@ -686,9 +770,9 @@ function MembersPanel({
     <section className="bg-card rounded-2xl border p-5 shadow-sm sm:p-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h2 className="text-xl font-semibold">Member tracking</h2>
+          <h2 className="text-xl font-semibold">Member tracking <HelpText label="Member tracking">Select a month to see each member’s deployed capital, individually attributed profit, rolled-forward amount, and funds awaiting deployment. Download CSV for the full list.</HelpText></h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            Compare each member’s deployed amount, position, and reserved contribution.
+            Compare each member’s contributed capital, attributed profit, rollover, and reserved contribution. Profit is not a wallet payment before maturity.
           </p>
         </div>
         <div className="flex flex-wrap items-end gap-2">
@@ -699,6 +783,7 @@ function MembersPanel({
               onChange={(event) => {
                 setCycleId(event.target.value);
                 setPage(1);
+                setSelectedMemberId(null);
               }}
               value={cycleId}
             >
@@ -739,10 +824,13 @@ function MembersPanel({
               <th className="px-4 py-3 font-medium">Member</th>
               <th className="px-4 py-3 font-medium">Code</th>
               <th className="px-4 py-3 text-right font-medium">Added</th>
-              <th className="px-4 py-3 text-right font-medium">Position</th>
+              <th className="px-4 py-3 text-right font-medium">Recorded position</th>
+              <th className="px-4 py-3 text-right font-medium">Profit attributed</th>
+              <th className="px-4 py-3 text-right font-medium">Rolled forward</th>
               <th className="px-4 py-3 text-right font-medium">Reserved</th>
               <th className="px-4 py-3 font-medium">Monthly plan</th>
               <th className="px-4 py-3 font-medium">Agreement</th>
+              <th className="px-4 py-3 font-medium">Details</th>
             </tr>
           </thead>
           <tbody className="divide-y">
@@ -757,6 +845,10 @@ function MembersPanel({
                 <td className="px-4 py-3 text-right font-semibold">
                   {money(member.amountMinorUnits)}
                 </td>
+                <td className="px-4 py-3 text-right font-semibold text-brand">
+                  {money(member.profitMinorUnits)}
+                </td>
+                <td className="px-4 py-3 text-right">{money(member.rolledForwardMinorUnits)}</td>
                 <td className="px-4 py-3 text-right">{money(member.scheduledAmountMinorUnits)}</td>
                 <td className="px-4 py-3">
                   {member.monthlyContributionPlan ? (
@@ -800,6 +892,11 @@ function MembersPanel({
                     <span className="text-muted-foreground">Not signed</span>
                   )}
                 </td>
+                <td className="px-4 py-3">
+                  <button aria-expanded={selectedMemberId === member.userId} className="rounded-lg border px-3 py-2 text-xs font-semibold text-brand hover:bg-brand/5" onClick={() => setSelectedMemberId(selectedMemberId === member.userId ? null : member.userId)} type="button">
+                    {selectedMemberId === member.userId ? 'Hide' : 'View'} account
+                  </button>
+                </td>
               </tr>
             ))}
           </tbody>
@@ -810,6 +907,40 @@ function MembersPanel({
           <p className="p-4 text-sm text-muted-foreground">No members have funded this month.</p>
         )}
       </div>
+      {selectedMember && (
+        <section className="mt-5 rounded-xl border bg-muted/20 p-5" aria-label={`${selectedMember.name} Collective account details`}>
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h3 className="text-lg font-semibold">{selectedMember.name} · Month {cycles.find((item) => item._id === cycleId)?.number}</h3>
+              <p className="text-sm text-muted-foreground">{selectedMember.email} · {selectedMember.memberCode ?? 'No member code'}</p>
+            </div>
+            <button className="rounded-lg border px-3 py-2 text-sm" onClick={() => setSelectedMemberId(null)} type="button">Close</button>
+          </div>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <Metric icon={Landmark} label="Deployed now" value={money(selectedMember.deployedMinorUnits)} />
+            <Metric icon={CalendarDays} label="Awaiting deployment" value={money(selectedMember.scheduledAmountMinorUnits)} />
+            <Metric icon={ChartNoAxesCombined} label="Actual profit attributed" value={money(selectedMember.profitMinorUnits)} />
+            <Metric icon={Layers3} label="Rolled to next month" value={money(selectedMember.rolledForwardMinorUnits)} />
+            {selectedMember.pendingRolloverMinorUnits > 0 && <Metric icon={CalendarDays} label="Future rollover" value={money(selectedMember.pendingRolloverMinorUnits)} />}
+          </div>
+          <div className="mt-4 rounded-lg border bg-card p-4 text-sm">
+            <p className="font-semibold">Illustrative profit for this month: {selectedMember.projectedProfitMinorUnits === null ? 'Not available' : money(selectedMember.projectedProfitMinorUnits)}</p>
+            <p className="mt-1 text-muted-foreground">{result?.projectionRateBps === null ? result?.projectionUnavailableReason : `Based on the ${((result?.projectionRateBps ?? 0) / 100).toFixed(2)}% monthly target, each deployed contribution’s amount and eligible days. This is not a guaranteed return or a wallet balance.`}</p>
+            <p className="mt-2 text-muted-foreground">First recorded deployment: {selectedMember.firstDeployedAt ? dateTime(selectedMember.firstDeployedAt) : selectedMember.amountMinorUnits > 0 ? 'Date not recorded' : 'No funds deployed'} · Next pending deployment: {selectedMember.scheduledDeploymentAt ? dateTime(selectedMember.scheduledDeploymentAt) : 'None'}</p>
+          </div>
+          <h4 className="mt-5 font-semibold">Deployed contribution history</h4>
+          <div className="mt-2 space-y-2">
+            {selectedMember.contributionDetails.map((item) => (
+              <div className="rounded-lg border bg-card p-3 text-sm" key={item.reference}>
+                <p className="font-medium">{money(item.amountMinorUnits)} · {item.rollover ? 'Rolled in' : 'New capital'}</p>
+                <p className="mt-1 text-xs text-muted-foreground">Earning from {dateTime(item.effectiveAt)} · Deployed {item.deployedAt ? dateTime(item.deployedAt) : 'date not recorded'} · Ref: {item.reference}</p>
+                {item.projectedProfitMinorUnits !== null && <p className="mt-1 text-xs text-brand">Illustrative profit: {money(item.projectedProfitMinorUnits)}</p>}
+              </div>
+            ))}
+            {!selectedMember.contributionDetails.length && <p className="text-sm text-muted-foreground">No deployed contributions in this month.</p>}
+          </div>
+        </section>
+      )}
       {result && (
         <div className="mt-4 flex items-center justify-between text-sm">
           <span className="text-muted-foreground">
@@ -859,11 +990,17 @@ function ProgrammeUpdates({
   const publish = (): void => {
     setBusy(true);
     const request = editingId
-      ? wealthCollectiveService.updatePublishedUpdate(editingId, { title, body, format: 'MARKDOWN' })
+      ? wealthCollectiveService.updatePublishedUpdate(editingId, {
+          title,
+          body,
+          format: 'MARKDOWN',
+        })
       : wealthCollectiveService.publishUpdate({ title, body, format: 'MARKDOWN' });
     void request
       .then(async () => {
-        setTitle(''); setBody(''); setEditingId(null);
+        setTitle('');
+        setBody('');
+        setEditingId(null);
         notify.success(editingId ? 'Update saved.' : 'Update published to members.');
         await refresh();
       })
@@ -880,18 +1017,27 @@ function ProgrammeUpdates({
     const selected = body.slice(start, end) || 'text';
     const next = `${body.slice(0, start)}${prefix}${selected}${suffix}${body.slice(end)}`;
     setBody(next);
-    window.requestAnimationFrame(() => { editor.focus(); editor.setSelectionRange(start + prefix.length, start + prefix.length + selected.length); });
+    window.requestAnimationFrame(() => {
+      editor.focus();
+      editor.setSelectionRange(start + prefix.length, start + prefix.length + selected.length);
+    });
   };
   const remove = async (updateId: string): Promise<void> => {
     if (!window.confirm('Delete this Collective update? Members will no longer see it.')) return;
     setBusy(true);
-    try { await wealthCollectiveService.deletePublishedUpdate(updateId); notify.success('Update deleted.'); await refresh(); }
-    catch (cause) { notify.error(cause instanceof Error ? cause.message : 'Unable to delete update.'); }
-    finally { setBusy(false); }
+    try {
+      await wealthCollectiveService.deletePublishedUpdate(updateId);
+      notify.success('Update deleted.');
+      await refresh();
+    } catch (cause) {
+      notify.error(cause instanceof Error ? cause.message : 'Unable to delete update.');
+    } finally {
+      setBusy(false);
+    }
   };
   return (
     <section className="bg-card rounded-2xl border p-6 shadow-sm">
-      <h2 className="text-xl font-semibold">Collective updates</h2>
+      <h2 className="text-xl font-semibold">Collective updates <HelpText label="Collective updates">Publish programme announcements that members can read in their Collective dashboard. Updates do not change balances or reconciliation.</HelpText></h2>
       <p className="mt-1 text-sm text-muted-foreground">
         Publish programme news alongside deployment dates in members’ Updates view.
       </p>
@@ -915,11 +1061,41 @@ function ProgrammeUpdates({
         <label className="block text-sm font-medium">
           Message
           <span className="mt-1 flex flex-wrap gap-1 rounded-t-lg border border-b-0 bg-muted/30 p-2">
-            <button aria-label="Heading" className="rounded-md border bg-background p-2" onClick={() => format('## ', '')} type="button"><Heading2 className="size-4" /></button>
-            <button aria-label="Bold" className="rounded-md border bg-background p-2" onClick={() => format('**')} type="button"><Bold className="size-4" /></button>
-            <button aria-label="Bullet list" className="rounded-md border bg-background p-2" onClick={() => format('- ', '')} type="button"><List className="size-4" /></button>
-            <button aria-label="Link" className="rounded-md border bg-background p-2" onClick={() => format('[', '](https://)')} type="button"><Link2 className="size-4" /></button>
-            <span className="self-center px-2 text-xs font-normal text-muted-foreground">Markdown formatting supported</span>
+            <button
+              aria-label="Heading"
+              className="rounded-md border bg-background p-2"
+              onClick={() => format('## ', '')}
+              type="button"
+            >
+              <Heading2 className="size-4" />
+            </button>
+            <button
+              aria-label="Bold"
+              className="rounded-md border bg-background p-2"
+              onClick={() => format('**')}
+              type="button"
+            >
+              <Bold className="size-4" />
+            </button>
+            <button
+              aria-label="Bullet list"
+              className="rounded-md border bg-background p-2"
+              onClick={() => format('- ', '')}
+              type="button"
+            >
+              <List className="size-4" />
+            </button>
+            <button
+              aria-label="Link"
+              className="rounded-md border bg-background p-2"
+              onClick={() => format('[', '](https://)')}
+              type="button"
+            >
+              <Link2 className="size-4" />
+            </button>
+            <span className="self-center px-2 text-xs font-normal text-muted-foreground">
+              Markdown formatting supported
+            </span>
           </span>
           <textarea
             ref={editorRef}
@@ -937,14 +1113,52 @@ function ProgrammeUpdates({
         >
           {busy ? 'Saving…' : editingId ? 'Save changes' : 'Publish update'}
         </button>
-        {editingId ? <button className="ml-2 rounded-lg border px-5 py-3 text-sm font-semibold" onClick={() => { setEditingId(null); setTitle(''); setBody(''); }} type="button">Cancel edit</button> : null}
+        {editingId ? (
+          <button
+            className="ml-2 rounded-lg border px-5 py-3 text-sm font-semibold"
+            onClick={() => {
+              setEditingId(null);
+              setTitle('');
+              setBody('');
+            }}
+            type="button"
+          >
+            Cancel edit
+          </button>
+        ) : null}
       </form>
       <div className="mt-6 divide-y border-t">
         {updates.slice((page - 1) * pageSize, page * pageSize).map((update) => (
           <article className="py-4" key={update._id}>
             <div className="flex flex-wrap items-start justify-between gap-2">
               <h3 className="font-semibold">{update.title}</h3>
-              <div className="flex items-center gap-2"><time className="text-xs text-muted-foreground">{dateTime(update.publishedAt)}</time><button aria-label="Edit update" className="rounded-md border p-2 text-muted-foreground hover:text-brand" onClick={() => { setEditingId(update._id); setTitle(update.title); setBody(update.body); window.scrollTo({ top: 0, behavior: 'smooth' }); }} type="button"><Pencil className="size-3.5" /></button><button aria-label="Delete update" className="rounded-md border p-2 text-muted-foreground hover:text-red-600" disabled={busy} onClick={() => void remove(update._id)} type="button"><Trash2 className="size-3.5" /></button></div>
+              <div className="flex items-center gap-2">
+                <time className="text-xs text-muted-foreground">
+                  {dateTime(update.publishedAt)}
+                </time>
+                <button
+                  aria-label="Edit update"
+                  className="rounded-md border p-2 text-muted-foreground hover:text-brand"
+                  onClick={() => {
+                    setEditingId(update._id);
+                    setTitle(update.title);
+                    setBody(update.body);
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }}
+                  type="button"
+                >
+                  <Pencil className="size-3.5" />
+                </button>
+                <button
+                  aria-label="Delete update"
+                  className="rounded-md border p-2 text-muted-foreground hover:text-red-600"
+                  disabled={busy}
+                  onClick={() => void remove(update._id)}
+                  type="button"
+                >
+                  <Trash2 className="size-3.5" />
+                </button>
+              </div>
             </div>
             <p className="mt-1 whitespace-pre-wrap text-sm leading-6 text-muted-foreground">
               {update.body}
@@ -1011,7 +1225,7 @@ function MovementStat({
         : `${difference >= 0 ? '+' : '−'}${money(Math.abs(difference))} (${Math.abs((difference / priorValue) * 100).toFixed(1)}%) vs ${comparison.toLowerCase()}`;
   return (
     <article className="rounded-xl border bg-muted/30 p-4">
-      <p className="text-xs font-medium text-muted-foreground">{label}</p>
+      <p className="text-xs font-medium text-muted-foreground">{label} {metricHelp[label] && <HelpText label={label}>{metricHelp[label]}</HelpText>}</p>
       <p className="mt-2 text-xl font-semibold tabular-nums">{money(value)}</p>
       {change && <p className="mt-2 text-xs leading-5 text-muted-foreground">{change}</p>}
     </article>
@@ -1030,7 +1244,7 @@ function Metric({
   return (
     <article className="bg-card rounded-xl border p-4">
       <Icon className="size-5 text-brand" />
-      <p className="mt-4 text-sm text-muted-foreground">{label}</p>
+      <p className="mt-4 text-sm text-muted-foreground">{label} {metricHelp[label] && <HelpText label={label}>{metricHelp[label]}</HelpText>}</p>
       <p className="mt-1 text-xl font-semibold">{value}</p>
     </article>
   );
@@ -1038,17 +1252,21 @@ function Metric({
 
 function CycleRow({
   cycle,
+  hasNextCycle,
   refresh,
   stats,
 }: Readonly<{
   cycle: WealthCollectiveCycle;
+  hasNextCycle: boolean;
   refresh: () => Promise<void>;
   stats?: WealthCollectiveOverview['cycleStats'][number];
 }>): React.JSX.Element {
   const { user } = useAuth();
   const isSuperAdmin = user?.roles.includes('SUPER_ADMIN') ?? false;
   const [rate, setRate] = useState('');
+  const [hasTrades, setHasTrades] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
   const [windowBusy, setWindowBusy] = useState(false);
   const [deploymentBusy, setDeploymentBusy] = useState(false);
   const now = Date.now();
@@ -1056,6 +1274,15 @@ function CycleRow({
     Boolean(cycle.halfwayCandidateAt) && now < new Date(cycle.halfwayCandidateAt!).getTime();
   const monthActive =
     now >= new Date(cycle.startsAt).getTime() && now < new Date(cycle.endsAt).getTime();
+  useEffect(() => {
+    void wealthCollectiveService
+      .listTrades(cycle._id)
+      .then((items) => {
+        setHasTrades(items.length > 0);
+        if (items.length > 0) setRate('0');
+      })
+      .catch(() => undefined);
+  }, [cycle._id, cycle.status]);
   const toggleHalfway = (): void => {
     setWindowBusy(true);
     void wealthCollectiveService
@@ -1098,6 +1325,11 @@ function CycleRow({
       notify.error('Enter a valid return percentage.');
       return;
     }
+    setConfirmOpen(true);
+  };
+  const confirmReconcile = (): void => {
+    const bps = Math.round(Number(rate) * 100);
+    setConfirmOpen(false);
     setBusy(true);
     void wealthCollectiveService
       .reconcileCycle(cycle._id, bps)
@@ -1112,6 +1344,25 @@ function CycleRow({
   };
   return (
     <div className="py-5">
+      {confirmOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" role="presentation" onMouseDown={() => setConfirmOpen(false)}>
+          <div aria-labelledby={`reconcile-title-${cycle._id}`} aria-modal="true" className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl" onMouseDown={(event) => event.stopPropagation()} role="dialog">
+            <h3 className="text-xl font-semibold" id={`reconcile-title-${cycle._id}`}>Close Month {cycle.number}?</h3>
+            <p className="mt-3 text-sm leading-6 text-muted-foreground">
+              Apply a {Number(rate).toFixed(2)}% month-end return to eligible capital. This records each member’s result and closes this month. It cannot be reversed here.
+            </p>
+            <p className="mt-3 rounded-lg bg-muted p-3 text-sm leading-6">
+              {hasNextCycle
+                ? 'Capital and any compounded profit move into the next scheduled month. No money is paid to member wallets now; held profit remains in the Collective until maturity.'
+                : 'This is the final month. Matured capital and held profit will be credited to member wallets.'}
+            </p>
+            <div className="mt-6 flex justify-end gap-2">
+              <button className="rounded-lg border px-4 py-2 text-sm" onClick={() => setConfirmOpen(false)} type="button">Cancel</button>
+              <button className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white" onClick={confirmReconcile} type="button">Confirm month close</button>
+            </div>
+          </div>
+        </div>
+      )}
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div>
           <div className="flex items-center gap-2">
@@ -1139,33 +1390,37 @@ function CycleRow({
             </p>
           )}
           <div className="mt-3 flex flex-wrap items-center gap-2">
-            {isSuperAdmin ? <button
-              className="rounded-lg border border-brand px-3 py-2 text-xs font-semibold text-brand disabled:cursor-not-allowed disabled:opacity-50"
-              disabled={windowBusy || !halfwayCanChange || cycle.status === 'RECONCILED'}
-              onClick={toggleHalfway}
-              type="button"
-            >
-              {windowBusy
-                ? 'Saving…'
-                : cycle.secondWindowEnabled
-                  ? 'Disable halfway window'
-                  : 'Enable halfway window'}
-            </button> : null}
-            {isSuperAdmin ? <button
-              className="rounded-lg bg-brand px-3 py-2 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
-              disabled={
-                deploymentBusy ||
-                !monthActive ||
-                cycle.status === 'RECONCILED' ||
-                !stats?.manualEligibleCount
-              }
-              onClick={deployPending}
-              type="button"
-            >
-              {deploymentBusy
-                ? 'Deploying…'
-                : `Deploy pending now · ${stats?.manualEligibleCount ?? 0}`}
-            </button> : null}
+            {isSuperAdmin ? (
+              <button
+                className="rounded-lg border border-brand px-3 py-2 text-xs font-semibold text-brand disabled:cursor-not-allowed disabled:opacity-50"
+                disabled={windowBusy || !halfwayCanChange || cycle.status === 'RECONCILED'}
+                onClick={toggleHalfway}
+                type="button"
+              >
+                {windowBusy
+                  ? 'Saving…'
+                  : cycle.secondWindowEnabled
+                    ? 'Disable halfway window'
+                    : 'Enable halfway window'}
+              </button>
+            ) : null}
+            {isSuperAdmin ? (
+              <button
+                className="rounded-lg bg-brand px-3 py-2 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
+                disabled={
+                  deploymentBusy ||
+                  !monthActive ||
+                  cycle.status === 'RECONCILED' ||
+                  !stats?.manualEligibleCount
+                }
+                onClick={deployPending}
+                type="button"
+              >
+                {deploymentBusy
+                  ? 'Deploying…'
+                  : `Deploy pending now · ${stats?.manualEligibleCount ?? 0}`}
+              </button>
+            ) : null}
           </div>
           <p className="mt-2 text-xs text-muted-foreground">
             Eligible awaiting deployment: {money(stats?.manualEligibleMinorUnits ?? 0)}. Manual
@@ -1227,7 +1482,7 @@ function CycleRow({
             />
             <button
               className="h-10 rounded-lg border px-3 text-sm font-semibold hover:bg-muted disabled:opacity-50"
-              disabled={busy}
+              disabled={busy || (hasTrades && rate !== '0')}
               type="button"
               onClick={reconcile}
             >
@@ -1235,9 +1490,18 @@ function CycleRow({
             </button>
           </div>
         ) : (
-          <p className="text-sm text-muted-foreground">Awaiting super administrator reconciliation.</p>
+          <p className="text-sm text-muted-foreground">
+            Awaiting super administrator reconciliation.
+          </p>
         )}
       </div>
+      {hasTrades && cycle.status !== 'RECONCILED' && (
+        <p className="mt-2 text-xs text-muted-foreground">
+          This month has settled trades. Use 0% at month-end close; trade profits have already been
+          recorded and must not be applied again.
+        </p>
+      )}
+      <TradeSettlements cycle={cycle} isSuperAdmin={isSuperAdmin} refresh={refresh} />
       <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
         <MovementStat
           label="New member capital"
@@ -1271,5 +1535,223 @@ function CycleRow({
         />
       </div>
     </div>
+  );
+}
+
+function TradeSettlements({
+  cycle,
+  isSuperAdmin,
+  refresh,
+}: Readonly<{
+  cycle: WealthCollectiveCycle;
+  isSuperAdmin: boolean;
+  refresh: () => Promise<void>;
+}>): React.JSX.Element {
+  const [trades, setTrades] = useState<CollectiveTrade[]>([]);
+  const [reference, setReference] = useState('');
+  const [startsAt, setStartsAt] = useState('');
+  const [endsAt, setEndsAt] = useState('');
+  const [profit, setProfit] = useState('');
+  const [treatment, setTreatment] = useState<'COMPOUND' | 'HOLD'>('COMPOUND');
+  const [preview, setPreview] = useState<{
+    input: CollectiveTradeInput;
+    result: CollectiveTradePreview;
+  } | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    void wealthCollectiveService
+      .listTrades(cycle._id)
+      .then(setTrades)
+      .catch(() => setTrades([]));
+  }, [cycle._id]);
+
+  const prepare = (): CollectiveTradeInput | null => {
+    const profitMinorUnits = Math.round(Number(profit) * 100);
+    const start = new Date(startsAt);
+    const end = new Date(endsAt);
+    if (
+      !reference.trim() ||
+      !startsAt ||
+      !endsAt ||
+      !Number.isSafeInteger(profitMinorUnits) ||
+      profitMinorUnits < 1 ||
+      Number.isNaN(start.getTime()) ||
+      Number.isNaN(end.getTime())
+    ) {
+      notify.error('Enter a reference, trade dates, and a positive verified profit.');
+      return null;
+    }
+    return {
+      reference: reference.trim(),
+      startsAt: start.toISOString(),
+      endsAt: end.toISOString(),
+      profitMinorUnits,
+      treatment,
+    };
+  };
+  const loadPreview = (): void => {
+    const input = prepare();
+    if (!input) return;
+    setBusy(true);
+    setPreview(null);
+    void wealthCollectiveService
+      .previewTrade(cycle._id, input)
+      .then((result) => setPreview({ input, result }))
+      .catch((error: unknown) =>
+        notify.error(error instanceof Error ? error.message : 'Unable to preview trade.'),
+      )
+      .finally(() => setBusy(false));
+  };
+  const settle = (): void => {
+    if (
+      !preview ||
+      !window.confirm(
+        `Confirm ${money(preview.result.totalProfitMinorUnits)} profit across ${preview.result.allocations.length} contribution(s)? This is an immutable Collective-only settlement; no wallet is credited.`,
+      )
+    )
+      return;
+    setBusy(true);
+    void wealthCollectiveService
+      .settleTrade(cycle._id, preview.input, preview.result.digest)
+      .then(async () => {
+        notify.success('Trade profit recorded in members’ Collective positions.');
+        setPreview(null);
+        setReference('');
+        setStartsAt('');
+        setEndsAt('');
+        setProfit('');
+        setTrades(await wealthCollectiveService.listTrades(cycle._id));
+        await refresh();
+      })
+      .catch((error: unknown) =>
+        notify.error(error instanceof Error ? error.message : 'Unable to settle trade.'),
+      )
+      .finally(() => setBusy(false));
+  };
+  const clearPreview = (): void => setPreview(null);
+  return (
+    <section className="bg-card mt-5 rounded-xl border p-4">
+      <h4 className="font-semibold">Trade settlements <HelpText label="Trade settlements">Record verified profit for a trade within this month. Preview the per-member allocation first, then choose whether profit compounds into later trades or stays held until maturity. No wallet is credited now.</HelpText></h4>
+      <p className="mt-1 text-xs text-muted-foreground">
+        Settle verified trade profit during this month without moving money to Playtives Wallets.
+        Compounded profit earns in later trades; held profit stays in the Collective without earning
+        until maturity or exit. Month-end reconciliation is still required to move capital forward.
+      </p>
+      {trades.length > 0 && (
+        <div className="mt-3 space-y-1 text-xs">
+          {trades.map((trade) => (
+            <p key={trade._id}>
+              {trade.reference} · {dateTime(trade.startsAt)}–{dateTime(trade.endsAt)} ·{' '}
+              {money(trade.profitMinorUnits)} ·{' '}
+              {trade.treatment === 'COMPOUND' ? 'Compounded' : 'Held'}
+            </p>
+          ))}
+        </div>
+      )}
+      {isSuperAdmin &&
+        process.env.NEXT_PUBLIC_COLLECTIVE_TRADE_SETTLEMENT_ENABLED === 'true' &&
+        cycle.status !== 'RECONCILED' && (
+          <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+            <label className="text-xs">
+              Trade reference
+              <input
+                className="mt-1 h-10 w-full rounded-lg border px-3"
+                value={reference}
+                onChange={(event) => {
+                  setReference(event.target.value);
+                  clearPreview();
+                }}
+              />
+            </label>
+            <label className="text-xs">
+              Trade started
+              <input
+                className="mt-1 h-10 w-full rounded-lg border px-3"
+                type="datetime-local"
+                value={startsAt}
+                onChange={(event) => {
+                  setStartsAt(event.target.value);
+                  clearPreview();
+                }}
+              />
+            </label>
+            <label className="text-xs">
+              Trade ended
+              <input
+                className="mt-1 h-10 w-full rounded-lg border px-3"
+                type="datetime-local"
+                value={endsAt}
+                onChange={(event) => {
+                  setEndsAt(event.target.value);
+                  clearPreview();
+                }}
+              />
+            </label>
+            <label className="text-xs">
+              Verified profit (₦)
+              <input
+                className="mt-1 h-10 w-full rounded-lg border px-3"
+                type="number"
+                min="0.01"
+                step="0.01"
+                value={profit}
+                onChange={(event) => {
+                  setProfit(event.target.value);
+                  clearPreview();
+                }}
+              />
+            </label>
+            <label className="text-xs">
+              Profit treatment
+              <select
+                className="mt-1 h-10 w-full rounded-lg border px-3"
+                value={treatment}
+                onChange={(event) => {
+                  setTreatment(event.target.value as 'COMPOUND' | 'HOLD');
+                  clearPreview();
+                }}
+              >
+                <option value="COMPOUND">Use in next trade</option>
+                <option value="HOLD">Hold until maturity</option>
+              </select>
+            </label>
+            <div className="sm:col-span-2 xl:col-span-5">
+              <button
+                type="button"
+                className="rounded-lg border px-4 py-2 text-sm font-semibold disabled:opacity-50"
+                disabled={busy}
+                onClick={loadPreview}
+              >
+                Preview member allocations
+              </button>
+            </div>
+            {preview && (
+              <div className="rounded-lg border bg-muted/40 p-4 sm:col-span-2 xl:col-span-5">
+                <p className="text-sm font-semibold">
+                  {money(preview.result.totalProfitMinorUnits)} across{' '}
+                  {preview.result.allocations.length} contribution(s)
+                </p>
+                <div className="mt-2 max-h-44 overflow-auto text-xs">
+                  {preview.result.allocations.map((item) => (
+                    <p key={item.contributionId}>
+                      Member {item.userId} · Capital {money(item.investedBeforeMinorUnits)} · Profit{' '}
+                      {money(item.profitMinorUnits)}
+                    </p>
+                  ))}
+                </div>
+                <button
+                  type="button"
+                  className="mt-3 rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+                  disabled={busy}
+                  onClick={settle}
+                >
+                  Confirm trade settlement
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+    </section>
   );
 }
