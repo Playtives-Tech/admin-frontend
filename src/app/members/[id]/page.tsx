@@ -121,6 +121,8 @@ export default function MemberDetailPage(): React.JSX.Element {
     () => opportunities.find((item) => item._id === assignmentOpportunityId) ?? null,
     [assignmentOpportunityId, opportunities],
   );
+  const assignmentCanRollover =
+    selectedOpportunity?.rolloverAllowed && selectedOpportunity.opportunityStructure === 'CO_FUNDING';
   const kycCompletedSteps = member
     ? Number.isInteger(member.kycCompletedSteps)
       ? member.kycCompletedSteps
@@ -783,6 +785,9 @@ export default function MemberDetailPage(): React.JSX.Element {
                     {opportunities.map((opportunity) => (
                       <option key={opportunity._id} value={opportunity._id}>
                         {opportunity.title} — {opportunity.availableUnits} units available
+                        {opportunity.rolloverAllowed && opportunity.opportunityStructure === 'CO_FUNDING'
+                          ? ' · Rollover available'
+                          : ''}
                       </option>
                     ))}
                   </select>
@@ -825,20 +830,27 @@ export default function MemberDetailPage(): React.JSX.Element {
                   />
                 </label>
                 <label className="grid gap-1.5 text-xs font-semibold">
-                  Profit handling
+                  How should this member receive profits?
                   <select
                     value={assignmentRollover}
-                    disabled={!selectedOpportunity?.rolloverAllowed}
+                    disabled={!assignmentCanRollover}
                     onChange={(event) =>
                       setAssignmentRollover(event.target.value as 'PAYOUT' | 'COMPOUND')
                     }
                     className="h-11 rounded-lg border bg-background px-3 text-sm font-normal disabled:opacity-60"
                   >
-                    <option value="PAYOUT">Pay out distributions</option>
-                    {selectedOpportunity?.rolloverAllowed ? (
-                      <option value="COMPOUND">Compound distributions</option>
+                    <option value="PAYOUT">Pay profits to wallet</option>
+                    {assignmentCanRollover ? (
+                      <option value="COMPOUND">Rollover profits into the next term</option>
                     ) : null}
                   </select>
+                  <span className="font-normal leading-5 text-muted-foreground">
+                    {!selectedOpportunity
+                      ? 'Select an opportunity to see its available profit options.'
+                      : assignmentCanRollover
+                        ? 'Choose separately for this member. Rollover compounds eligible profits instead of paying them to the wallet.'
+                        : 'This opportunity does not allow rollover; profits are paid out.'}
+                  </span>
                 </label>
                 <label className="grid gap-1.5 text-xs font-semibold sm:col-span-2">
                   Internal note
