@@ -47,6 +47,48 @@ const money = (value: number) =>
     maximumFractionDigits: 0,
   }).format(value / 100);
 
+function addMonths(value: Date, months: number): Date {
+  const result = new Date(value);
+  const day = result.getUTCDate();
+  result.setUTCDate(1);
+  result.setUTCMonth(result.getUTCMonth() + months);
+  const lastDay = new Date(Date.UTC(result.getUTCFullYear(), result.getUTCMonth() + 1, 0)).getUTCDate();
+  result.setUTCDate(Math.min(day, lastDay));
+  return result;
+}
+
+function endOfLagosDay(value: Date): Date {
+  return new Date(Date.UTC(value.getUTCFullYear(), value.getUTCMonth(), value.getUTCDate(), 22, 55));
+}
+
+function monthlyAssignmentSchedule(opportunity: Opportunity | null) {
+  if (!opportunity || opportunity.termType !== 'FIXED_TERM' || opportunity.returnSchedule !== 'MONTHLY')
+    return null;
+  const startValue = opportunity.assetLifecycleEnabled ? opportunity.distributionStartAt : opportunity.commencementDate;
+  const duration = opportunity.durationValue ?? opportunity.durationMonths;
+  if (!startValue || !duration) return null;
+  const start = new Date(startValue);
+  if (Number.isNaN(start.getTime())) return null;
+  const endDate = new Date(start);
+  const unit = opportunity.durationUnit ?? 'MONTHS';
+  if (unit === 'DAYS') endDate.setUTCDate(endDate.getUTCDate() + duration);
+  else endDate.setTime(addMonths(start, unit === 'YEARS' ? duration * 12 : duration).getTime());
+  const end = endOfLagosDay(endDate);
+  const futureDates: Date[] = [];
+  for (let month = 1; month <= 1200; month += 1) {
+    const candidate = addMonths(start, month);
+    if (candidate.getTime() >= end.getTime()) break;
+    const dueDate = endOfLagosDay(candidate);
+    if (dueDate.getTime() > Date.now()) futureDates.push(dueDate);
+  }
+  if (end.getTime() > Date.now() && !futureDates.some((date) => date.getTime() === end.getTime()))
+    futureDates.push(end);
+  return { start, end, futureDates };
+}
+
+const scheduleDate = (value: Date) =>
+  new Intl.DateTimeFormat('en-NG', { dateStyle: 'medium', timeZone: 'Africa/Lagos' }).format(value);
+
 export default function MemberDetailPage(): React.JSX.Element {
   const { user } = useAuth();
   const isSuperAdmin = user?.roles.includes('SUPER_ADMIN') ?? false;
@@ -82,6 +124,8 @@ export default function MemberDetailPage(): React.JSX.Element {
   const [assignmentReference, setAssignmentReference] = useState('');
   const [assignmentNote, setAssignmentNote] = useState('');
   const [assignmentRollover, setAssignmentRollover] = useState<'PAYOUT' | 'COMPOUND'>('PAYOUT');
+  const [assignmentRemainingMonths, setAssignmentRemainingMonths] = useState('');
+  const [assignmentReturnRate, setAssignmentReturnRate] = useState('');
   const [assignmentConfirmed, setAssignmentConfirmed] = useState(false);
   const [assignmentIsFake, setAssignmentIsFake] = useState(false);
   const [assigning, setAssigning] = useState(false);
@@ -120,6 +164,10 @@ export default function MemberDetailPage(): React.JSX.Element {
   const selectedOpportunity = useMemo(
     () => opportunities.find((item) => item._id === assignmentOpportunityId) ?? null,
     [assignmentOpportunityId, opportunities],
+  );
+  const assignmentSchedule = useMemo(
+    () => monthlyAssignmentSchedule(selectedOpportunity),
+    [selectedOpportunity],
   );
   const assignmentCanRollover =
     selectedOpportunity?.rolloverAllowed && selectedOpportunity.opportunityStructure === 'CO_FUNDING';
@@ -268,6 +316,8 @@ export default function MemberDetailPage(): React.JSX.Element {
     setAssignmentUnits('1');
     setAssignmentAmount(opportunity ? String(opportunity.pricePerUnitMinorUnits / 100) : '');
     setAssignmentRollover('PAYOUT');
+    setAssignmentRemainingMonths(String(monthlyAssignmentSchedule(opportunity ?? null)?.futureDates.length || ''));
+    setAssignmentReturnRate('');
     setAssignmentConfirmed(false);
   };
   const changeAssignmentUnits = (value: string): void => {
@@ -281,6 +331,8 @@ export default function MemberDetailPage(): React.JSX.Element {
     const units = Number(assignmentUnits);
     const amountMinorUnits = Math.round(Number(assignmentAmount) * 100);
     const reference = assignmentReference.trim();
+    const remainingMonths = assignmentRemainingMonths.trim() === '' ? undefined : Number(assignmentRemainingMonths);
+    const returnRateOverridePercent = assignmentReturnRate.trim() === '' ? undefined : Number(assignmentReturnRate);
     if (
       !selectedOpportunity ||
       !Number.isInteger(units) ||
@@ -289,6 +341,9 @@ export default function MemberDetailPage(): React.JSX.Element {
       !Number.isSafeInteger(amountMinorUnits) ||
       amountMinorUnits < 1 ||
       !reference ||
+      (remainingMonths !== undefined && (!Number.isInteger(remainingMonths) || remainingMonths < 1)) ||
+      (assignmentSchedule !== null && (remainingMonths === undefined || remainingMonths > assignmentSchedule.futureDates.length)) ||
+      (returnRateOverridePercent !== undefined && (!Number.isFinite(returnRateOverridePercent) || returnRateOverridePercent < 0 || returnRateOverridePercent > 100)) ||
       !assignmentConfirmed
     ) {
       notify.error('Review the opportunity, available units, amount, and unique reference');
@@ -310,6 +365,8 @@ export default function MemberDetailPage(): React.JSX.Element {
         note: assignmentNote.trim() || undefined,
         rolloverElection: assignmentRollover,
         isFake: assignmentIsFake,
+        remainingMonths,
+        returnRateOverridePercent,
       });
       const [allOwnerships, opportunityResults] = await Promise.all([
         acquisitionService.list(),
@@ -323,6 +380,8 @@ export default function MemberDetailPage(): React.JSX.Element {
       setAssignmentReference('');
       setAssignmentNote('');
       setAssignmentRollover('PAYOUT');
+      setAssignmentRemainingMonths('');
+      setAssignmentReturnRate('');
       setAssignmentConfirmed(false);
       setAssignmentIsFake(false);
       await refreshTransactionHistory();
@@ -851,6 +910,38 @@ export default function MemberDetailPage(): React.JSX.Element {
                         ? 'Choose separately for this member. Rollover compounds eligible profits instead of paying them to the wallet.'
                         : 'This opportunity does not allow rollover; profits are paid out.'}
                   </span>
+                </label>
+                <label className="grid gap-1.5 text-xs font-semibold">
+                  Future monthly payouts for this member
+                  <input type="number" min="1" max={assignmentSchedule?.futureDates.length}
+                    step="1" required={assignmentSchedule !== null} value={assignmentRemainingMonths}
+                    onChange={(event) => setAssignmentRemainingMonths(event.target.value)}
+                    placeholder={assignmentSchedule ? 'Enter number of months' : 'Use opportunity schedule'}
+                    className="h-11 rounded-lg border bg-background px-3 text-sm font-normal" />
+                  <span className="font-normal leading-5 text-muted-foreground">
+                    {assignmentSchedule
+                      ? `${assignmentSchedule.futureDates.length} payout month${assignmentSchedule.futureDates.length === 1 ? '' : 's'} left. Enter a whole number from 1 to ${assignmentSchedule.futureDates.length}; 2 means this member receives the next 2 monthly payouts, then their position closes.`
+                      : 'Select a fixed-term opportunity with monthly payouts to choose its remaining months.'}
+                  </span>
+                </label>
+                {assignmentSchedule ? (
+                  <div className="rounded-lg border bg-muted/40 px-4 py-3 text-xs leading-5 sm:col-span-2">
+                    <p className="font-semibold">Opportunity schedule</p>
+                    <p>Trade starts: {scheduleDate(assignmentSchedule.start)} · Trade ends: {scheduleDate(assignmentSchedule.end)}</p>
+                    <p>Next payout: {assignmentSchedule.futureDates[0] ? scheduleDate(assignmentSchedule.futureDates[0]) : 'No future payouts'}</p>
+                    <p>Last payout for this member: {Number(assignmentRemainingMonths) > 0 &&
+                      Number(assignmentRemainingMonths) <= assignmentSchedule.futureDates.length
+                      ? scheduleDate(assignmentSchedule.futureDates[Number(assignmentRemainingMonths) - 1])
+                      : 'Choose a valid number of months'}</p>
+                  </div>
+                ) : null}
+                <label className="grid gap-1.5 text-xs font-semibold">
+                  Member return rate % (optional)
+                  <input type="number" min="0" max="100" step="0.0001" value={assignmentReturnRate}
+                    onChange={(event) => setAssignmentReturnRate(event.target.value)}
+                    placeholder={selectedOpportunity ? String(selectedOpportunity.projectedReturnRatePercent) : 'Use opportunity rate'}
+                    className="h-11 rounded-lg border bg-background px-3 text-sm font-normal" />
+                  <span className="font-normal leading-5 text-muted-foreground">Overrides the rate for this member in percentage-based payout reviews. Exact manual amounts remain authoritative.</span>
                 </label>
                 <label className="grid gap-1.5 text-xs font-semibold sm:col-span-2">
                   Internal note

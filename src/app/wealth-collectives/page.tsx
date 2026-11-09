@@ -1930,6 +1930,7 @@ function TradeSettlements({
   const [startsAt, setStartsAt] = useState('');
   const [endsAt, setEndsAt] = useState('');
   const [profit, setProfit] = useState('');
+  const [profitMode, setProfitMode] = useState<'PERCENT' | 'AMOUNT'>('PERCENT');
   const [treatment, setTreatment] = useState<'COMPOUND' | 'HOLD'>('COMPOUND');
   const [preview, setPreview] = useState<{
     input: CollectiveTradeInput;
@@ -1945,26 +1946,32 @@ function TradeSettlements({
   }, [cycle._id]);
 
   const prepare = (): CollectiveTradeInput | null => {
-    const profitMinorUnits = Math.round(Number(profit) * 100);
+    const profitValue = Number(profit);
+    const profitUnits = Math.round(profitValue * 100);
     const start = new Date(startsAt);
     const end = new Date(endsAt);
     if (
       !reference.trim() ||
       !startsAt ||
       !endsAt ||
-      !Number.isSafeInteger(profitMinorUnits) ||
-      profitMinorUnits < 1 ||
+      !/^\d+(?:\.\d{1,2})?$/.test(profit) ||
+      !Number.isSafeInteger(profitUnits) ||
+      profitUnits < 1 ||
       Number.isNaN(start.getTime()) ||
       Number.isNaN(end.getTime())
     ) {
-      notify.error('Enter a reference, trade dates, and a positive verified profit.');
+      notify.error(
+        'Enter a reference, trade dates, and a positive verified profit with up to two decimal places.',
+      );
       return null;
     }
     return {
       reference: reference.trim(),
       startsAt: start.toISOString(),
       endsAt: end.toISOString(),
-      profitMinorUnits,
+      ...(profitMode === 'PERCENT'
+        ? { profitRateBps: profitUnits }
+        : { profitMinorUnits: profitUnits }),
       treatment,
     };
   };
@@ -2028,8 +2035,11 @@ function TradeSettlements({
           {trades.map((trade) => (
             <p key={trade._id}>
               {trade.reference} · {dateTime(trade.startsAt)}–{dateTime(trade.endsAt)} ·{' '}
-              {money(trade.profitMinorUnits)} ·{' '}
-              {trade.treatment === 'COMPOUND' ? 'Compounded' : 'Held'}
+              {money(trade.profitMinorUnits)}
+              {trade.profitRateBps !== undefined
+                ? ` (${(trade.profitRateBps / 100).toFixed(2)}%)`
+                : ''}{' '}
+              · {trade.treatment === 'COMPOUND' ? 'Compounded' : 'Held'}
             </p>
           ))}
         </div>
@@ -2074,12 +2084,28 @@ function TradeSettlements({
               />
             </label>
             <label className="text-xs">
-              Verified profit (₦)
+              Profit entry
+              <select
+                className="mt-1 h-10 w-full rounded-lg border px-3"
+                value={profitMode}
+                onChange={(event) => {
+                  setProfitMode(event.target.value as 'PERCENT' | 'AMOUNT');
+                  setProfit('');
+                  clearPreview();
+                }}
+              >
+                <option value="PERCENT">Percentage</option>
+                <option value="AMOUNT">Amount (₦)</option>
+              </select>
+            </label>
+            <label className="text-xs">
+              {profitMode === 'PERCENT' ? 'Verified profit (%)' : 'Verified profit (₦)'}
               <input
                 className="mt-1 h-10 w-full rounded-lg border px-3"
                 type="number"
                 min="0.01"
                 step="0.01"
+                placeholder={profitMode === 'PERCENT' ? 'e.g. 20' : 'e.g. 100000'}
                 value={profit}
                 onChange={(event) => {
                   setProfit(event.target.value);
@@ -2087,6 +2113,12 @@ function TradeSettlements({
                 }}
               />
             </label>
+            {profitMode === 'PERCENT' && (
+              <p className="self-end text-xs text-muted-foreground sm:col-span-2 xl:col-span-5">
+                Percentage applies to invested capital weighted by each member’s time in this trade.
+                Preview the calculated naira profit and each member’s allocation before confirming.
+              </p>
+            )}
             <label className="text-xs">
               Profit treatment
               <select

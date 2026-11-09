@@ -34,7 +34,7 @@ export default function MembersPage(): React.JSX.Element {
   const [page, setPage] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
-  const [range, setRange] = useState<AdminDateRange>(defaultAdminDateRange);
+  const [range, setRange] = useState<AdminDateRange | 'all'>('all');
   const [isExporting, setIsExporting] = useState(false);
   const pageSize = 20;
 
@@ -49,7 +49,7 @@ export default function MembersPage(): React.JSX.Element {
             : statusFilter === 'Suspended'
               ? 'suspended'
               : 'all';
-      if (range.preset === 'custom' && (!range.from || !range.to)) return;
+      if (range !== 'all' && range.preset === 'custom' && (!range.from || !range.to)) return;
       const kyc =
         kycFilter === 'KYC complete'
           ? 'complete'
@@ -211,8 +211,12 @@ export default function MembersPage(): React.JSX.Element {
           </div>
         </div>
         <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <button type="button" onClick={() => { setRange('all'); setPage(1); }}
+            className={cn('h-10 rounded-xl border px-4 text-sm font-semibold', range === 'all' ? 'bg-brand text-white' : 'bg-background')}>
+            All time
+          </button>
           <DateRangeFilter
-            value={range}
+            value={range === 'all' ? defaultAdminDateRange : range}
             onChange={(value) => {
               setRange(value);
               setPage(1);
@@ -222,7 +226,7 @@ export default function MembersPage(): React.JSX.Element {
             className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border bg-background px-4 text-sm font-semibold transition hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand disabled:cursor-not-allowed disabled:opacity-60"
             disabled={isExporting}
             onClick={() => {
-              if (range.preset === 'custom' && (!range.from || !range.to)) {
+              if (range !== 'all' && range.preset === 'custom' && (!range.from || !range.to)) {
                 notify.error('Choose both dates before exporting a custom range.');
                 return;
               }
@@ -274,6 +278,7 @@ export default function MembersPage(): React.JSX.Element {
                 <tr>
                   <th className="px-6 py-4 font-semibold text-muted-foreground">User</th>
                   <th className="px-6 py-4 font-semibold text-muted-foreground">Join Date</th>
+                  <th className="px-6 py-4 font-semibold text-muted-foreground">Membership</th>
                   <th className="px-6 py-4 font-semibold text-muted-foreground">Role</th>
                   <th className="px-6 py-4 text-right font-semibold text-muted-foreground">
                     Active Inv.
@@ -282,7 +287,6 @@ export default function MembersPage(): React.JSX.Element {
                     Total Invested
                   </th>
                   <th className="px-6 py-4 font-semibold text-muted-foreground">Status</th>
-                  <th className="px-6 py-4 font-semibold text-muted-foreground">Membership</th>
                   <th className="px-6 py-4 font-semibold text-muted-foreground">KYC</th>
                   <th className="px-6 py-4 text-right font-semibold text-muted-foreground">
                     Actions

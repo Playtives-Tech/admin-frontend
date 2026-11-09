@@ -25,7 +25,7 @@ export default function OpportunitiesPage(): React.JSX.Element {
     return opportunityService.subscribe(() => void load());
   }, []);
   const standardItems = items.filter((item) => !item.historicalOnly);
-  const historicalItems = items.filter((item) => item.historicalOnly);
+  // Historical opportunity cards are retained in data but hidden from this editor view.
   return (
     <DashboardShell title="Opportunities" description="Manage platform opportunities">
       <div className="mx-auto max-w-6xl">
@@ -37,12 +37,7 @@ export default function OpportunitiesPage(): React.JSX.Element {
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Link
-              href="/opportunities/legacy/new"
-              className="flex items-center gap-2 rounded-xl border border-brand px-4 py-2.5 text-sm font-semibold text-brand"
-            >
-              <MdAdd /> Historical opportunity
-            </Link>
+            {/* Historical opportunity creation is paused; use Members → Assign existing ownership. */}
             <Link
               href="/opportunities/new"
               className="flex items-center gap-2 rounded-xl bg-brand px-4 py-2.5 text-sm font-semibold text-brand-foreground"
@@ -156,6 +151,7 @@ export default function OpportunitiesPage(): React.JSX.Element {
             })}
           </div>
         )}
+        {/* Historical opportunity section is paused; preserve its editor for a future reactivation.
         <section className="mt-10 border-t pt-8">
           <div className="mb-4 flex items-center justify-between gap-3">
             <div>
@@ -192,6 +188,7 @@ export default function OpportunitiesPage(): React.JSX.Element {
             </div>
           )}
         </section>
+        */}
       </div>
     </DashboardShell>
   );

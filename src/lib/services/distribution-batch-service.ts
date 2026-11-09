@@ -41,6 +41,9 @@ export type DistributionBatchDetail = Readonly<{
         units: number;
         rolloverElection: 'PAYOUT' | 'COMPOUND' | null;
         rolloverCompoundsReturns: boolean;
+        projectedReturnRatePercent: number;
+        returnRateOverridePercent: number | null;
+        assignedRemainingMonths: number | null;
       }>;
     }>
   >;

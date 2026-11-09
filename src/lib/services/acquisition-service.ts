@@ -104,6 +104,8 @@ export const acquisitionService = {
     reference: string;
     note?: string;
     rolloverElection?: 'PAYOUT' | 'COMPOUND';
+    remainingMonths?: number;
+    returnRateOverridePercent?: number;
   }) =>
     api<AdminAcquisition>('/v1/admin/acquisitions/manual', {
       method: 'POST',
