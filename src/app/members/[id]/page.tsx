@@ -128,6 +128,7 @@ export default function MemberDetailPage(): React.JSX.Element {
   const [assignmentReturnRate, setAssignmentReturnRate] = useState('');
   const [assignmentConfirmed, setAssignmentConfirmed] = useState(false);
   const [assignmentIsFake, setAssignmentIsFake] = useState(false);
+  const [allowWithoutWalletBalance, setAllowWithoutWalletBalance] = useState(false);
   const [assigning, setAssigning] = useState(false);
 
   useEffect(() => {
@@ -319,6 +320,7 @@ export default function MemberDetailPage(): React.JSX.Element {
     setAssignmentRemainingMonths(String(monthlyAssignmentSchedule(opportunity ?? null)?.futureDates.length || ''));
     setAssignmentReturnRate('');
     setAssignmentConfirmed(false);
+    setAllowWithoutWalletBalance(false);
   };
   const changeAssignmentUnits = (value: string): void => {
     setAssignmentUnits(value);
@@ -349,7 +351,11 @@ export default function MemberDetailPage(): React.JSX.Element {
       notify.error('Review the opportunity, available units, amount, and unique reference');
       return;
     }
-    if (amountMinorUnits > (wallet?.totalAvailableBalanceMinorUnits ?? 0)) {
+    if (allowWithoutWalletBalance && assignmentNote.trim().length < 3) {
+      notify.error('Add a note explaining the external purchase before bypassing the wallet balance check');
+      return;
+    }
+    if (!allowWithoutWalletBalance && amountMinorUnits > (wallet?.totalAvailableBalanceMinorUnits ?? 0)) {
       notify.error('The member does not have enough available wallet balance for this ownership');
       return;
     }
@@ -365,6 +371,7 @@ export default function MemberDetailPage(): React.JSX.Element {
         note: assignmentNote.trim() || undefined,
         rolloverElection: assignmentRollover,
         isFake: assignmentIsFake,
+        allowWithoutWalletBalance,
         remainingMonths,
         returnRateOverridePercent,
       });
@@ -384,6 +391,7 @@ export default function MemberDetailPage(): React.JSX.Element {
       setAssignmentReturnRate('');
       setAssignmentConfirmed(false);
       setAssignmentIsFake(false);
+      setAllowWithoutWalletBalance(false);
       await refreshTransactionHistory();
       notify.success('Ownership assigned without debiting the member wallet');
     } catch (error) {
@@ -823,8 +831,8 @@ export default function MemberDetailPage(): React.JSX.Element {
                   <h2 className="text-sm font-semibold">Assign existing ownership</h2>
                   <p className="mt-1 text-xs leading-5 text-muted-foreground">
                     Use this for ownership purchased before the platform. Available units are
-                    deducted immediately. The member must have enough available wallet balance for
-                    the recorded amount, but this legacy assignment does not debit it.
+                    deducted immediately. The member’s wallet is never debited, even if it has enough
+                    balance. Select the option below to skip the balance requirement for an external purchase.
                   </p>
                 </div>
               </div>
@@ -958,10 +966,11 @@ export default function MemberDetailPage(): React.JSX.Element {
                   <div className="rounded-lg bg-muted/40 px-4 py-3 text-xs leading-5 text-muted-foreground sm:col-span-2">
                     <span className="font-semibold text-foreground">Assignment summary:</span>{' '}
                     {assignmentUnits || 0} of {selectedOpportunity.availableUnits} available units.
-                    Listed unit price is {money(selectedOpportunity.pricePerUnitMinorUnits)}. This
-                    action requires at least{' '}
-                    {money(Math.round(Number(assignmentAmount) * 100) || 0)} in available wallet
-                    balance and does not debit it. Current available balance:{' '}
+                    Listed unit price is {money(selectedOpportunity.pricePerUnitMinorUnits)}. This action{' '}
+                    {allowWithoutWalletBalance
+                      ? 'does not require available wallet balance'
+                      : `requires ${money(Math.round(Number(assignmentAmount) * 100) || 0)} in available wallet balance`}{' '}
+                    and never debits it. Current available balance:{' '}
                     {money(wallet?.totalAvailableBalanceMinorUnits ?? 0)}.
                   </div>
                 ) : null}
@@ -981,14 +990,25 @@ export default function MemberDetailPage(): React.JSX.Element {
                   <input type="checkbox" checked={assignmentIsFake} onChange={(event) => setAssignmentIsFake(event.target.checked)} className="mt-1 size-4 accent-brand" />
                   <span>Mark this ownership as Internal. It remains visible to the member but is excluded from genuine investment totals and future payouts.</span>
                 </label>
+                <label className="flex items-start gap-2 text-xs leading-5 sm:col-span-2">
+                  <input
+                    type="checkbox"
+                    checked={allowWithoutWalletBalance}
+                    onChange={(event) => setAllowWithoutWalletBalance(event.target.checked)}
+                    className="mt-1 size-4 accent-brand"
+                  />
+                  <span><strong>Allow without deducting from balance.</strong> This also skips the available balance requirement. Use only for ownership already paid for outside Playtives, and explain the purchase in the internal note above. No money is added to or removed from the member’s wallet, and this does not mark the ownership as Internal.</span>
+                </label>
                 <div className="flex justify-end sm:col-span-2">
                   <button
                     disabled={
                       assigning ||
                       !selectedOpportunity ||
                       !assignmentConfirmed ||
-                      Math.round(Number(assignmentAmount) * 100) >
-                        (wallet?.totalAvailableBalanceMinorUnits ?? 0)
+                      (allowWithoutWalletBalance && assignmentNote.trim().length < 3) ||
+                      (!allowWithoutWalletBalance &&
+                        Math.round(Number(assignmentAmount) * 100) >
+                          (wallet?.totalAvailableBalanceMinorUnits ?? 0))
                     }
                     className="h-10 rounded-lg bg-brand px-5 text-sm font-semibold text-white transition hover:brightness-110 disabled:opacity-60"
                   >

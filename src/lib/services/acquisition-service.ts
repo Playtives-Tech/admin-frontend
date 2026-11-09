@@ -96,6 +96,7 @@ export const acquisitionService = {
   },
   assignManual: (input: {
     isFake?: boolean;
+    allowWithoutWalletBalance?: boolean;
     userId: string;
     opportunityId: string;
     units: number;
