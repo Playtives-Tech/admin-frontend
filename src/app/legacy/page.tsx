@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
 import { Info, X } from 'lucide-react';
 import { DashboardShell } from '@/components/dashboard/shell';
 import { useAuth } from '@/components/providers/auth-provider';
@@ -283,7 +284,7 @@ function LegacyHelpDialog({
   );
 }
 
-export default function LegacyPage(): React.JSX.Element {
+function LegacyPageArchive(): React.JSX.Element {
   const [opportunities, setOpportunities] = useState<LegacyOpportunity[]>([]);
   const [positions, setPositions] = useState<LegacyPosition[]>([]);
   const [selected, setSelected] = useState<LegacyPosition | null>(null);
@@ -494,6 +495,12 @@ export default function LegacyPage(): React.JSX.Element {
       )}
     </DashboardShell>
   );
+}
+
+export default function LegacyPage(): never {
+  // Legacy import UI is paused. Restore LegacyPageArchive when this flow returns.
+  void LegacyPageArchive;
+  redirect('/members');
 }
 
 function PositionForm({

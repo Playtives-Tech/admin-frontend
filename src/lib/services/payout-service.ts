@@ -2,6 +2,21 @@ import { api } from '@/lib/api';
 import { type AdminDateRange, dateRangeSearchParams } from '@/lib/date-range';
 
 export type MaturityPayoutStatus = 'PENDING' | 'PROCESSING' | 'APPROVED' | 'REJECTED';
+export type UpcomingPayout = Readonly<{
+  _id: string;
+  userId: Readonly<{ _id: string; name: string; email: string }>;
+  opportunityId: Readonly<{ _id: string; title: string }>;
+  nextAccrualAt: string;
+  maturityAt: string | null;
+  units: number;
+  investmentCapitalMinorUnits: number;
+  projectedReturnRatePercent: number;
+  estimatedReturnMinorUnits: number | null;
+  nextCycle: number;
+  scheduledReturnCycles: number;
+  rolloverElection: 'PAYOUT' | 'COMPOUND' | null;
+  rolloverCompoundsReturns: boolean;
+}>;
 export type MaturityPayout = Readonly<{
   _id: string;
   userId: Readonly<{ _id: string; name: string; email: string }>;
@@ -88,6 +103,11 @@ export type DuePayoutProcessingResult = Readonly<{
 
 const keys = new Map<string, string>();
 export const payoutService = {
+  upcoming: (page = 1) =>
+    api<{
+      items: UpcomingPayout[];
+      pagination: { page: number; totalItems: number; totalPages: number };
+    }>(`/v1/admin/payouts/upcoming?page=${page}&limit=20`, { cache: 'no-store' }),
   processDue: () =>
     api<DuePayoutProcessingResult>('/v1/admin/payouts/process-due', {
       method: 'POST',

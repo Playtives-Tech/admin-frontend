@@ -689,6 +689,7 @@ export function OpportunityEditor({
         ) : null}
         <div className="mx-auto grid max-w-6xl items-start gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(320px,0.62fr)]">
           <div className="grid gap-4">
+            {/* Historical owner-only creation is paused; keep the form state and backend support.
             <section className="rounded-xl border border-amber-300 bg-amber-50 p-5 text-sm text-amber-900">
               <label className="flex items-center gap-3 font-semibold">
                 <input
@@ -704,6 +705,7 @@ export function OpportunityEditor({
                 published; members see it only after their ownership is imported.
               </p>
             </section>
+            */}
             {loadedOpportunity && !form.assetLifecycleEnabled ? (
               <ExecutionProgressPanel
                 opportunity={loadedOpportunity}

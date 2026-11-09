@@ -74,7 +74,7 @@ export function getMembers(input: {
   status?: 'all' | 'active' | 'pending' | 'suspended';
   kyc?: 'all' | 'complete' | 'incomplete';
   memberStatus?: 'all' | 'community' | 'pending' | 'active';
-  range: AdminDateRange;
+  range: AdminDateRange | 'all';
 }): Promise<MembersPage> {
   return api<MembersPage>(`/v1/admin/users?${memberListQuery(input).toString()}`);
 }
@@ -84,7 +84,7 @@ export function exportMembersCsv(input: {
   status?: 'all' | 'active' | 'pending' | 'suspended';
   kyc?: 'all' | 'complete' | 'incomplete';
   memberStatus?: 'all' | 'community' | 'pending' | 'active';
-  range: AdminDateRange;
+  range: AdminDateRange | 'all';
 }): Promise<void> {
   return downloadApiFile(
     `/v1/admin/users/export.csv?${memberListQuery(input).toString()}`,
@@ -99,7 +99,7 @@ function memberListQuery(input: {
   status?: 'all' | 'active' | 'pending' | 'suspended';
   kyc?: 'all' | 'complete' | 'incomplete';
   memberStatus?: 'all' | 'community' | 'pending' | 'active';
-  range: AdminDateRange;
+  range: AdminDateRange | 'all';
 }): URLSearchParams {
   const query = new URLSearchParams();
   if (input.page != null) query.set('page', String(input.page));
@@ -109,7 +109,8 @@ function memberListQuery(input: {
   if (input.kyc && input.kyc !== 'all') query.set('kyc', input.kyc);
   if (input.memberStatus && input.memberStatus !== 'all')
     query.set('memberStatus', input.memberStatus);
-  new URLSearchParams(dateRangeSearchParams(input.range)).forEach((value, key) =>
+  if (input.range === 'all') query.set('range', 'all');
+  else new URLSearchParams(dateRangeSearchParams(input.range)).forEach((value, key) =>
     query.set(key, value),
   );
   return query;

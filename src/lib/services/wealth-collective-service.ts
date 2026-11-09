@@ -19,9 +19,12 @@ export type CollectiveTradeInput = Readonly<{
   reference: string;
   startsAt: string;
   endsAt: string;
-  profitMinorUnits: number;
   treatment: 'COMPOUND' | 'HOLD';
-}>;
+}> &
+  Readonly<
+    | { profitMinorUnits: number; profitRateBps?: never }
+    | { profitRateBps: number; profitMinorUnits?: never }
+  >;
 
 export type CollectiveTradePreview = Readonly<{
   digest: string;
@@ -34,12 +37,17 @@ export type CollectiveTradePreview = Readonly<{
   }>;
 }>;
 
-export type CollectiveTrade = CollectiveTradeInput &
-  Readonly<{
-    _id: string;
-    status: 'SETTLED';
-    settledAt: string;
-  }>;
+export type CollectiveTrade = Readonly<{
+  reference: string;
+  startsAt: string;
+  endsAt: string;
+  profitMinorUnits: number;
+  profitRateBps?: number;
+  treatment: 'COMPOUND' | 'HOLD';
+  _id: string;
+  status: 'SETTLED';
+  settledAt: string;
+}>;
 
 export type CollectiveReconciliationPreview = Readonly<{
   digest: string;

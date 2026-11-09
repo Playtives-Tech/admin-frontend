@@ -20,6 +20,7 @@ import {
   type MaturityPayout,
   type MaturityPayoutStatus,
   type PayoutDetail,
+  type UpcomingPayout,
 } from '@/lib/services/payout-service';
 import { DateRangeFilter } from '@/components/ui/date-range-filter';
 import { defaultAdminDateRange, type AdminDateRange } from '@/lib/date-range';
@@ -39,7 +40,11 @@ export default function PayoutsPage(): React.JSX.Element {
   const isSuperAdmin = user?.roles.includes('SUPER_ADMIN') ?? false;
   const [items, setItems] = useState<MaturityPayout[]>([]);
   const [status, setStatus] = useState<'ALL' | MaturityPayoutStatus>('ALL');
-  const [tab, setTab] = useState<'MONTHLY' | 'PRINCIPAL'>('MONTHLY');
+  const [tab, setTab] = useState<'MONTHLY' | 'PRINCIPAL' | 'UPCOMING'>('MONTHLY');
+  const [upcoming, setUpcoming] = useState<UpcomingPayout[]>([]);
+  const [upcomingPage, setUpcomingPage] = useState(1);
+  const [upcomingTotal, setUpcomingTotal] = useState(0);
+  const [upcomingPages, setUpcomingPages] = useState(1);
   const [page, setPage] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
@@ -62,6 +67,16 @@ export default function PayoutsPage(): React.JSX.Element {
   useEffect(() => {
     setPage(1);
   }, [range, status]);
+  useEffect(() => {
+    if (tab !== 'UPCOMING') return;
+    void payoutService.upcoming(upcomingPage)
+      .then((response) => {
+        setUpcoming(response.items);
+        setUpcomingTotal(response.pagination.totalItems);
+        setUpcomingPages(response.pagination.totalPages);
+      })
+      .catch(() => notify.error('Could not load upcoming payouts'));
+  }, [tab, upcomingPage, distributionRefreshKey]);
   const open = async (id: string) => {
     setLoadingDetail(true);
     setNote('');
@@ -148,6 +163,13 @@ export default function PayoutsPage(): React.JSX.Element {
               <MdAccountBalanceWallet className="size-4" />
               Capital returns
             </button>
+            <button
+              onClick={() => setTab('UPCOMING')}
+              className={`inline-flex items-center gap-2 rounded-xl border px-3.5 py-2 text-sm font-semibold transition-colors ${tab === 'UPCOMING' ? 'border-brand bg-brand text-brand-foreground' : 'bg-background text-muted-foreground hover:border-brand/40 hover:text-foreground'}`}
+            >
+              <MdPendingActions className="size-4" />
+              Upcoming payouts
+            </button>
           </div>
           <div className="flex flex-wrap items-center justify-end gap-2">
             {isSuperAdmin ? <button
@@ -160,11 +182,56 @@ export default function PayoutsPage(): React.JSX.Element {
               <MdRefresh className={`size-4 ${processingDue ? 'animate-spin' : ''}`} />
               {processingDue ? 'Processing due payouts…' : 'Process due payouts'}
             </button> : null}
-            <DateRangeFilter value={range} onChange={setRange} />
+            {tab !== 'UPCOMING' ? <DateRangeFilter value={range} onChange={setRange} /> : null}
           </div>
         </div>
         {tab === 'MONTHLY' ? (
           <MonthlyDistributionPanel key={distributionRefreshKey} range={range} />
+        ) : tab === 'UPCOMING' ? (
+          <section className="app-surface overflow-hidden rounded-2xl border">
+            <div className="border-b p-5">
+              <h2 className="font-sans text-xl font-semibold">Upcoming ownership payouts</h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Scheduled dates for active, non-Internal ownerships. Estimates are not approved payouts or wallet credits. Overdue dates remain here until processed.
+              </p>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm">
+                <thead className="bg-muted/30">
+                  <tr>
+                    {['Due date', 'Member', 'Opportunity', 'Cycle', 'Capital', 'Indicative return', 'Treatment'].map((label) => (
+                      <th key={label} className="px-4 py-3 font-semibold text-muted-foreground">{label}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y">
+                  {upcoming.map((item) => (
+                    <tr key={item._id}>
+                      <td className="px-4 py-3 font-medium">
+                        {date(item.nextAccrualAt)}
+                        {new Date(item.nextAccrualAt).getTime() < Date.now() ? <span className="ml-2 text-amber-700">Overdue</span> : null}
+                      </td>
+                      <td className="px-4 py-3"><span className="font-medium">{item.userId?.name ?? 'Unknown member'}</span><br /><span className="text-xs text-muted-foreground">{item.userId?.email ?? '—'}</span></td>
+                      <td className="px-4 py-3">{item.opportunityId?.title ?? 'Unknown opportunity'}</td>
+                      <td className="px-4 py-3">{item.nextCycle} of {item.scheduledReturnCycles}</td>
+                      <td className="px-4 py-3">{money(item.investmentCapitalMinorUnits)}</td>
+                      <td className="px-4 py-3">{item.estimatedReturnMinorUnits == null ? 'Not available' : money(item.estimatedReturnMinorUnits)}{item.estimatedReturnMinorUnits != null ? <span className="block text-xs text-muted-foreground">{item.projectedReturnRatePercent}% projected</span> : null}</td>
+                      <td className="px-4 py-3">{item.rolloverElection === 'COMPOUND' || (item.rolloverElection == null && item.rolloverCompoundsReturns) ? 'Rollover' : 'Pay to wallet'}</td>
+                    </tr>
+                  ))}
+                  {upcoming.length === 0 ? <tr><td colSpan={7} className="p-10 text-center text-muted-foreground">No active ownership payouts are scheduled.</td></tr> : null}
+                </tbody>
+              </table>
+            </div>
+            <div className="flex items-center justify-between border-t p-4 text-xs text-muted-foreground">
+              <span>{upcomingTotal} scheduled ownership{upcomingTotal === 1 ? '' : 's'}</span>
+              <div className="flex items-center gap-2">
+                <button disabled={upcomingPage <= 1} onClick={() => setUpcomingPage((current) => current - 1)} className="grid size-8 place-items-center rounded-lg border disabled:opacity-40"><MdChevronLeft /></button>
+                <span>Page {upcomingPage} of {upcomingPages}</span>
+                <button disabled={upcomingPage >= upcomingPages} onClick={() => setUpcomingPage((current) => current + 1)} className="grid size-8 place-items-center rounded-lg border disabled:opacity-40"><MdChevronRight /></button>
+              </div>
+            </div>
+          </section>
         ) : (
           <>
             <div className="pt-2">

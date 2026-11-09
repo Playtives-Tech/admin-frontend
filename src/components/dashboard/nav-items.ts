@@ -13,7 +13,6 @@ import {
   UserCheck,
   Layers3,
   BellRing,
-  Archive,
   ShieldCheck,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
@@ -39,7 +38,8 @@ export const navItems: NavItem[] = [
   { href: '/blog', label: 'Blog Center', icon: BookOpen },
   { href: '/payouts', label: 'User Payouts', icon: Banknote },
   { href: '/acquisitions', label: 'User Ownerships', icon: ChartNoAxesCombined },
-  { href: '/legacy', label: 'Legacy Ownerships', icon: Archive },
+  // Legacy ownership navigation is paused; member assignment is the supported workflow.
+  // { href: '/legacy', label: 'Legacy Ownerships', icon: Archive },
   { href: '/deposits', label: 'Deposit Requests', icon: ArrowDownCircle },
   { href: '/withdrawals', label: 'Withdrawal Requests', icon: ArrowUpCircle },
   { href: '/name-change-requests', label: 'Name Change Requests', icon: BadgeCheck },
@@ -62,7 +62,6 @@ export const navGroups: ReadonlyArray<{ label: string; items: NavItem[] }> = [
         '/wealth-collectives',
         '/interest-registrations',
         '/acquisitions',
-        '/legacy',
       ].includes(item.href),
     ),
   },

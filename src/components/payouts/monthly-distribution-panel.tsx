@@ -350,8 +350,8 @@ function DistributionDrawer({
               <h3 className="font-sans text-lg font-semibold">Member allocation preview</h3>
               <p className="mt-1 text-sm text-muted-foreground">
                 Use the calculator above for a quick estimate, or enter the exact amount each member
-                should receive below. Each member&apos;s selected profit treatment is applied when
-                this distribution is approved.
+                should receive below. A member-specific rate replaces the batch rate when calculating
+                percentage-based returns; manually saved amounts remain final. Review each amount before approval.
               </p>
             </div>
             <div className="overflow-x-auto">
@@ -362,6 +362,7 @@ function DistributionDrawer({
                       'Member',
                       'Units',
                       'Opening capital',
+                      'Member rate',
                       'Actual return',
                       'Profit treatment',
                       'Closing capital',
@@ -386,6 +387,11 @@ function DistributionDrawer({
                         </td>
                         <td className="px-4 py-3">{item.ownershipId.units}</td>
                         <td className="px-4 py-3">{money(item.principalBeforeMinorUnits)}</td>
+                        <td className="px-4 py-3 text-xs">
+                          {item.ownershipId.returnRateOverridePercent == null
+                            ? 'Opportunity rate'
+                            : `${item.ownershipId.returnRateOverridePercent}% · custom`}
+                        </td>
                         <td className="px-4 py-3 text-brand">
                           {editable ? (
                             <input

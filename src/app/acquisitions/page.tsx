@@ -296,14 +296,15 @@ export default function AcquisitionsPage(): React.JSX.Element {
                         ? new Date(item.maturityAt).toLocaleDateString('en-NG')
                         : '—'}
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="min-w-56 px-4 py-3">
+                      <div className="flex flex-nowrap items-center gap-3 whitespace-nowrap">
                       {isSuperAdmin && (item.status === 'ACTIVE' || item.status === 'COMPLETED') ? (
                         <button
                           type="button"
                           disabled={!item.canReclassify}
                           title={item.reclassificationBlockedReason ?? 'Change admin classification'}
                           onClick={() => void changeClassification(item)}
-                          className="mr-3 font-semibold text-brand disabled:cursor-not-allowed disabled:opacity-40"
+                          className="shrink-0 font-semibold text-brand disabled:cursor-not-allowed disabled:opacity-40"
                         >
                           Mark {item.isFake ? 'genuine' : 'Internal'}
                         </button>
@@ -319,7 +320,7 @@ export default function AcquisitionsPage(): React.JSX.Element {
                             setReason('');
                             setWalletAction(null);
                           }}
-                          className="rounded-lg border border-red-200 px-3 py-2 font-semibold text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:border-muted disabled:bg-muted/40 disabled:text-muted-foreground dark:border-red-900 dark:text-red-300 dark:hover:bg-red-950/30"
+                          className="shrink-0 rounded-lg border border-red-200 px-3 py-2 font-semibold text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:border-muted disabled:bg-muted/40 disabled:text-muted-foreground dark:border-red-900 dark:text-red-300 dark:hover:bg-red-950/30"
                         >
                           {item.canReverse ? 'Reverse' : 'Processed'}
                         </button>
@@ -334,6 +335,7 @@ export default function AcquisitionsPage(): React.JSX.Element {
                       ) : (
                         '—'
                       )}
+                      </div>
                     </td>
                   </tr>
                 );
